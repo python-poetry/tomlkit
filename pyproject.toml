@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "tomllib"
+version = "0.1.0"
+description = "Style preserving TOML parser"
+authors = ["Sébastien Eustace <sebastien@eustace.io>"]
+license = "MIT"
+
+homepage = "https://github.com/sdispater/tomllib"
+repository = "https://github.com/sdispater/tomllib"
+
+[tool.poetry.dependencies]
+python = "~2.7 || ^3.4"
+
+# Use pathlib2 for Python 2.7 and 3.4
+pathlib2 = { version = "^2.3", python = "~2.7 || ~3.4" }
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.6"
+pytest-cov = "^2.5"
+black = { version = "^18.6b4", python = "^3.6" }
+pre-commit = "^1.10"

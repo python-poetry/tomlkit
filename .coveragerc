@@ -1,0 +1,3 @@
+[run]
+omit = tomllib/_compat.py,
+
