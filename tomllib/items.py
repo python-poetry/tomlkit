@@ -69,6 +69,9 @@ class Key:
     def __hash__(self):  # type: () -> int
         return hash(self.key)
 
+    def __eq__(self, other):  # type: (Key) -> bool
+        return self.key == other.key
+
     def __str__(self):  # type: () -> str
         return self.as_string()
 
@@ -90,9 +93,6 @@ class Item:
 
     @property
     def discriminant(self):  # type: () -> int
-        raise NotImplementedError()
-
-    def is_homogeneous(self):  # type: () -> bool
         raise NotImplementedError()
 
     def as_string(self):  # type: () -> str
@@ -282,6 +282,9 @@ class Array(Item):
         return 8
 
     def is_homogeneous(self):  # type: () -> bool
+        if not self._value:
+            return True
+
         discriminants = [
             i.discriminant
             for i in self._value
@@ -315,6 +318,15 @@ class Table(Item):
     def discriminant(self):  # type: () -> int
         return 9
 
+    def append(self, key, item):  # type: (Key, Item) -> None
+        """
+        Appends a (key, item) to the table.
+        """
+        self._value.append(key, item)
+
+    def remove(self, key):  # type: (Key) -> None
+        self._value.remove(key)
+
     def is_aot_element(self):  # type: () -> bool
         return self._is_aot_element
 
@@ -341,9 +353,25 @@ class InlineTable(Item):
     def discriminant(self):  # type: () -> int
         return 10
 
+    def append(self, key, item):  # type: (Key, Item) -> None
+        """
+        Appends a (key, item) to the table.
+        """
+        self._value.append(key, item)
+
+    def remove(self, key):  # type: (Key) -> None
+        self._value.remove(key)
+
     def as_string(self):  # type: () -> str
         buf = "{"
         for i, (k, v) in enumerate(self._value.body):
+            if k is None:
+                buf += v.as_string()
+                if i == len(self._value.body) - 1:
+                    buf = buf.rstrip(", ")
+
+                continue
+
             buf += "{}{} = {}{}{}".format(
                 v.trivia.indent,
                 k.as_string(),
@@ -408,3 +436,19 @@ class AoT(Item):
             b += table.as_string()
 
         return b
+
+
+class Null(Item):
+    """
+    A null item.
+    """
+
+    def __init__(self):  # type: () -> None
+        pass
+
+    @property
+    def discriminant(self):  # type: () -> int
+        return -1
+
+    def as_string(self):  # type: () -> str
+        return ""

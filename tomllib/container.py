@@ -3,9 +3,11 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
+from .exceptions import NonExistentKey
 from .items import AoT
 from .items import Item
 from .items import Key
+from .items import Null
 from .items import Table
 
 
@@ -26,6 +28,13 @@ class Container:
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
+
+    def remove(self, key):  # type: (Key) -> None
+        idx = self._map.pop(key, None)
+        if idx is None:
+            raise NonExistentKey(key)
+
+        self._body[idx] = (None, Null())
 
     def last_item(self):  # type: () -> Optional[Item]
         if self._body:

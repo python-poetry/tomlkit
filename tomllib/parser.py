@@ -23,6 +23,7 @@ from .items import InlineTable
 from .items import Integer
 from .items import Key
 from .items import KeyType
+from .items import Null
 from .items import String
 from .items import StringType
 from .items import Table
@@ -46,11 +47,13 @@ class Parser:
         # Current byte offset into src.
         self._idx = 0
         # Current character
-        self._current = TOMLChar("\0")  # type: TOMLChar
+        self._current = TOMLChar("")  # type: TOMLChar
         # Index into src between which and idx slices will be extracted
         self._marker = 0
 
         self._aot_stack = []
+
+        self.inc()
 
     def extract(self):  # type: () -> str
         """
@@ -100,8 +103,6 @@ class Parser:
         self._marker = self._idx
 
     def parse(self):  # type: () -> TOMLDocument
-        self.inc()
-
         body = TOMLDocument()
 
         # Take all keyvals outside of tables/AoT's.
@@ -562,7 +563,7 @@ class Parser:
 
         cws, comment, trail = self._parse_comment_trail()
 
-        result = None
+        result = Null()
         values = Container()
 
         while not self.end():
@@ -596,7 +597,7 @@ class Parser:
                         ("_parse_item() returned None on a non-bracket character."),
                     )
 
-        if result is None:
+        if isinstance(result, Null):
             result = Table(values, Trivia(indent, cws, comment, trail), is_aot)
 
         return key, result
