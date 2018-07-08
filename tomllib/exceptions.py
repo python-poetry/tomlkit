@@ -77,7 +77,7 @@ class UnexpectedEofError(ParseError):
         super(InvalidNumberOrDateError, self).__init__(line, col, message=message)
 
 
-class NonExistentKey(ValueError):
+class NonExistentKey(KeyError):
     """
     A non-existent key was used.
     """

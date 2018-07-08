@@ -1,17 +1,21 @@
 from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
 
 from .exceptions import NonExistentKey
 from .items import AoT
+from .items import Comment
 from .items import Item
 from .items import Key
 from .items import Null
 from .items import Table
+from .items import Trivia
+from .items import Whitespace
 
 
-class Container:
+class Container(dict):
     """
     A container for items within a TOMLDocument.
     """
@@ -25,9 +29,19 @@ class Container:
         return self._body
 
     def append(self, key, item):  # type: (Key, Item) -> None
+        from .api import item as _item
+
+        if not isinstance(key, Key) and key is not None:
+            key = Key(key)
+
+        if not isinstance(item, Item):
+            item = _item(item)
+
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
+
+        return item
 
     def remove(self, key):  # type: (Key) -> None
         idx = self._map.pop(key, None)
@@ -87,3 +101,67 @@ class Container:
             s += cur
 
         return s
+
+    # Helpers
+
+    def comment(self, comment):  # type: (str) -> Comment
+        if not comment.strip().startswith("#"):
+            comment = "# " + comment
+
+        comment = Comment(Trivia("", "  ", comment))
+
+        self.append(None, comment)
+
+        return comment
+
+    def nl(self):  # type: (str) -> Whitespace
+        self.append(None, Whitespace("\n"))
+
+    # Dictionary methods
+
+    def keys(self):  # type: () -> Generator[Key]
+        for k, _ in self._body:
+            if k is None:
+                continue
+
+            yield k
+
+    def values(self):  # type: () -> Generator[Item]
+        for _, v in self._body:
+            yield v
+
+    def items(self):  # type: () -> Generator[Item]
+        for k, v in self._body:
+            if k is None:
+                continue
+
+            yield k, v
+
+    def __contains__(self, key):  # type: (Key) -> bool
+        return key in self._map
+
+    def __getitem__(self, key):  # type: (Key) -> Item
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        idx = self._map.get(key, None)
+        if idx is None:
+            raise NonExistentKey(key)
+
+        return self._body[idx][1]
+
+    def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
+        if key in self:
+            self._replace(key, key, value)
+        else:
+            self.append(key, value)
+
+    def _replace(self, key, new_key, value):  # type: (Key, Key, Item) -> None
+        idx = self._map.get(key, None)
+        if idx is None:
+            raise NonExistentKey(key)
+
+        self._replace_at(idx, new_key, value)
+
+    def _replace_at(self, idx, new_key, value):  # type: (int, Key, Item) -> None
+        self._body[idx] = (new_key, value)

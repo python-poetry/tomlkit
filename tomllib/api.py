@@ -1,5 +1,6 @@
 import datetime as _datetime
 
+from typing import Any
 from typing import Dict
 from typing import Tuple
 
@@ -49,6 +50,13 @@ def parse(string):  # type: (str) -> _TOMLDocument
     return Parser(string).parse()
 
 
+def document():  # type: () -> _TOMLDocument
+    """
+    Returns a new TOMLDocument instance.
+    """
+    return _TOMLDocument()
+
+
 # Items
 def integer(raw):  # type: (str) -> Integer
     return Integer(int(raw), Trivia(), raw)
@@ -59,7 +67,11 @@ def float_(raw):  # type: (str) -> Float
 
 
 def boolean(raw):  # type: (str) -> Bool
-    return Bool(raw == "true", Trivia)
+    return Bool(raw == "true", Trivia())
+
+
+def string(raw):  # type: (str) -> String
+    return String(StringType.SLB, raw, raw, Trivia())
 
 
 def date(raw):  # type: (str) -> Date
@@ -90,11 +102,11 @@ def array(raw=None):  # type: (str) -> Array
     if raw is None:
         raw = "[]"
 
-    return Array(value(raw), Trivia())
+    return value(raw)
 
 
 def table():  # type: () -> Table
-    return Table(Container(), Trivia(), False)
+    return Table(Container(), Trivia(indent="\n"), False)
 
 
 def inline_table():  # type: () -> InlineTable
@@ -115,3 +127,34 @@ def value(raw):  # type: (str) -> Item
 
 def key_value(src):  # type: (str) -> Tuple[Key, Item]
     return Parser(src)._parse_key_value()
+
+
+def ws(src):  # type: (str) -> Whitespace
+    return Whitespace(src)
+
+
+def comment(string):  # type: (str) -> Comment
+    return Comment(Trivia(comment_ws="  ", comment="# " + string))
+
+
+def item(value):  # type: (Any) -> Item
+    if isinstance(value, bool):
+        return boolean(str(value).lower())
+    elif isinstance(value, int):
+        return integer(str(value))
+    elif isinstance(value, float):
+        return float_(str(value))
+    elif isinstance(value, list):
+        value = "[{}]".format(", ".join([item(v).as_string() for v in value]))
+
+        return array(value)
+    elif isinstance(value, str):
+        return string(value)
+    elif isinstance(value, _datetime.datetime):
+        return datetime(value.isoformat().replace("+00:00", "Z"))
+    elif isinstance(value, _datetime.date):
+        return date(value.isoformat())
+    elif isinstance(value, _datetime.time):
+        return time(value.isoformat())
+
+    raise ValueError("Invalid type {}".format(type(value)))

@@ -1,8 +1,10 @@
 from .api import aot
 from .api import array
 from .api import boolean
+from .api import comment
 from .api import date
 from .api import datetime
+from .api import document
 from .api import dumps
 from .api import float_
 from .api import inline_table
@@ -14,3 +16,4 @@ from .api import parse
 from .api import table
 from .api import time
 from .api import value
+from .api import ws

@@ -1,10 +1,12 @@
 import os
+import re
 
 from datetime import date
 from datetime import datetime
 from datetime import time
 from enum import Enum
 from typing import List
+from typing import Optional
 
 
 class StringType(Enum):
@@ -31,7 +33,7 @@ class Trivia:
         self.comment = comment or ""
         # Trailing newline.
         if trail is None:
-            trail = os.linesep
+            trail = "\n"
 
         self.trail = trail
 
@@ -98,6 +100,37 @@ class Item:
     def as_string(self):  # type: () -> str
         raise NotImplementedError()
 
+    # Helpers
+
+    def comment(self, comment, inline=True):  # type: (str, bool) -> Item
+        if not comment.strip().startswith("#"):
+            comment = "# " + comment
+
+        if inline:
+            self._trivia.comment_ws = " "
+            self._trivia.comment = comment
+        else:
+            m = re.match("(?s)^([^ ]*)([ ]+)(.*)$", self._trivia.indent)
+
+            self._trivia.indent = (
+                (m.group(1) or "")
+                + m.group(2)
+                + comment
+                + m.group(3)
+                + "\n"
+                + m.group(2)
+            )
+
+        return self
+
+    def indent(self, indent):  # type: (int) -> Item
+        if self._trivia.indent.startswith("\n"):
+            self._trivia.indent = "\n" + " " * indent
+        else:
+            self._trivia.indent = " " * indent
+
+        return self
+
     def __str__(self):  # type: () -> str
         return self.as_string()
 
@@ -119,7 +152,7 @@ class Whitespace(Item):
 
     @property
     def trivia(self):  # type: () -> Trivia
-        raise RuntimeError("Called trivia on a non-value Item variant.")
+        raise RuntimeError("Called trivia on a Whitespace variant.")
 
     @property
     def discriminant(self):  # type: () -> int
@@ -136,10 +169,6 @@ class Comment(Item):
     """
     A comment literal.
     """
-
-    @property
-    def trivia(self):  # type: () -> Trivia
-        raise RuntimeError("Called trivia on a non-value Item variant.")
 
     @property
     def discriminant(self):  # type: () -> int
@@ -318,11 +347,25 @@ class Table(Item):
     def discriminant(self):  # type: () -> int
         return 9
 
-    def append(self, key, item):  # type: (Key, Item) -> None
+    def append(self, key, item):  # type: (Key, Item) -> Item
         """
         Appends a (key, item) to the table.
         """
-        self._value.append(key, item)
+        item = self._value.append(key, item)
+
+        m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
+        if not m:
+            return item
+
+        indent = m.group(1)
+
+        if not isinstance(item, Whitespace):
+            if isinstance(item, Table):
+                indent = "\n" + indent
+
+            item.trivia.indent = indent + item.trivia.indent
+
+        return item
 
     def remove(self, key):  # type: (Key) -> None
         self._value.remove(key)
@@ -333,8 +376,49 @@ class Table(Item):
     def as_string(self):  # type: () -> str
         return self._value.as_string()
 
+    # Helpers
+
+    def indent(self, indent):  # type: (int) -> Table
+        super(Table, self).indent(indent)
+
+        m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
+        if not m:
+            indent = ""
+        else:
+            indent = m.group(1)
+
+        for k, item in self._value.items():
+            if not isinstance(item, Whitespace):
+                item.trivia.indent = indent + item.trivia.indent
+
+        return self
+
+    def nl(self):  # type: () -> Item
+        return Whitespace("\n")
+
     def __repr__(self):  # type: () -> str
         return "<Table>".format()
+
+    def keys(self):  # type: () -> Generator[Key]
+        for k in self._value.keys():
+            yield k
+
+    def values(self):  # type: () -> Generator[Item]
+        for v in self._value.values():
+            yield v
+
+    def items(self):  # type: () -> Generator[Item]
+        for k, v in self._body:
+            yield k, v
+
+    def __contains__(self, key):  # type: (Key) -> bool
+        return key in self._value
+
+    def __getitem__(self, key):  # type: (Key) -> str
+        return self._value[key]
+
+    def __setitem__(self, key, value):  # type: (Key, Item) -> str
+        self.append(key, value)
 
 
 class InlineTable(Item):
@@ -357,7 +441,7 @@ class InlineTable(Item):
         """
         Appends a (key, item) to the table.
         """
-        self._value.append(key, item)
+        return self._value.append(key, item)
 
     def remove(self, key):  # type: (Key) -> None
         self._value.remove(key)
@@ -429,6 +513,11 @@ class AoT(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 12
+
+    def append(self, table):  # type: (Table) -> Table
+        self._body.append(table)
+
+        return table
 
     def as_string(self):  # type: () -> str
         b = ""
