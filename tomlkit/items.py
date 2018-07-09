@@ -372,7 +372,7 @@ class Table(Item):
 
     @property
     def value(self):  # type: () -> dict
-        return self._value.value
+        return self._value
 
     def add(self, key, item=None):  # type: (Key, Item) -> Item
         if item is None:
@@ -461,6 +461,9 @@ class Table(Item):
     def __setitem__(self, key, value):  # type: (Key, Item) -> str
         self.append(key, value)
 
+    def __delitem__(self, key):  # type: (Key) -> str
+        self.remove(key)
+
 
 class InlineTable(Item):
     """
@@ -480,7 +483,7 @@ class InlineTable(Item):
 
     @property
     def value(self):  # type: () -> Dict
-        return self._value.value
+        return self._value
 
     def append(self, key, item):  # type: (Key, Item) -> None
         """
@@ -536,6 +539,9 @@ class InlineTable(Item):
 
     def __setitem__(self, key, value):  # type: (Key, Item) -> str
         self.append(key, value)
+
+    def __delitem__(self, key):  # type: (Key) -> str
+        self.remove(key)
 
 
 class String(Item):

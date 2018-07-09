@@ -176,6 +176,9 @@ class Container(dict):
         else:
             self.append(key, value)
 
+    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
+        self.remove(key)
+
     def _replace(self, key, new_key, value):  # type: (Key, Key, Item) -> None
         idx = self._map.get(key, None)
         if idx is None:
@@ -189,3 +192,12 @@ class Container(dict):
         self._map[new_key] = self._map.pop(k)
 
         self._body[idx] = (new_key, value)
+
+    def __str__(self):  # type: () -> str
+        return str(self.value)
+
+    def __eq__(self, other):  # type: (Dict) -> bool
+        if not isinstance(other, dict):
+            return NotImplemented
+
+        return self.value == other
