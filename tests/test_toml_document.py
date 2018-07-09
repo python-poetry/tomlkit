@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from tomllib import parse
-from tomllib._utils import _utc
+from tomlkit import parse
+from tomlkit._utils import _utc
 
 
 def test_document_is_a_dict(example):

@@ -355,7 +355,7 @@ class Table(Item):
 
     def __init__(
         self, value, trivia, is_aot_element, name=None
-    ):  # type: (tomllib.container.Container, Trivia, bool) -> None
+    ):  # type: (tomlkit.container.Container, Trivia, bool) -> None
         super(Table, self).__init__(trivia)
 
         self.name = name
@@ -363,7 +363,7 @@ class Table(Item):
         self._is_aot_element = is_aot_element
 
     @property
-    def value(self):  # type: () -> tomllib.container.Container
+    def value(self):  # type: () -> tomlkit.container.Container
         return self._value
 
     @property
@@ -469,7 +469,7 @@ class InlineTable(Item):
 
     def __init__(
         self, value, trivia
-    ):  # type: (tomllib.container.Container, Trivia) -> None
+    ):  # type: (tomlkit.container.Container, Trivia) -> None
         super(InlineTable, self).__init__(trivia)
 
         self._value = value

@@ -1,14 +1,14 @@
 import pytest
 
-from tomllib.exceptions import NonExistentKey
-from tomllib.items import InlineTable
-from tomllib.items import Integer
-from tomllib.items import Key
-from tomllib.items import String
-from tomllib.items import StringType
-from tomllib.items import Table
-from tomllib.items import Trivia
-from tomllib.parser import Parser
+from tomlkit.exceptions import NonExistentKey
+from tomlkit.items import InlineTable
+from tomlkit.items import Integer
+from tomlkit.items import Key
+from tomlkit.items import String
+from tomlkit.items import StringType
+from tomlkit.items import Table
+from tomlkit.items import Trivia
+from tomlkit.parser import Parser
 
 
 def test_items_can_be_appended_to_and_removed_from_a_table():

@@ -6,8 +6,8 @@ from datetime import time
 from datetime import timedelta as td
 from datetime import timezone as tz
 
-from tomllib._utils import _utc
-from tomllib._utils import parse_rfc3339
+from tomlkit._utils import _utc
+from tomlkit._utils import parse_rfc3339
 
 
 @pytest.mark.parametrize(

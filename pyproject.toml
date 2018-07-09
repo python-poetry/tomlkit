@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "tomllib"
+name = "tomlkit"
 version = "0.1.0"
 description = "Style preserving TOML parser"
 authors = ["Sébastien Eustace <sebastien@eustace.io>"]
 license = "MIT"
 
-homepage = "https://github.com/sdispater/tomllib"
-repository = "https://github.com/sdispater/tomllib"
+homepage = "https://github.com/sdispater/tomlkit"
+repository = "https://github.com/sdispater/tomlkit"
 
 [tool.poetry.dependencies]
 python = "~2.7 || ^3.4"
