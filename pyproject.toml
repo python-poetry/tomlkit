@@ -5,6 +5,8 @@ description = "Style preserving TOML parser"
 authors = ["Sébastien Eustace <sebastien@eustace.io>"]
 license = "MIT"
 
+readme = "README.md"
+
 homepage = "https://github.com/sdispater/tomlkit"
 repository = "https://github.com/sdispater/tomlkit"
 
