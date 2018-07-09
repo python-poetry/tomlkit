@@ -133,6 +133,10 @@ def ws(src):  # type: (str) -> Whitespace
     return Whitespace(src)
 
 
+def nl():  # type: (src) -> Whitespace
+    return ws("\n")
+
+
 def comment(string):  # type: (str) -> Comment
     return Comment(Trivia(comment_ws="  ", comment="# " + string))
 

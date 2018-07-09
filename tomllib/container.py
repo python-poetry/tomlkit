@@ -32,6 +32,22 @@ class Container(dict):
     def value(self):  # type: () -> Dict[Any, Any]
         return {k: v for k, v in self.items()}
 
+    def add(
+        self, key, item=None
+    ):  # type: (Union[Key, Item, str], Optional[Item]) -> Item
+        """
+        Adds an item to the current Container.
+        """
+        if item is None:
+            if not isinstance(key, (Comment, Whitespace)):
+                raise ValueError(
+                    "Non comment/whitespace items must have an associated key"
+                )
+
+            key, item = None, key
+
+        return self.append(key, item)
+
     def append(self, key, item):  # type: (Key, Item) -> None
         from .api import item as _item
 
@@ -117,21 +133,6 @@ class Container(dict):
             s += cur
 
         return s
-
-    # Helpers
-
-    def comment(self, comment):  # type: (str) -> Comment
-        if not comment.strip().startswith("#"):
-            comment = "# " + comment
-
-        comment = Comment(Trivia("", "  ", comment))
-
-        self.append(None, comment)
-
-        return comment
-
-    def nl(self):  # type: (str) -> Whitespace
-        self.append(None, Whitespace("\n"))
 
     # Dictionary methods
 

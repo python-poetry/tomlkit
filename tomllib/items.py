@@ -106,20 +106,8 @@ class Item:
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
-        if inline:
-            self._trivia.comment_ws = " "
-            self._trivia.comment = comment
-        else:
-            m = re.match("(?s)^([^ ]*)([ ]+)(.*)$", self._trivia.indent)
-
-            self._trivia.indent = (
-                (m.group(1) or "")
-                + m.group(2)
-                + comment
-                + m.group(3)
-                + "\n"
-                + m.group(2)
-            )
+        self._trivia.comment_ws = " "
+        self._trivia.comment = comment
 
         return self
 
@@ -386,6 +374,17 @@ class Table(Item):
     def value(self):  # type: () -> dict
         return self._value.value
 
+    def add(self, key, item=None):  # type: (Key, Item) -> Item
+        if item is None:
+            if not isinstance(key, (Comment, Whitespace)):
+                raise ValueError(
+                    "Non comment/whitespace items must have an associated key"
+                )
+
+            key, item = None, key
+
+        return self.append(key, item)
+
     def append(self, key, item):  # type: (Key, Item) -> Item
         """
         Appends a (key, item) to the table.
@@ -437,9 +436,6 @@ class Table(Item):
                 item.trivia.indent = indent + item.trivia.indent
 
         return self
-
-    def nl(self):  # type: () -> Item
-        return Whitespace("\n")
 
     def __repr__(self):  # type: () -> str
         return "<Table>"
