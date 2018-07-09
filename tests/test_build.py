@@ -3,6 +3,8 @@ import datetime
 from tomllib import aot
 from tomllib import array
 from tomllib import document
+from tomllib import item
+from tomllib import parse
 from tomllib import table
 from tomllib._utils import _utc
 
@@ -33,7 +35,7 @@ def test_build_example(example):
     doc["database"] = database
 
     servers = table()
-    alpha = servers.append("servers.alpha", table())
+    alpha = servers.append("alpha", table())
     alpha.indent(2)
     alpha.comment(
         "You can indent as you please. Tabs or spaces. TOML don't care.", False
@@ -41,7 +43,7 @@ def test_build_example(example):
     alpha.append("ip", "10.0.0.1")
     alpha.append("dc", "eqdc10")
 
-    beta = servers.append("servers.beta", table())
+    beta = servers.append("beta", table())
     beta.nl()
     beta.append("ip", "10.0.0.2")
     beta.append("dc", "eqdc10")
@@ -51,8 +53,9 @@ def test_build_example(example):
     doc["servers"] = servers
 
     clients = doc.append("clients", table())
-    clients["data"] = [["gamma", "delta"], [1, 2]]
-    clients["data"].comment("just an update to make sure parsers support it")
+    clients["data"] = item([["gamma", "delta"], [1, 2]]).comment(
+        "just an update to make sure parsers support it"
+    )
 
     doc.nl()
     doc.comment("Line breaks are OK when inside arrays")
@@ -87,3 +90,20 @@ def test_build_example(example):
     doc["time"] = datetime.time(7, 32)
 
     assert content == doc.as_string()
+
+
+def test_add_remove():
+    content = ""
+
+    doc = parse(content)
+    doc.append("foo", "bar")
+
+    assert (
+        doc.as_string()
+        == """foo = "bar"
+"""
+    )
+
+    doc.remove("foo")
+
+    assert doc.as_string() == ""

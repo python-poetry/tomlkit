@@ -118,7 +118,7 @@ def aot():  # type: () -> AoT
 
 
 def key(k):  # type: (str) -> Key
-    return Key(key)
+    return Key(k)
 
 
 def value(raw):  # type: (str) -> Item

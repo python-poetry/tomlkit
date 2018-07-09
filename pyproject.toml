@@ -11,9 +11,6 @@ repository = "https://github.com/sdispater/tomllib"
 [tool.poetry.dependencies]
 python = "~2.7 || ^3.4"
 
-# Use pathlib2 for Python 2.7 and 3.4
-pathlib2 = { version = "^2.3", python = "~2.7 || ~3.4" }
-
 [tool.poetry.dev-dependencies]
 pytest = "^3.6"
 pytest-cov = "^2.5"

@@ -78,7 +78,7 @@ class Key:
         return self.as_string()
 
     def __repr__(self):  # type: () -> str
-        return "<Key {}>".format(str(self))
+        return "<Key {}>".format(self.as_string())
 
 
 class Item:
@@ -132,10 +132,10 @@ class Item:
         return self
 
     def __str__(self):  # type: () -> str
-        return self.as_string()
+        return str(self.value)
 
     def __repr__(self):  # type: () -> str
-        return "<{} {}>".format(self.__class__.__name__, str(self))
+        return "<{} {}>".format(self.__class__.__name__, self.as_string())
 
 
 class Whitespace(Item):
@@ -148,6 +148,10 @@ class Whitespace(Item):
 
     @property
     def s(self):  # type: () -> str
+        return self._s
+
+    @property
+    def value(self):  # type: () -> str
         return self._s
 
     @property
@@ -198,6 +202,10 @@ class Integer(Item):
     def discriminant(self):  # type: () -> int
         return 2
 
+    @property
+    def value(self):  # type: () -> int
+        return self._value
+
     def as_string(self):  # type: () -> str
         return self._raw
 
@@ -217,6 +225,10 @@ class Float(Item):
     def discriminant(self):  # type: () -> int
         return 3
 
+    @property
+    def value(self):  # type: () -> float
+        return self._value
+
     def as_string(self):  # type: () -> str
         return self._raw
 
@@ -234,6 +246,10 @@ class Bool(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 4
+
+    @property
+    def value(self):  # type: () -> bool
+        return self._value
 
     def as_string(self):  # type: () -> str
         return str(self._value).lower()
@@ -254,6 +270,10 @@ class DateTime(Item):
     def discriminant(self):  # type: () -> int
         return 5
 
+    @property
+    def value(self):  # type: () -> datetime
+        return self._value
+
     def as_string(self):  # type: () -> str
         return self._raw
 
@@ -272,6 +292,10 @@ class Date(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 6
+
+    @property
+    def value(self):  # type: () -> date
+        return self._value
 
     def as_string(self):  # type: () -> str
         return self._raw
@@ -292,6 +316,10 @@ class Time(Item):
     def discriminant(self):  # type: () -> int
         return 7
 
+    @property
+    def value(self):  # type: () -> time
+        return self._value
+
     def as_string(self):  # type: () -> str
         return self._raw
 
@@ -309,6 +337,12 @@ class Array(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 8
+
+    @property
+    def value(self):  # type: () -> list
+        return [
+            v.value for v in self._value if not isinstance(v, (Whitespace, Comment))
+        ]
 
     def is_homogeneous(self):  # type: () -> bool
         if not self._value:
@@ -332,10 +366,11 @@ class Table(Item):
     """
 
     def __init__(
-        self, value, trivia, is_aot_element
+        self, value, trivia, is_aot_element, name=None
     ):  # type: (tomllib.container.Container, Trivia, bool) -> None
         super(Table, self).__init__(trivia)
 
+        self.name = name
         self._value = value
         self._is_aot_element = is_aot_element
 
@@ -346,6 +381,10 @@ class Table(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 9
+
+    @property
+    def value(self):  # type: () -> dict
+        return self._value.value
 
     def append(self, key, item):  # type: (Key, Item) -> Item
         """
@@ -373,8 +412,14 @@ class Table(Item):
     def is_aot_element(self):  # type: () -> bool
         return self._is_aot_element
 
-    def as_string(self):  # type: () -> str
-        return self._value.as_string()
+    def as_string(self, prefix=None):  # type: () -> str
+        if prefix is not None:
+            if self.name is not None:
+                prefix = prefix + "." + self.name
+        elif self.name is not None:
+            prefix = self.name
+
+        return self._value.as_string(prefix=prefix)
 
     # Helpers
 
@@ -387,7 +432,7 @@ class Table(Item):
         else:
             indent = m.group(1)
 
-        for k, item in self._value.items():
+        for k, item in self._value.body:
             if not isinstance(item, Whitespace):
                 item.trivia.indent = indent + item.trivia.indent
 
@@ -397,7 +442,7 @@ class Table(Item):
         return Whitespace("\n")
 
     def __repr__(self):  # type: () -> str
-        return "<Table>".format()
+        return "<Table>"
 
     def keys(self):  # type: () -> Generator[Key]
         for k in self._value.keys():
@@ -408,7 +453,7 @@ class Table(Item):
             yield v
 
     def items(self):  # type: () -> Generator[Item]
-        for k, v in self._body:
+        for k, v in self._value.items():
             yield k, v
 
     def __contains__(self, key):  # type: (Key) -> bool
@@ -436,6 +481,10 @@ class InlineTable(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 10
+
+    @property
+    def value(self):  # type: () -> Dict
+        return self._value.value
 
     def append(self, key, item):  # type: (Key, Item) -> None
         """
@@ -471,6 +520,27 @@ class InlineTable(Item):
 
         return buf
 
+    def keys(self):  # type: () -> Generator[Key]
+        for k in self._value.keys():
+            yield k
+
+    def values(self):  # type: () -> Generator[Item]
+        for v in self._value.values():
+            yield v
+
+    def items(self):  # type: () -> Generator[Item]
+        for k, v in self._value.items():
+            yield k, v
+
+    def __contains__(self, key):  # type: (Key) -> bool
+        return key in self._value
+
+    def __getitem__(self, key):  # type: (Key) -> str
+        return self._value[key]
+
+    def __setitem__(self, key, value):  # type: (Key, Item) -> str
+        self.append(key, value)
+
 
 class String(Item):
     """
@@ -490,6 +560,10 @@ class String(Item):
     def discriminant(self):  # type: () -> int
         return 11
 
+    @property
+    def value(self):  # type: () -> str
+        return self._value
+
     def as_string(self):  # type: () -> str
         return "{}{}{}".format(self._t.value, self._original, self._t.value)
 
@@ -499,11 +573,12 @@ class AoT(Item):
     An array of table literal
     """
 
-    def __init__(self, body):  # type: (List[Item]) -> None
+    def __init__(self, body, name=None):  # type: (List[Table]) -> None
+        self.name = None
         self._body = body
 
     @property
-    def body(self):  # type: () -> List[Item]
+    def body(self):  # type: () -> List[Table]
         return self._body
 
     @property
@@ -514,6 +589,10 @@ class AoT(Item):
     def discriminant(self):  # type: () -> int
         return 12
 
+    @property
+    def value(self):  # type: () -> List[Dict[Any, Any]]
+        return [v.value for v in self._body]
+
     def append(self, table):  # type: (Table) -> Table
         self._body.append(table)
 
@@ -522,7 +601,7 @@ class AoT(Item):
     def as_string(self):  # type: () -> str
         b = ""
         for table in self._body:
-            b += table.as_string()
+            b += table.as_string(prefix=self.name)
 
         return b
 
@@ -538,6 +617,10 @@ class Null(Item):
     @property
     def discriminant(self):  # type: () -> int
         return -1
+
+    @property
+    def value(self):  # type: () -> None
+        return None
 
     def as_string(self):  # type: () -> str
         return ""

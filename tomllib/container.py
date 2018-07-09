@@ -28,6 +28,10 @@ class Container(dict):
     def body(self):  # type: () -> List[Tuple[Optional[Key], Item]]
         return self._body
 
+    @property
+    def value(self):  # type: () -> Dict[Any, Any]
+        return {k: v for k, v in self.items()}
+
     def append(self, key, item):  # type: (Key, Item) -> None
         from .api import item as _item
 
@@ -37,6 +41,9 @@ class Container(dict):
         if not isinstance(item, Item):
             item = _item(item)
 
+        if isinstance(item, (AoT, Table)) and item.name != key.key:
+            item.name = key.key
+
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
@@ -44,6 +51,9 @@ class Container(dict):
         return item
 
     def remove(self, key):  # type: (Key) -> None
+        if not isinstance(key, Key):
+            key = Key(key)
+
         idx = self._map.pop(key, None)
         if idx is None:
             raise NonExistentKey(key)
@@ -54,11 +64,14 @@ class Container(dict):
         if self._body:
             return self._body[-1][1]
 
-    def as_string(self):  # type: () -> str
+    def as_string(self, prefix=None):  # type: () -> str
         s = ""
         for k, v in self._body:
             if k:
                 if isinstance(v, Table):
+                    if prefix is not None:
+                        k = Key(prefix + "." + k.key)
+
                     open_, close = "[", "]"
                     if v.is_aot_element():
                         open_, close = "[[", "]]"
@@ -71,9 +84,12 @@ class Container(dict):
                         v.trivia.comment_ws,
                         v.trivia.comment,
                         v.trivia.trail,
-                        v.as_string(),
+                        v.as_string(prefix=prefix),
                     )
                 elif isinstance(v, AoT):
+                    if prefix is not None:
+                        k = Key(prefix + "." + k.key)
+
                     cur = ""
                     key = k.as_string()
                     for table in v.body:
@@ -84,7 +100,7 @@ class Container(dict):
                             table.trivia.comment,
                             table.trivia.trail,
                         )
-                        cur += table.as_string()
+                        cur += table.as_string(prefix=k.key)
                 else:
                     cur = "{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
@@ -124,18 +140,21 @@ class Container(dict):
             if k is None:
                 continue
 
-            yield k
+            yield k.key
 
     def values(self):  # type: () -> Generator[Item]
-        for _, v in self._body:
-            yield v
+        for k, v in self._body:
+            if k is None:
+                continue
+
+            yield v.value
 
     def items(self):  # type: () -> Generator[Item]
         for k, v in self._body:
             if k is None:
                 continue
 
-            yield k, v
+            yield k.key, v.value
 
     def __contains__(self, key):  # type: (Key) -> bool
         return key in self._map
@@ -148,7 +167,7 @@ class Container(dict):
         if idx is None:
             raise NonExistentKey(key)
 
-        return self._body[idx][1]
+        return self._body[idx][1].value
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         if key in self:
@@ -164,4 +183,8 @@ class Container(dict):
         self._replace_at(idx, new_key, value)
 
     def _replace_at(self, idx, new_key, value):  # type: (int, Key, Item) -> None
+        k, v = self._body[idx]
+
+        self._map[new_key] = self._map.pop(k)
+
         self._body[idx] = (new_key, value)

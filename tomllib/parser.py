@@ -534,7 +534,7 @@ class Parser:
                 if not self.inc():
                     return self.parse_error(UnexpectedEofError)
 
-    def _parse_table(self):  # type: () -> Tuple[Key, Item]
+    def _parse_table(self):  # type: (Optional[str]) -> Tuple[Key, Item]
         """
         Parses a table element.
         """
@@ -578,7 +578,21 @@ class Parser:
 
                     if self._is_child(name, name_next):
                         key_next, table_next = self._parse_table()
+                        key_next = Key(key_next.key[len(name + ".") :])
+
                         values.append(key_next, table_next)
+
+                        # Picking up any sibling
+                        while not self.end():
+                            _, name_next = self._peek_table()
+
+                            if not self._is_child(name, name_next):
+                                break
+
+                            key_next, table_next = self._parse_table()
+                            key_next = Key(key_next.key[len(name + ".") :])
+
+                            values.append(key_next, table_next)
                     else:
                         table = Table(
                             values, Trivia(indent, cws, comment, trail), is_aot
@@ -628,7 +642,7 @@ class Parser:
 
         self.mark()
 
-        while self.inc() and self._current != "]":
+        while self._current != "]" and self.inc():
             table_name = self.extract()
 
         # Restore initial state
