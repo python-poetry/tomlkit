@@ -4,6 +4,7 @@ from typing import Any
 from typing import Dict
 from typing import Tuple
 
+from ._compat import unicode
 from ._utils import parse_rfc3339
 from .container import Container
 from .items import AoT
@@ -156,7 +157,7 @@ def item(value):  # type: (Any) -> Item
         value = "[{}]".format(", ".join([item(v).as_string() for v in value]))
 
         return array(value)
-    elif isinstance(value, str):
+    elif isinstance(value, (str, unicode)):
         return string(value)
     elif isinstance(value, _datetime.datetime):
         return datetime(value.isoformat().replace("+00:00", "Z"))
