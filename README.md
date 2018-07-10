@@ -136,7 +136,7 @@ It can be created with the following code:
 ## Installation
 
 If you are using [poetry](https://poetry.eustace.io),
-add `tomlkit` to you `pyproject.toml` file by using:
+add `tomlkit` to your `pyproject.toml` file by using:
 
 ```bash
 poetry add tomlkit
