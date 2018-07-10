@@ -69,3 +69,24 @@ def test_document_is_a_dict(example):
     assert nail["name"] == "Nail"
     assert nail["sku"] == 284758393
     assert nail["color"] == "gray"
+
+
+def test_toml_document_without_super_tables():
+    content = """[tool.poetry]
+name = "foo"
+"""
+
+    doc = parse(content)
+    assert "tool" in doc
+    assert "poetry" in doc["tool"]
+
+    assert doc["tool"]["poetry"]["name"] == "foo"
+
+    doc["tool"]["poetry"]["name"] = "bar"
+
+    assert (
+        doc.as_string()
+        == """[tool.poetry]
+name = "bar"
+"""
+    )

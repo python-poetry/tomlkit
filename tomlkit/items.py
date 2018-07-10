@@ -458,10 +458,23 @@ class Table(Item):
             yield k, v
 
     def __contains__(self, key):  # type: (Key) -> bool
-        return key in self._value
+        contains = key in self._value
+        if contains:
+            return True
+
+        if key + "." in self._name:
+            return True
+
+        return False
 
     def __getitem__(self, key):  # type: (Key) -> str
-        return self._value[key]
+        try:
+            return self._value[key]
+        except KeyError:
+            if key + "." in self._name:
+                return Table(
+                    self._value, self._trivia, self._is_aot_element, name=self.name
+                )
 
     def __setitem__(self, key, value):  # type: (Key, Item) -> str
         self.append(key, value)

@@ -164,7 +164,15 @@ class Container(dict):
         if not isinstance(key, Key):
             key = Key(key)
 
-        return key in self._map
+        contains = key in self._map
+        if contains:
+            return True
+
+        for k in self._map:
+            if k and k.key.startswith(key.key + "."):
+                return True
+
+        return False
 
     def __getitem__(self, key):  # type: (Key) -> Item
         if not isinstance(key, Key):
@@ -172,7 +180,17 @@ class Container(dict):
 
         idx = self._map.get(key, None)
         if idx is None:
-            raise NonExistentKey(key)
+            # Looking for tables
+            container = Container()
+            for k, i in self._map.items():
+                if k and k.key.startswith(key.key + "."):
+                    _key = Key(k.key[len(key.key) + 1 :])
+                    container.append(_key, self._body[i][1])
+
+            if not container.body:
+                raise NonExistentKey(key)
+
+            return container
 
         return self._body[idx][1].value
 
@@ -186,6 +204,12 @@ class Container(dict):
         self.remove(key)
 
     def _replace(self, key, new_key, value):  # type: (Key, Key, Item) -> None
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        if not isinstance(new_key, Key):
+            new_key = Key(new_key)
+
         idx = self._map.get(key, None)
         if idx is None:
             raise NonExistentKey(key)
@@ -193,9 +217,19 @@ class Container(dict):
         self._replace_at(idx, new_key, value)
 
     def _replace_at(self, idx, new_key, value):  # type: (int, Key, Item) -> None
+        from .api import item as _item
+
         k, v = self._body[idx]
 
         self._map[new_key] = self._map.pop(k)
+
+        value = _item(value)
+
+        # Copying trivia
+        value.trivia.indent = v.trivia.indent
+        value.trivia.comment_ws = v.trivia.comment_ws
+        value.trivia.comment = v.trivia.comment
+        value.trivia.trail = v.trivia.trail
 
         self._body[idx] = (new_key, value)
 

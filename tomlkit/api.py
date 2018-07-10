@@ -15,6 +15,7 @@ from .items import DateTime
 from .items import Float
 from .items import InlineTable
 from .items import Integer
+from .items import Item as _Item
 from .items import Key
 from .items import KeyType
 from .items import String
@@ -142,6 +143,9 @@ def comment(string):  # type: (str) -> Comment
 
 
 def item(value):  # type: (Any) -> Item
+    if isinstance(value, _Item):
+        return value
+
     if isinstance(value, bool):
         return boolean(str(value).lower())
     elif isinstance(value, int):
