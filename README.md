@@ -3,9 +3,9 @@
 TOML Kit is a [TOML](https://github.com/toml-lang/toml) library.
 
 It includes a parser that preserves all comments, indentations, whitespace and internal element ordering,
-and makes accessible and editable via an intuitive API.
+and makes them accessible and editable via an intuitive API.
 
-You can also create a new TOML document from scratch using the provided helpers.
+You can also create new TOML documents from scratch using the provided helpers.
 
 ## Usage
 
@@ -47,7 +47,7 @@ doc = parse("""[table]
 foo = "bar"  # String
 """)
 
-doc["table"]["baz"] = 13  # Setting element by keys is possible
+doc["table"]["baz"] = 13
 
 dumps(doc)
 """[table]
