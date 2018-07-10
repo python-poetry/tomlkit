@@ -1,3 +1,4 @@
+import io
 import os
 import pytest
 
@@ -5,7 +6,7 @@ import pytest
 @pytest.fixture
 def example():
     def _example(name):
-        with open(
+        with io.open(
             os.path.join(os.path.dirname(__file__), "examples", name + ".toml"),
             encoding="utf-8",
         ) as f:
@@ -17,7 +18,7 @@ def example():
 @pytest.fixture
 def invalid_example():
     def _example(name):
-        with open(
+        with io.open(
             os.path.join(
                 os.path.dirname(__file__), "examples", "invalid", name + ".toml"
             ),

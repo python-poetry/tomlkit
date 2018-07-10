@@ -1,7 +1,9 @@
 import string
 
+from ._compat import unicode
 
-class TOMLChar(str):
+
+class TOMLChar(unicode):
     def __init__(self, c):
         super(TOMLChar, self).__init__()
 

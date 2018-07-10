@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import re
 
@@ -7,6 +9,9 @@ from datetime import time
 from enum import Enum
 from typing import List
 from typing import Optional
+
+
+from ._compat import decode
 
 
 class StringType(Enum):
@@ -81,7 +86,7 @@ class Key:
         return "<Key {}>".format(self.as_string())
 
 
-class Item:
+class Item(object):
     """
     An item within a TOML document.
     """
@@ -168,11 +173,11 @@ class Comment(Item):
 
     def as_string(self):  # type: () -> str
         return "{}{}{}".format(
-            self._trivia.indent, self._trivia.comment, self._trivia.trail
+            self._trivia.indent, decode(self._trivia.comment), self._trivia.trail
         )
 
     def __str__(self):  # type: () -> str
-        return "{}{}".format(self._trivia.indent, self._trivia.comment)
+        return "{}{}".format(self._trivia.indent, decode(self._trivia.comment))
 
 
 class Integer(Item):
@@ -567,7 +572,7 @@ class String(Item):
         return self._value
 
     def as_string(self):  # type: () -> str
-        return "{}{}{}".format(self._t.value, self._original, self._t.value)
+        return "{}{}{}".format(self._t.value, decode(self._original), self._t.value)
 
 
 class AoT(Item):

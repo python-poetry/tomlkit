@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import datetime
+import itertools
 import string
 
 from copy import copy
@@ -6,6 +10,8 @@ from typing import Iterator
 from typing import Optional
 from typing import Tuple
 
+from ._compat import PY2
+from ._compat import decode
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import InvalidNumberOrDateError
@@ -41,7 +47,7 @@ class Parser:
 
     def __init__(self, string):  # type: (str) -> None
         # Input to parse
-        self._src = string  # type: str
+        self._src = decode(string)  # type: str
         # Iterator used for getting characters from src.
         self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self._src)])
         # Current byte offset into src.
@@ -221,6 +227,9 @@ class Parser:
                 return key, value
 
     def _save_idx(self):  # type: () -> Tuple[Iterator, int, str]
+        if PY2:
+            return itertools.tee(self._chars)[1], self._idx, self._current
+
         return copy(self._chars), self._idx, self._current
 
     def _restore_idx(self, chars, idx, current):  # type: (Iterator, int, str) -> None

@@ -1,9 +1,12 @@
+from __future__ import unicode_literals
+
 from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
 
+from ._compat import decode
 from .exceptions import NonExistentKey
 from .items import AoT
 from .items import Comment
@@ -95,10 +98,10 @@ class Container(dict):
                     cur = "{}{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
                         open_,
-                        k.as_string(),
+                        decode(k.as_string()),
                         close,
                         v.trivia.comment_ws,
-                        v.trivia.comment,
+                        decode(v.trivia.comment),
                         v.trivia.trail,
                         v.as_string(prefix=prefix),
                     )
@@ -107,24 +110,24 @@ class Container(dict):
                         k = Key(prefix + "." + k.key)
 
                     cur = ""
-                    key = k.as_string()
+                    key = decode(k.as_string())
                     for table in v.body:
                         cur += "{}[[{}]]{}{}{}".format(
                             table.trivia.indent,
                             key,
                             table.trivia.comment_ws,
-                            table.trivia.comment,
+                            decode(table.trivia.comment),
                             table.trivia.trail,
                         )
                         cur += table.as_string(prefix=k.key)
                 else:
                     cur = "{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
-                        k.as_string(),
+                        decode(k.as_string()),
                         k.sep,
-                        v.as_string(),
+                        decode(v.as_string()),
                         v.trivia.comment_ws,
-                        v.trivia.comment,
+                        decode(v.trivia.comment),
                         v.trivia.trail,
                     )
             else:
