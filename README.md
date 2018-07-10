@@ -11,7 +11,7 @@ You can also create new TOML documents from scratch using the provided helpers.
 
 ### Parsing
 
-TOML Kit comes with a fast an style-preserving parser to help you access
+TOML Kit comes with a fast and style-preserving parser to help you access
 the content of TOML files and strings.
 
 ```python
@@ -135,8 +135,8 @@ It can be created with the following code:
 
 ## Installation
 
-If you are using [poetry](https://poetry.eustace.io),
-add `tomlkit` to you `pyproject.toml` file by using:
+If you are using [Poetry](https://poetry.eustace.io),
+add `tomlkit` to your `pyproject.toml` file by using:
 
 ```bash
 poetry add tomlkit
