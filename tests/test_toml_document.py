@@ -17,6 +17,7 @@ def test_document_is_a_dict(example):
 
     # owner
     owner = doc["owner"]
+    assert doc.get("owner") == owner
     assert isinstance(owner, dict)
     assert "name" in owner
     assert owner["name"] == "Tom Preston-Werner"
@@ -37,6 +38,7 @@ def test_document_is_a_dict(example):
     assert isinstance(servers, dict)
 
     alpha = servers["alpha"]
+    assert servers.get("alpha") == alpha
     assert isinstance(alpha, dict)
     assert alpha["ip"] == "10.0.0.1"
     assert alpha["dc"] == "eqdc10"
@@ -69,6 +71,11 @@ def test_document_is_a_dict(example):
     assert nail["name"] == "Nail"
     assert nail["sku"] == 284758393
     assert nail["color"] == "gray"
+
+    nail["color"] = "black"
+    assert nail["color"] == "black"
+    assert doc["products"][1]["color"] == "black"
+    assert nail.get("color") == "black"
 
 
 def test_toml_document_without_super_tables():

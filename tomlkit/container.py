@@ -67,6 +67,9 @@ class Container(dict):
 
         self._body.append((key, item))
 
+        if key is not None:
+            super(Container, self).__setitem__(key.key, item.value)
+
         return item
 
     def remove(self, key):  # type: (Key) -> None
@@ -78,6 +81,8 @@ class Container(dict):
             raise NonExistentKey(key)
 
         self._body[idx] = (None, Null())
+
+        super(Container, self).__delitem__(key.key)
 
     def last_item(self):  # type: () -> Optional[Item]
         if self._body:
@@ -232,6 +237,8 @@ class Container(dict):
         value.trivia.trail = v.trivia.trail
 
         self._body[idx] = (new_key, value)
+
+        super(Container, self).__setitem__(new_key.key, value.value)
 
     def __str__(self):  # type: () -> str
         return str(self.value)
