@@ -177,7 +177,7 @@ class Container(dict):
         return self._body[idx][1].value
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
-        if key in self:
+        if key is not None and key in self:
             self._replace(key, key, value)
         else:
             self.append(key, value)
