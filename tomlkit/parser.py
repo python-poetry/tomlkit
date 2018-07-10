@@ -428,9 +428,17 @@ class Parser:
             self.inc()
 
             while self._current != "}":
-                if self._current.is_ws() or self._current == ",":
+                self.mark()
+                while self._current.is_ws() or self._current == ",":
                     self.inc()
-                    continue
+
+                if self._idx != self._marker:
+                    ws = self.extract().lstrip(",")
+                    if ws:
+                        elems.append(None, Whitespace(ws))
+
+                if self._current == "}":
+                    break
 
                 key, val = self._parse_key_value(False)
                 elems.append(key, val)

@@ -507,6 +507,10 @@ class InlineTable(Item):
         """
         Appends a (key, item) to the table.
         """
+        if not isinstance(item, (Whitespace, Comment)):
+            if not item.trivia.indent and len(self._value.body) > 0:
+                item.trivia.indent = " "
+
         return self._value.append(key, item)
 
     def remove(self, key):  # type: (Key) -> None
@@ -516,9 +520,10 @@ class InlineTable(Item):
         buf = "{"
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
-                buf += v.as_string()
                 if i == len(self._value.body) - 1:
-                    buf = buf.rstrip(", ")
+                    buf = buf.rstrip(",")
+
+                buf += v.as_string()
 
                 continue
 
@@ -531,7 +536,7 @@ class InlineTable(Item):
             )
 
             if i != len(self._value.body) - 1:
-                buf += ", "
+                buf += ","
 
         buf += "}"
 
