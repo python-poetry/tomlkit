@@ -11,7 +11,7 @@ You can also create new TOML documents from scratch using the provided helpers.
 
 ### Parsing
 
-TOML Kit comes with a fast an style-preserving parser to help you access
+TOML Kit comes with a fast and style-preserving parser to help you access
 the content of TOML files and strings.
 
 ```python
