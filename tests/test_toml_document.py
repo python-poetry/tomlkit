@@ -13,10 +13,12 @@ def test_document_is_a_dict(example):
     doc = parse(content)
 
     assert isinstance(doc, dict)
+    assert "owner" in doc
 
     # owner
     owner = doc["owner"]
     assert isinstance(owner, dict)
+    assert "name" in owner
     assert owner["name"] == "Tom Preston-Werner"
     assert owner["organization"] == "GitHub"
     assert owner["bio"] == "GitHub Cofounder & CEO\\nLikes tater tots and beer."

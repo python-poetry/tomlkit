@@ -161,6 +161,9 @@ class Container(dict):
             yield k.key, v.value
 
     def __contains__(self, key):  # type: (Key) -> bool
+        if not isinstance(key, Key):
+            key = Key(key)
+
         return key in self._map
 
     def __getitem__(self, key):  # type: (Key) -> Item
