@@ -22,7 +22,9 @@ from tomlkit.items import Time
 from tomlkit.toml_document import TOMLDocument
 
 
-@pytest.mark.parametrize("example_name", ["example", "fruit", "hard"])
+@pytest.mark.parametrize(
+    "example_name", ["example", "fruit", "hard", "sections_with_same_start"]
+)
 def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(parse(example(example_name)), TOMLDocument)
     assert isinstance(loads(example(example_name)), TOMLDocument)

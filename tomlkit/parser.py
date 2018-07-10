@@ -187,7 +187,7 @@ class Parser:
         Returns whether a key is strictly a child of another key.
         AoT siblings are not considered children of one another.
         """
-        return child != parent and child.startswith(parent)
+        return child != parent and child.startswith(parent + ".")
 
     def _parse_item(self):  # type: () -> Optional[Tuple[Optional[Key], Item]]
         """
