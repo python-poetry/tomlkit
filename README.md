@@ -15,23 +15,23 @@ TOML Kit comes with a fast an style-preserving parser to help you access
 the content of TOML files and strings.
 
 ```python
-from tomlkit import dumps
-from tomlkit import parse  # you can also use loads
+>>> from tomlkit import dumps
+>>> from tomlkit import parse  # you can also use loads
 
-content = """[table]
-foo = "bar"  # String
-"""
-doc = parse(content)
+>>> content = """[table]
+... foo = "bar"  # String
+... """
+>>> doc = parse(content)
 
 # doc is a TOMLDocument instance that holds all the information
 # about the TOML string.
 # It behaves like a standard dictionary.
 
-assert doc["table"]["foo"] == "bar"
+>>> assert doc["table"]["foo"] == "bar"
 
 # The string generated from the document is exactly the same
 # as the original string
-assert dumps(doc) == content
+>>> assert dumps(doc) == content
 ```
 
 ### Modifying
@@ -39,29 +39,29 @@ assert dumps(doc) == content
 TOML Kit provides an intuitive API to modify TOML documents.
 
 ```python
-from tomlkit import dumps
-from tomlkit import parse
-from tomlkit import table
+>>> from tomlkit import dumps
+>>> from tomlkit import parse
+>>> from tomlkit import table
 
-doc = parse("""[table]
-foo = "bar"  # String
-""")
+>>> doc = parse("""[table]
+... foo = "bar"  # String
+... """)
 
-doc["table"]["baz"] = 13
+>>> doc["table"]["baz"] = 13
 
-dumps(doc)
+>>> dumps(doc)
 """[table]
 foo = "bar"  # String
 baz = 13
 """
 
 # Add a new table
-tab = table()
-tab.add("array", [1, 2, 3])
+>>> tab = table()
+>>> tab.add("array", [1, 2, 3])
 
-doc["table2"] = tab
+>>> doc["table2"] = tab
 
-dumps(doc)
+>>> dumps(doc)
 """[table]
 foo = "bar"  # String
 baz = 13
@@ -71,7 +71,7 @@ array = [1, 2, 3]
 """
 
 # Remove the newly added table
-doc.remove("table2")
+>>> doc.remove("table2")
 # del doc["table2] is also possible
 ```
 
@@ -102,34 +102,34 @@ enabled = true
 It can be created with the following code:
 
 ```python
-from tomlkit import comment
-from tomlkit import document
-from tomlkit import nl
-from tomlkit import table
+>>> from tomlkit import comment
+>>> from tomlkit import document
+>>> from tomlkit import nl
+>>> from tomlkit import table
 
-doc = document()
-doc.add(comment("This is a TOML document."))
-doc.add(nl())
-doc.add("title", "TOML Example")
+>>> doc = document()
+>>> doc.add(comment("This is a TOML document."))
+>>> doc.add(nl())
+>>> doc.add("title", "TOML Example")
 # Using doc["title"] = "TOML Example" is also possible
 
-owner = table()
-owner.add("name", "Tom Preston-Werner")
-owner.add("organization", "GitHub")
-owner.add("bio", "GitHub Cofounder & CEO\\nLikes tater tots and beer.")
-dob = owner.add("dob", datetime(1979, 5, 27, 7, 32, tzinfo=utc))
-dob.comment("First class dates? Why not?")
+>>> owner = table()
+>>> owner.add("name", "Tom Preston-Werner")
+>>> owner.add("organization", "GitHub")
+>>> owner.add("bio", "GitHub Cofounder & CEO\\nLikes tater tots and beer.")
+>>> dob = owner.add("dob", datetime(1979, 5, 27, 7, 32, tzinfo=utc))
+>>> dob.comment("First class dates? Why not?")
 
 # Adding the table to the document
-doc.add("owner", owner)
+>>> doc.add("owner", owner)
 
-database = table()
-database["server"] = "192.168.1.1"
-database["ports"] = [8001, 8001, 8002]
-database["connection_max"] = 5000
-database["enabled"] = True
+>>> atabase = table()
+>>> database["server"] = "192.168.1.1"
+>>> database["ports"] = [8001, 8001, 8002]
+>>> database["connection_max"] = 5000
+>>> database["enabled"] = True
 
-doc["database"] = database
+>>> doc["database"] = database
 ```
 
 
