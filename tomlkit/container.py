@@ -91,10 +91,15 @@ class Container(dict):
     def as_string(self, prefix=None):  # type: () -> str
         s = ""
         for k, v in self._body:
-            if k:
+            if k is not None:
                 if isinstance(v, Table):
+                    if v.is_super_table():
+                        s += v.as_string(prefix=prefix)
+
+                        continue
+
                     if prefix is not None:
-                        k = Key(prefix + "." + k.key)
+                        k = Key(prefix + "." + k.as_string())
 
                     open_, close = "[", "]"
                     if v.is_aot_element():
@@ -112,19 +117,22 @@ class Container(dict):
                     )
                 elif isinstance(v, AoT):
                     if prefix is not None:
-                        k = Key(prefix + "." + k.key)
+                        k = Key(prefix + "." + k.as_string())
 
                     cur = ""
                     key = decode(k.as_string())
                     for table in v.body:
-                        cur += "{}[[{}]]{}{}{}".format(
-                            table.trivia.indent,
-                            key,
-                            table.trivia.comment_ws,
-                            decode(table.trivia.comment),
-                            table.trivia.trail,
-                        )
-                        cur += table.as_string(prefix=k.key)
+                        if table.is_super_table():
+                            cur += table.as_string(prefix=prefix)
+                        else:
+                            cur += "{}[[{}]]{}{}{}".format(
+                                table.trivia.indent,
+                                key,
+                                table.trivia.comment_ws,
+                                decode(table.trivia.comment),
+                                table.trivia.trail,
+                            )
+                            cur += table.as_string(prefix=k.key)
                 else:
                     cur = "{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
@@ -169,15 +177,7 @@ class Container(dict):
         if not isinstance(key, Key):
             key = Key(key)
 
-        contains = key in self._map
-        if contains:
-            return True
-
-        for k in self._map:
-            if k and k.key.startswith(key.key + "."):
-                return True
-
-        return False
+        return key in self._map
 
     def __getitem__(self, key):  # type: (Key) -> Item
         if not isinstance(key, Key):
@@ -185,17 +185,7 @@ class Container(dict):
 
         idx = self._map.get(key, None)
         if idx is None:
-            # Looking for tables
-            container = Container()
-            for k, i in self._map.items():
-                if k and k.key.startswith(key.key + "."):
-                    _key = Key(k.key[len(key.key) + 1 :])
-                    container.append(_key, self._body[i][1])
-
-            if not container.body:
-                raise NonExistentKey(key)
-
-            return container
+            raise NonExistentKey(key)
 
         return self._body[idx][1].value
 

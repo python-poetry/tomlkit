@@ -359,13 +359,14 @@ class Table(Item):
     """
 
     def __init__(
-        self, value, trivia, is_aot_element, name=None
+        self, value, trivia, is_aot_element, is_super_table=False, name=None
     ):  # type: (tomlkit.container.Container, Trivia, bool) -> None
         super(Table, self).__init__(trivia)
 
         self.name = name
         self._value = value
         self._is_aot_element = is_aot_element
+        self._is_super_table = is_super_table
 
     @property
     def value(self):  # type: () -> tomlkit.container.Container
@@ -415,6 +416,9 @@ class Table(Item):
 
     def is_aot_element(self):  # type: () -> bool
         return self._is_aot_element
+
+    def is_super_table(self):  # type: () -> bool
+        return self._is_super_table
 
     def as_string(self, prefix=None):  # type: () -> str
         if prefix is not None:

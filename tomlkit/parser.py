@@ -187,7 +187,60 @@ class Parser:
         Returns whether a key is strictly a child of another key.
         AoT siblings are not considered children of one another.
         """
-        return child != parent and child.startswith(parent + ".")
+        parent_parts = tuple(self._split_table_name(parent))
+        child_parts = tuple(self._split_table_name(child))
+
+        if parent_parts == child_parts:
+            return False
+
+        return parent_parts == child_parts[: len(parent_parts)]
+
+    def _split_table_name(self, name):  # type: (str) -> Generator[Key]
+        in_name = False
+        delim = None
+        current = ""
+        for c in name:
+            c = TOMLChar(c)
+            if c == ".":
+                if in_name:
+                    current += c
+                    continue
+
+                if not current:
+                    raise self.parse_error()
+
+                yield Key(current, sep="")
+
+                current = ""
+                continue
+            elif (not in_name and not c.is_bare_key_char()) and c not in {"'", '"'}:
+                raise self.parse_error()
+
+            if c in {"'", '"'}:
+                if in_name:
+                    if c != delim:
+                        raise self.parse_error()
+
+                    in_name = False
+
+                    yield Key(
+                        current,
+                        t=KeyType.Literal if delim == "'" else KeyType.Basic,
+                        sep="",
+                    )
+
+                    current = ""
+                    delim = None
+                else:
+                    in_name = True
+                    delim = c
+
+                continue
+
+            current += c
+
+        if current:
+            yield Key(current, sep="")
 
     def _parse_item(self):  # type: () -> Optional[Tuple[Optional[Key], Item]]
         """
@@ -551,7 +604,9 @@ class Parser:
                 if not self.inc():
                     return self.parse_error(UnexpectedEofError)
 
-    def _parse_table(self):  # type: (Optional[str]) -> Tuple[Key, Item]
+    def _parse_table(
+        self, parent_name=None
+    ):  # type: (Optional[str]) -> Tuple[Key, Item]
         """
         Parses a table element.
         """
@@ -572,6 +627,19 @@ class Parser:
 
         name = self.extract()
         key = Key(name, sep="")
+        name_parts = tuple(self._split_table_name(name))
+        missing_table = False
+        if parent_name:
+            parent_name_parts = tuple(self._split_table_name(parent_name))
+        else:
+            parent_name_parts = tuple()
+
+        if len(name_parts) > len(parent_name_parts) + 1:
+            missing_table = True
+            if parent_name_parts:
+                name_parts = name_parts[len(name_parts) - len(parent_name_parts) :]
+
+        values = Container()
 
         self.inc()  # Skip closing bracket
         if is_aot:
@@ -581,7 +649,42 @@ class Parser:
         cws, comment, trail = self._parse_comment_trail()
 
         result = Null()
-        values = Container()
+
+        if len(name_parts) > 1:
+            if missing_table:
+                # Missing super table
+                # i.e. a table initialized like this: [foo.bar]
+                # without initializing [foo]
+                #
+                # So we have to create the parent tables
+                table = Table(
+                    Container(),
+                    Trivia(indent, cws, comment, trail),
+                    is_aot,
+                    is_super_table=True,
+                    name=name_parts[0].key,
+                )
+                result = table
+                key = name_parts[0]
+
+                for i, _name in enumerate(name_parts[1:]):
+                    child = Table(
+                        Container(),
+                        Trivia(indent, cws, comment, trail),
+                        is_aot,
+                        is_super_table=i < len(name_parts[1:]) - 1,
+                        name=_name.key,
+                    )
+                    table.append(_name, child)
+
+                    table = child
+                    values = table.value
+        else:
+            key = name_parts[0]
+            result = table = Table(
+                Container(), Trivia(indent, cws, comment, trail), is_aot, name=key.key
+            )
+            values = result.value
 
         while not self.end():
             item = self._parse_item()
@@ -594,8 +697,9 @@ class Parser:
                     _, name_next = self._peek_table()
 
                     if self._is_child(name, name_next):
-                        key_next, table_next = self._parse_table()
-                        key_next = Key(key_next.key[len(name + ".") :])
+                        key_next, table_next = self._parse_table(name)
+                        if key_next.key.startswith(name + "."):
+                            key_next = Key(key_next.key[len(name + ".") :])
 
                         values.append(key_next, table_next)
 
@@ -606,8 +710,9 @@ class Parser:
                             if not self._is_child(name, name_next):
                                 break
 
-                            key_next, table_next = self._parse_table()
-                            key_next = Key(key_next.key[len(name + ".") :])
+                            key_next, table_next = self._parse_table(name)
+                            if key_next.key.startswith(name + "."):
+                                key_next = Key(key_next.key[len(name + ".") :])
 
                             values.append(key_next, table_next)
                     else:

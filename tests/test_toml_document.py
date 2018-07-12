@@ -97,3 +97,8 @@ name = "foo"
 name = "bar"
 """
     )
+
+    d = {}
+    d.update(doc)
+
+    assert "tool" in d
