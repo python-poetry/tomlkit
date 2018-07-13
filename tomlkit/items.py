@@ -22,7 +22,7 @@ class StringType(Enum):
     MLL = "'''"
 
     def is_literal(self):  # type: () -> bool
-        return self in {self.SLL, self.MLL}
+        return self in {StringType.SLL, StringType.MLL}
 
 
 class Trivia:
