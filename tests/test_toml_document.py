@@ -22,7 +22,7 @@ def test_document_is_a_dict(example):
     assert "name" in owner
     assert owner["name"] == "Tom Preston-Werner"
     assert owner["organization"] == "GitHub"
-    assert owner["bio"] == "GitHub Cofounder & CEO\\nLikes tater tots and beer."
+    assert owner["bio"] == "GitHub Cofounder & CEO\nLikes tater tots and beer."
     assert owner["dob"] == datetime(1979, 5, 27, 7, 32, tzinfo=_utc)
 
     # database

@@ -12,6 +12,7 @@ from typing import Tuple
 
 from ._compat import PY2
 from ._compat import decode
+from ._compat import string_escape
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import InvalidNumberOrDateError
@@ -199,8 +200,10 @@ class Parser:
         in_name = False
         delim = None
         current = ""
+        t = KeyType.Bare
         for c in name:
             c = TOMLChar(c)
+
             if c == ".":
                 if in_name:
                     current += c
@@ -209,38 +212,33 @@ class Parser:
                 if not current:
                     raise self.parse_error()
 
-                yield Key(current, sep="")
+                yield Key(current, t=t, sep="")
 
                 current = ""
+                t = KeyType.Bare
                 continue
-            elif (not in_name and not c.is_bare_key_char()) and c not in {"'", '"'}:
-                raise self.parse_error()
-
-            if c in {"'", '"'}:
+            elif c in {"'", '"'}:
                 if in_name:
-                    if c != delim:
+                    if t == KeyType.Literal and c == '"':
+                        current += c
+                        continue
+
+                    if c != t.value:
                         raise self.parse_error()
 
                     in_name = False
-
-                    yield Key(
-                        current,
-                        t=KeyType.Literal if delim == "'" else KeyType.Basic,
-                        sep="",
-                    )
-
-                    current = ""
-                    delim = None
                 else:
                     in_name = True
-                    delim = c
+                    t = KeyType.Literal if c == "'" else KeyType.Basic
 
                 continue
-
-            current += c
+            elif in_name or c.is_bare_key_char():
+                current += c
+            else:
+                raise self.parse_error()
 
         if current:
-            yield Key(current, sep="")
+            yield Key(current, t=t, sep="")
 
     def _parse_item(self):  # type: () -> Optional[Tuple[Optional[Key], Item]]
         """
@@ -555,6 +553,7 @@ class Parser:
     def _parse_string(self, delim):  # type: (str) -> Item
         # TODO: handle escaping
         multiline = False
+        value = ""
 
         if delim == "'":
             str_type = StringType.SLL
@@ -582,10 +581,13 @@ class Parser:
                 return String(str_type, "", "", Trivia())
 
         self.mark()
+        if self._current == "\n":
+            # The first new line should be discarded
+            self.inc()
 
         previous = None
         while True:
-            if previous and previous != "\\" and self._current == delim:
+            if previous != "\\" and self._current == delim:
                 val = self.extract()
 
                 if multiline:
@@ -598,8 +600,39 @@ class Parser:
                 else:
                     self.inc()
 
-                return String(str_type, val, val, Trivia())
+                return String(str_type, value, val, Trivia())
             else:
+                escape_vals = {
+                    "b": "\b",
+                    "t": "\t",
+                    "n": "\n",
+                    "f": "\f",
+                    "r": "\r",
+                    "\\": "\\",
+                }
+                if previous == "\\" and self._current.is_ws() and multiline:
+                    while self._current.is_ws():
+                        previous = self._current
+
+                        self.inc()
+                        continue
+
+                    if self._current == delim:
+                        continue
+
+                if previous == "\\":
+                    if self._current in escape_vals:
+                        value += escape_vals[self._current]
+                        if str_type.is_literal():
+                            value = string_escape(value)
+                    else:
+                        value += self._current
+
+                    if self._current.is_ws() and multiline:
+                        continue
+                elif self._current != "\\":
+                    value += self._current
+
                 previous = self._current
                 if not self.inc():
                     return self.parse_error(UnexpectedEofError)
@@ -636,8 +669,8 @@ class Parser:
 
         if len(name_parts) > len(parent_name_parts) + 1:
             missing_table = True
-            if parent_name_parts:
-                name_parts = name_parts[len(name_parts) - len(parent_name_parts) :]
+
+        name_parts = name_parts[len(parent_name_parts) :]
 
         values = Container()
 
@@ -660,7 +693,7 @@ class Parser:
                 table = Table(
                     Container(),
                     Trivia(indent, cws, comment, trail),
-                    is_aot,
+                    False,
                     is_super_table=True,
                     name=name_parts[0].key,
                 )
@@ -671,20 +704,20 @@ class Parser:
                     child = Table(
                         Container(),
                         Trivia(indent, cws, comment, trail),
-                        is_aot,
+                        is_aot and i == len(name_parts[1:]) - 1,
                         is_super_table=i < len(name_parts[1:]) - 1,
                         name=_name.key,
                     )
-                    table.append(_name, child)
+                    if is_aot and i == len(name_parts[1:]) - 1:
+                        table.append(_name, AoT([child]))
+                    else:
+                        table.append(_name, child)
 
                     table = child
                     values = table.value
         else:
-            key = name_parts[0]
-            result = table = Table(
-                Container(), Trivia(indent, cws, comment, trail), is_aot, name=key.key
-            )
-            values = result.value
+            if name_parts:
+                key = name_parts[0]
 
         while not self.end():
             item = self._parse_item()
@@ -694,12 +727,10 @@ class Parser:
                     values.append(_key, item)
             else:
                 if self._current == "[":
-                    _, name_next = self._peek_table()
+                    is_aot_next, name_next = self._peek_table()
 
                     if self._is_child(name, name_next):
                         key_next, table_next = self._parse_table(name)
-                        if key_next.key.startswith(name + "."):
-                            key_next = Key(key_next.key[len(name + ".") :])
 
                         values.append(key_next, table_next)
 
@@ -711,8 +742,6 @@ class Parser:
                                 break
 
                             key_next, table_next = self._parse_table(name)
-                            if key_next.key.startswith(name + "."):
-                                key_next = Key(key_next.key[len(name + ".") :])
 
                             values.append(key_next, table_next)
                     else:
@@ -783,7 +812,7 @@ class Parser:
         while not self.end():
             is_aot_next, name_next = self._peek_table()
             if is_aot_next and name_next == name_first:
-                _, table = self._parse_table()
+                _, table = self._parse_table(name_first)
                 payload.append(table)
             else:
                 break

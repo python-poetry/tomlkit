@@ -21,6 +21,9 @@ class StringType(Enum):
     SLL = "'"
     MLL = "'''"
 
+    def is_literal(self):  # type: () -> bool
+        return self in {self.SLL, self.MLL}
+
 
 class Trivia:
     """
@@ -421,12 +424,6 @@ class Table(Item):
         return self._is_super_table
 
     def as_string(self, prefix=None):  # type: () -> str
-        if prefix is not None:
-            if self.name is not None:
-                prefix = prefix + "." + self.name
-        elif self.name is not None:
-            prefix = self.name
-
         return self._value.as_string(prefix=prefix)
 
     # Helpers
@@ -462,23 +459,10 @@ class Table(Item):
             yield k, v
 
     def __contains__(self, key):  # type: (Key) -> bool
-        contains = key in self._value
-        if contains:
-            return True
-
-        if key + "." in self._name:
-            return True
-
-        return False
+        return key in self._value
 
     def __getitem__(self, key):  # type: (Key) -> str
-        try:
-            return self._value[key]
-        except KeyError:
-            if key + "." in self._name:
-                return Table(
-                    self._value, self._trivia, self._is_aot_element, name=self.name
-                )
+        return self._value[key]
 
     def __setitem__(self, key, value):  # type: (Key, Item) -> str
         self.append(key, value)
@@ -633,6 +617,9 @@ class AoT(Item):
             b += table.as_string(prefix=self.name)
 
         return b
+
+    def __repr__(self):  # type: () -> str
+        return "<AoT {}>".format(self.value)
 
 
 class Null(Item):

@@ -63,6 +63,20 @@ class Container(dict):
         if isinstance(item, (AoT, Table)) and item.name != key.key:
             item.name = key.key
 
+        if isinstance(item, Table):
+            if item.is_aot_element() and key in self:
+                # New AoT element found later on
+                # Adding it to the current AoT
+                aot = self._body[self._map[key]][1]
+                if not isinstance(aot, AoT):
+                    aot = AoT([aot, item])
+
+                    self._replace(key, key, aot)
+                else:
+                    aot.append(item)
+
+                return item
+
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
@@ -94,7 +108,7 @@ class Container(dict):
             if k is not None:
                 if isinstance(v, Table):
                     if v.is_super_table():
-                        s += v.as_string(prefix=prefix)
+                        s += v.as_string(prefix=k.as_string())
 
                         continue
 
@@ -113,7 +127,7 @@ class Container(dict):
                         v.trivia.comment_ws,
                         decode(v.trivia.comment),
                         v.trivia.trail,
-                        v.as_string(prefix=prefix),
+                        v.as_string(prefix=k.as_string()),
                     )
                 elif isinstance(v, AoT):
                     if prefix is not None:
@@ -123,7 +137,7 @@ class Container(dict):
                     key = decode(k.as_string())
                     for table in v.body:
                         if table.is_super_table():
-                            cur += table.as_string(prefix=prefix)
+                            cur += table.as_string(prefix=key)
                         else:
                             cur += "{}[[{}]]{}{}{}".format(
                                 table.trivia.indent,
@@ -132,7 +146,7 @@ class Container(dict):
                                 decode(table.trivia.comment),
                                 table.trivia.trail,
                             )
-                            cur += table.as_string(prefix=k.key)
+                            cur += table.as_string(prefix=key)
                 else:
                     cur = "{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
@@ -221,10 +235,11 @@ class Container(dict):
         value = _item(value)
 
         # Copying trivia
-        value.trivia.indent = v.trivia.indent
-        value.trivia.comment_ws = v.trivia.comment_ws
-        value.trivia.comment = v.trivia.comment
-        value.trivia.trail = v.trivia.trail
+        if not isinstance(value, (Whitespace, AoT)):
+            value.trivia.indent = v.trivia.indent
+            value.trivia.comment_ws = v.trivia.comment_ws
+            value.trivia.comment = v.trivia.comment
+            value.trivia.trail = v.trivia.trail
 
         self._body[idx] = (new_key, value)
 
