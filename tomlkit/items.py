@@ -24,6 +24,9 @@ class StringType(Enum):
     def is_literal(self):  # type: () -> bool
         return self in {StringType.SLL, StringType.MLL}
 
+    def is_multiline(self):  # type: () -> bool
+        return self in {StringType.MLB, StringType.MLL}
+
 
 class Trivia:
     """
@@ -407,10 +410,11 @@ class Table(Item):
         indent = m.group(1)
 
         if not isinstance(item, Whitespace):
-            if isinstance(item, Table):
-                indent = "\n" + indent
-
-            item.trivia.indent = indent + item.trivia.indent
+            m = re.match("(?s)^([^ ]*)(.*)$", item.trivia.indent)
+            if not m:
+                item.trivia.indent = indent
+            else:
+                item.trivia.indent = m.group(1) + indent + m.group(2)
 
         return item
 
@@ -590,13 +594,11 @@ class AoT(Item):
         self.name = None
         self._body = body
 
+        super(AoT, self).__init__(Trivia(trail=""))
+
     @property
     def body(self):  # type: () -> List[Table]
         return self._body
-
-    @property
-    def trivia(self):  # type: () -> Trivia
-        raise RuntimeError("Called trivia on a non-value Item variant.")
 
     @property
     def discriminant(self):  # type: () -> int
@@ -608,6 +610,18 @@ class AoT(Item):
 
     def append(self, table):  # type: (Table) -> Table
         self._body.append(table)
+
+        m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
+        if not m:
+            return table
+
+        indent = m.group(1)
+
+        m = re.match("(?s)^([^ ]*)(.*)$", table.trivia.indent)
+        if not m:
+            table.trivia.indent = indent
+        else:
+            table.trivia.indent = m.group(1) + indent + m.group(2)
 
         return table
 

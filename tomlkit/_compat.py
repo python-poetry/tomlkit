@@ -140,8 +140,10 @@ PY36 = sys.version_info >= (3, 6)
 
 if PY2:
     unicode = unicode
+    chr = unichr
 else:
     unicode = str
+    chr = chr
 
 
 def decode(string, encodings=None):

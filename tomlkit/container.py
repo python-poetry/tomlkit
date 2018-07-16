@@ -7,6 +7,7 @@ from typing import Optional
 from typing import Tuple
 
 from ._compat import decode
+from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
 from .items import AoT
 from .items import Comment
@@ -33,7 +34,23 @@ class Container(dict):
 
     @property
     def value(self):  # type: () -> Dict[Any, Any]
-        return {k: v for k, v in self.items()}
+        d = {}
+        for k, v in self._body:
+            if k is None:
+                continue
+
+            k = k.key
+            v = v.value
+
+            if isinstance(v, Container):
+                v = v.value
+
+            if k in d:
+                d[k].update(v)
+            else:
+                d[k] = v
+
+        return d
 
     def add(
         self, key, item=None
@@ -63,26 +80,36 @@ class Container(dict):
         if isinstance(item, (AoT, Table)) and item.name != key.key:
             item.name = key.key
 
-        if isinstance(item, Table):
-            if item.is_aot_element() and key in self:
-                # New AoT element found later on
-                # Adding it to the current AoT
-                aot = self._body[self._map[key]][1]
-                if not isinstance(aot, AoT):
-                    aot = AoT([aot, item])
+        if key is not None and key in self:
+            if isinstance(item, Table):
+                current = self._body[self._map[key]][1]
+                if not isinstance(current, (Table, AoT)):
+                    raise KeyAlreadyPresent(key)
 
-                    self._replace(key, key, aot)
+                if item.is_aot_element():
+                    # New AoT element found later on
+                    # Adding it to the current AoT
+                    if not isinstance(current, AoT):
+                        current = AoT([current, item])
+
+                        self._replace(key, key, current)
+                    else:
+                        current.append(item)
+
+                    return item
+                elif current.is_super_table():
+                    pass
                 else:
-                    aot.append(item)
+                    raise KeyAlreadyPresent(key)
+            elif not isinstance(item, AoT):
+                raise KeyAlreadyPresent(key)
 
-                return item
+        if key is not None:
+            super(Container, self).__setitem__(key.key, item.value)
 
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
-
-        if key is not None:
-            super(Container, self).__setitem__(key.key, item.value)
 
         return item
 
@@ -181,11 +208,11 @@ class Container(dict):
             yield v.value
 
     def items(self):  # type: () -> Generator[Item]
-        for k, v in self._body:
+        for k, v in self.value.items():
             if k is None:
                 continue
 
-            yield k.key, v.value
+            yield k, v
 
     def __contains__(self, key):  # type: (Key) -> bool
         if not isinstance(key, Key):
@@ -201,7 +228,10 @@ class Container(dict):
         if idx is None:
             raise NonExistentKey(key)
 
-        return self._body[idx][1].value
+        item = self._body[idx][1]
+        value = item.value
+
+        return value
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         if key is not None and key in self:

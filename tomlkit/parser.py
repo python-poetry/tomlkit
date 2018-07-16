@@ -11,6 +11,7 @@ from typing import Optional
 from typing import Tuple
 
 from ._compat import PY2
+from ._compat import chr
 from ._compat import decode
 from ._compat import string_escape
 from ._utils import parse_rfc3339
@@ -59,6 +60,7 @@ class Parser:
         self._marker = 0
 
         self._aot_stack = []
+        self._table_stack = {}
 
         self.inc()
 
@@ -586,17 +588,26 @@ class Parser:
             self.inc()
 
         previous = None
+        escaped = False
         while True:
             if previous != "\\" and self._current == delim:
                 val = self.extract()
 
                 if multiline:
+                    stop = True
                     for _ in range(3):
                         if self._current != delim:
                             # Not a triple quote, leave in result as-is.
-                            continue
+                            stop = False
+
+                            # Adding back the quote character
+                            value += delim
+                            break
 
                         self.inc()  # TODO: Handle EOF
+
+                    if not stop:
+                        continue
                 else:
                     self.inc()
 
@@ -609,6 +620,7 @@ class Parser:
                     "f": "\f",
                     "r": "\r",
                     "\\": "\\",
+                    '"': '"',
                 }
                 if previous == "\\" and self._current.is_ws() and multiline:
                     while self._current.is_ws():
@@ -621,21 +633,50 @@ class Parser:
                         continue
 
                 if previous == "\\":
-                    if self._current in escape_vals:
-                        value += escape_vals[self._current]
-                        if str_type.is_literal():
-                            value = string_escape(value)
+                    if self._current == "\\" and not escaped:
+                        if not str_type.is_literal():
+                            escaped = True
+                        else:
+                            value += self._current
+
+                        previous = self._current
+
+                        if not self.inc():
+                            raise self.parse_error(UnexpectedEofError)
+
+                        continue
+                    elif self._current in escape_vals and not escaped:
+                        if not str_type.is_literal():
+                            value = value[:-1]
+                            value += escape_vals[self._current]
+                        else:
+                            value += self._current
+                    elif self._current in {"u", "U"} and not escaped:
+                        # Maybe unicode
+                        u, ue = self._peek_unicode(self._current == "U")
+                        if u is not None:
+                            value = value[:-1]
+                            value += u
+                            self.inc_n(len(ue))
+                        else:
+                            value += self._current
                     else:
                         value += self._current
 
-                    if self._current.is_ws() and multiline:
+                    if self._current.is_ws() and multiline and not escaped:
                         continue
-                elif self._current != "\\":
+                else:
                     value += self._current
+
+                if escaped:
+                    escaped = False
 
                 previous = self._current
                 if not self.inc():
-                    return self.parse_error(UnexpectedEofError)
+                    raise self.parse_error(UnexpectedEofError)
+
+                if previous == "\\" and self._current.is_ws() and multiline:
+                    value = value[:-1]
 
     def _parse_table(
         self, parent_name=None
@@ -690,24 +731,36 @@ class Parser:
                 # without initializing [foo]
                 #
                 # So we have to create the parent tables
-                table = Table(
-                    Container(),
-                    Trivia(indent, cws, comment, trail),
-                    False,
-                    is_super_table=True,
-                    name=name_parts[0].key,
-                )
-                result = table
-                key = name_parts[0]
-
-                for i, _name in enumerate(name_parts[1:]):
-                    child = Table(
+                if name_parts[0] in self._table_stack:
+                    table = self._table_stack[name_parts[0]]
+                else:
+                    table = Table(
                         Container(),
                         Trivia(indent, cws, comment, trail),
-                        is_aot and i == len(name_parts[1:]) - 1,
-                        is_super_table=i < len(name_parts[1:]) - 1,
-                        name=_name.key,
+                        is_aot and name_parts[0] in self._aot_stack,
+                        is_super_table=True,
+                        name=name_parts[0].key,
                     )
+                    # if not is_aot:
+                    #    self._table_stack[name_parts[0]] = table
+
+                result = table
+                key = name_parts[0]
+                if is_aot and name_parts[0] not in self._aot_stack:
+                    self._aot_stack.append(name_parts[0])
+
+                for i, _name in enumerate(name_parts[1:]):
+                    if _name in table:
+                        child = table[_name]
+                    else:
+                        child = Table(
+                            Container(),
+                            Trivia(indent, cws, comment, trail),
+                            is_aot and i == len(name_parts[1:]) - 1,
+                            is_super_table=i < len(name_parts[1:]) - 1,
+                            name=_name.key,
+                        )
+
                     if is_aot and i == len(name_parts[1:]) - 1:
                         table.append(_name, AoT([child]))
                     else:
@@ -715,9 +768,15 @@ class Parser:
 
                     table = child
                     values = table.value
+                    if is_aot and _name not in self._aot_stack:
+                        self._aot_stack.append(_name)
         else:
             if name_parts:
                 key = name_parts[0]
+
+            if key in self._table_stack:
+                result = self._table_stack[name_parts[0]]
+                values = result.value
 
         while not self.end():
             item = self._parse_item()
@@ -744,6 +803,9 @@ class Parser:
                             key_next, table_next = self._parse_table(name)
 
                             values.append(key_next, table_next)
+                    elif self._is_child(name_next, name):
+                        # First [a.b.c] and later only [a] for instance
+                        break
                     else:
                         table = Table(
                             values, Trivia(indent, cws, comment, trail), is_aot
@@ -820,3 +882,44 @@ class Parser:
         self._aot_stack.pop()
 
         return AoT(payload)
+
+    def _peek_unicode(self, is_long):  # type: () -> Tuple[bool, str]
+        """
+        Peeks ahead non-intrusively by cloning then restoring the
+        initial state of the parser.
+
+        Returns the unicode value is it's a valid one else None.
+        """
+        # Save initial state
+        idx = self._save_idx()
+        marker = self._marker
+
+        if self._current not in {"u", "U"}:
+            raise self.parse_error(
+                InternalParserError, ("_peek_unicode() entered on non-unicode value")
+            )
+
+        # AoT
+        self.inc()  # Dropping prefix
+        self.mark()
+
+        if is_long:
+            chars = 8
+        else:
+            chars = 4
+
+        if not self.inc_n(chars):
+            value, extracted = None, None
+        else:
+            extracted = self.extract()
+
+            try:
+                value = chr(int(extracted, 16))
+            except ValueError:
+                value = None
+
+        # Restore initial state
+        self._restore_idx(*idx)
+        self._marker = marker
+
+        return value, extracted

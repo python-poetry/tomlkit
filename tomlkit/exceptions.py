@@ -86,3 +86,14 @@ class NonExistentKey(KeyError):
         message = 'Key "{}" does not exist.'.format(key)
 
         super(NonExistentKey, self).__init__(message)
+
+
+class KeyAlreadyPresent(ValueError):
+    """
+    An already present key was used.
+    """
+
+    def __init__(self, key):
+        message = 'Key "{}" already exists.'.format(key)
+
+        super(KeyAlreadyPresent, self).__init__(message)
