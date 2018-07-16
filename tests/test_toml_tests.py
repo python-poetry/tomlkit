@@ -3,6 +3,8 @@ import pytest
 
 from tomlkit import dumps
 from tomlkit import parse
+from tomlkit._compat import decode
+from tomlkit._compat import unicode
 from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import ParseError
 
@@ -14,7 +16,7 @@ def to_bool(s):
 
 
 stypes = {
-    "string": str,
+    "string": unicode,
     "bool": to_bool,
     "integer": int,
     "float": float,
@@ -27,7 +29,9 @@ def untag(value):
         return [untag(i) for i in value]
     elif "type" in value and "value" in value and len(value) == 2:
         if value["type"] in stypes:
-            return stypes[value["type"]](value["value"])
+            val = decode(value["value"])
+
+            return stypes[value["type"]](val)
         elif value["type"] == "array":
             return [untag(i) for i in value["value"]]
         else:

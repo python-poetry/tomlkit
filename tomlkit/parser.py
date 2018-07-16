@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import datetime
 import itertools
+import re
 import string
 
 from copy import copy
@@ -16,6 +17,7 @@ from ._compat import decode
 from ._compat import string_escape
 from ._utils import parse_rfc3339
 from .container import Container
+from .exceptions import InternalParserError
 from .exceptions import InvalidNumberOrDateError
 from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
@@ -60,7 +62,6 @@ class Parser:
         self._marker = 0
 
         self._aot_stack = []
-        self._table_stack = {}
 
         self.inc()
 
@@ -286,7 +287,14 @@ class Parser:
         return copy(self._chars), self._idx, self._current
 
     def _restore_idx(self, chars, idx, current):  # type: (Iterator, int, str) -> None
-        self._chars = chars
+        if PY2:
+            self._chars = iter(
+                [(i + idx, TOMLChar(c)) for i, c in enumerate(self._src[idx:])]
+            )
+            next(self._chars)
+        else:
+            self._chars = chars
+
         self._idx = idx
         self._current = current
 
@@ -535,8 +543,10 @@ class Parser:
             return
 
         # Underscores should be surrounded by digits
-        # TODO
-        clean = "".join([c for c in raw if raw not in "_ "])
+        clean = re.sub("(?<=\d)_(?=\d)", "", raw)
+
+        if "_" in clean:
+            return
 
         try:
             return Integer(int(clean), trivia, raw)
@@ -684,6 +694,12 @@ class Parser:
         """
         Parses a table element.
         """
+        if self._current != "[":
+            raise self.parse_error(
+                InternalParserError,
+                ("_parse_table() called on non-bracket character.",),
+            )
+
         indent = self.extract()
         self.inc()  # Skip opening bracket
 
@@ -731,18 +747,13 @@ class Parser:
                 # without initializing [foo]
                 #
                 # So we have to create the parent tables
-                if name_parts[0] in self._table_stack:
-                    table = self._table_stack[name_parts[0]]
-                else:
-                    table = Table(
-                        Container(),
-                        Trivia(indent, cws, comment, trail),
-                        is_aot and name_parts[0] in self._aot_stack,
-                        is_super_table=True,
-                        name=name_parts[0].key,
-                    )
-                    # if not is_aot:
-                    #    self._table_stack[name_parts[0]] = table
+                table = Table(
+                    Container(),
+                    Trivia(indent, cws, comment, trail),
+                    is_aot and name_parts[0] in self._aot_stack,
+                    is_super_table=True,
+                    name=name_parts[0].key,
+                )
 
                 result = table
                 key = name_parts[0]
@@ -773,10 +784,6 @@ class Parser:
         else:
             if name_parts:
                 key = name_parts[0]
-
-            if key in self._table_stack:
-                result = self._table_stack[name_parts[0]]
-                values = result.value
 
         while not self.end():
             item = self._parse_item()
@@ -821,7 +828,7 @@ class Parser:
                 else:
                     raise self.parse_error(
                         InternalParserError,
-                        ("_parse_item() returned None on a non-bracket character."),
+                        ("_parse_item() returned None on a non-bracket character.",),
                     )
 
         if isinstance(result, Null):

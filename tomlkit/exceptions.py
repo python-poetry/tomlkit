@@ -63,18 +63,20 @@ class UnexpectedEofError(ParseError):
     def __init__(self, line, col):  # type: (int, int) -> None
         message = "Unexpected end of file"
 
-        super(InvalidNumberOrDateError, self).__init__(line, col, message=message)
+        super(UnexpectedEofError, self).__init__(line, col, message=message)
 
 
-class UnexpectedEofError(ParseError):
+class InternalParserError(ParseError):
     """
     An error that indicates a bug in the parser.
     """
 
-    def __init__(self, line, col):  # type: (int, int) -> None
-        message = "Unexpected end of file"
+    def __init__(self, line, col, message=None):  # type: (int, int) -> None
+        msg = "Internal parser error"
+        if message:
+            msg += " ({})".format(message)
 
-        super(InvalidNumberOrDateError, self).__init__(line, col, message=message)
+        super(InternalParserError, self).__init__(line, col, message=msg)
 
 
 class NonExistentKey(KeyError):
