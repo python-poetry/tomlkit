@@ -81,8 +81,8 @@ class Container(dict):
             item.name = key.key
 
         if key is not None and key in self:
+            current = self._body[self._map[key]][1]
             if isinstance(item, Table):
-                current = self._body[self._map[key]][1]
                 if not isinstance(current, (Table, AoT)):
                     raise KeyAlreadyPresent(key)
 
@@ -101,7 +101,19 @@ class Container(dict):
                     pass
                 else:
                     raise KeyAlreadyPresent(key)
-            elif not isinstance(item, AoT):
+            elif isinstance(item, AoT):
+                if not isinstance(current, Table):
+                    raise KeyAlreadyPresent(key)
+
+                if not current.is_super_table():
+                    raise KeyAlreadyPresent(key)
+
+                current_key, current_table = current.value.body[0]
+                item_table = item.body[0]
+
+                if not item_table.is_super_table():
+                    raise KeyAlreadyPresent(key)
+            else:
                 raise KeyAlreadyPresent(key)
 
         if key is not None:

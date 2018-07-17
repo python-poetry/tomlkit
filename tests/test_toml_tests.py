@@ -6,7 +6,7 @@ from tomlkit import parse
 from tomlkit._compat import decode
 from tomlkit._compat import unicode
 from tomlkit._utils import parse_rfc3339
-from tomlkit.exceptions import ParseError
+from tomlkit.exceptions import TOMLKitError
 
 
 def to_bool(s):
@@ -46,3 +46,8 @@ def test_valid_decode(valid_case):
 
     assert toml_val == json_val
     assert toml_val.as_string() == valid_case["toml"]
+
+
+def test_invalid_decode(invalid_decode_case):
+    with pytest.raises(TOMLKitError):
+        parse(invalid_decode_case["toml"])

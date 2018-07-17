@@ -17,11 +17,15 @@ from ._compat import decode
 from ._compat import string_escape
 from ._utils import parse_rfc3339
 from .container import Container
+from .exceptions import EmptyKeyError
+from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
+from .exceptions import InvalidCharInStringError
 from .exceptions import InvalidNumberOrDateError
 from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
+from .exceptions import UnexpectedEofError
 from .items import AoT
 from .items import Array
 from .items import Bool
@@ -333,7 +337,7 @@ class Parser:
             elif c in " \t\r,":
                 self.inc()
             else:
-                break
+                raise self.parse_error(UnexpectedCharError, (c))
 
             if self.end():
                 break
@@ -347,7 +351,9 @@ class Parser:
 
         return comment_ws, comment, trail
 
-    def _parse_key_value(self, parse_comment=False):  # type: (bool) -> (Key, Item)
+    def _parse_key_value(
+        self, parse_comment=False, inline=True
+    ):  # type: (bool, bool) -> (Key, Item)
         # Leading indent
         self.mark()
 
@@ -358,8 +364,18 @@ class Parser:
 
         # Key
         key = self._parse_key()
+        if not key.key.strip():
+            raise self.parse_error(EmptyKeyError)
+
         self.mark()
+
+        found_equals = self._current == "="
         while self._current.is_kv_sep() and self.inc():
+            if self._current == "=":
+                if found_equals:
+                    raise self.parse_error(UnexpectedCharError, ("=",))
+                else:
+                    found_equals = True
             pass
 
         key.sep = self.extract()
@@ -490,7 +506,7 @@ class Parser:
 
             while self._current != "}":
                 self.mark()
-                while self._current.is_ws() or self._current == ",":
+                while self._current.is_spaces() or self._current == ",":
                     self.inc()
 
                 if self._idx != self._marker:
@@ -501,7 +517,7 @@ class Parser:
                 if self._current == "}":
                     break
 
-                key, val = self._parse_key_value(False)
+                key, val = self._parse_key_value(False, inline=True)
                 elems.append(key, val)
 
             self.inc()
@@ -539,6 +555,11 @@ class Parser:
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
+        sign = ""
+        if raw.startswith(("+", "-")):
+            sign = raw[0]
+            raw = raw[1:]
+
         if len(raw) > 1 and raw.startswith("0") and not raw.startswith("0."):
             return
 
@@ -548,11 +569,14 @@ class Parser:
         if "_" in clean:
             return
 
+        if clean.endswith("."):
+            return
+
         try:
-            return Integer(int(clean), trivia, raw)
+            return Integer(int(sign + clean), trivia, sign + raw)
         except ValueError:
             try:
-                return Float(float(clean), trivia, raw)
+                return Float(float(sign + clean), trivia, sign + raw)
             except ValueError:
                 return
 
@@ -669,8 +693,18 @@ class Parser:
                             value += u
                             self.inc_n(len(ue))
                         else:
+                            if not escaped and not str_type.is_literal():
+                                raise self.parse_error(
+                                    InvalidCharInStringError, (self._current,)
+                                )
+
                             value += self._current
                     else:
+                        if not escaped and not str_type.is_literal():
+                            raise self.parse_error(
+                                InvalidCharInStringError, (self._current,)
+                            )
+
                         value += self._current
 
                     if self._current.is_ws() and multiline and not escaped:
@@ -703,6 +737,9 @@ class Parser:
         indent = self.extract()
         self.inc()  # Skip opening bracket
 
+        if self.end():
+            raise self.parse_error(UnexpectedEofError)
+
         is_aot = False
         if self._current == "[":
             if not self.inc():
@@ -713,9 +750,15 @@ class Parser:
         # Key
         self.mark()
         while self._current != "]" and self.inc():
+            if self.end():
+                raise self.parse_error(UnexpectedEofError)
+
             pass
 
         name = self.extract()
+        if not name.strip():
+            raise self.parse_error(EmptyTableNameError)
+
         key = Key(name, sep="")
         name_parts = tuple(self._split_table_name(name))
         missing_table = False
@@ -774,7 +817,7 @@ class Parser:
                         )
 
                     if is_aot and i == len(name_parts[1:]) - 1:
-                        table.append(_name, AoT([child]))
+                        table.append(_name, AoT([child], name=table.name))
                     else:
                         table.append(_name, child)
 

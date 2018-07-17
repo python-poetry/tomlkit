@@ -601,7 +601,7 @@ class AoT(Item):
     An array of table literal
     """
 
-    def __init__(self, body, name=None):  # type: (List[Table]) -> None
+    def __init__(self, body, name=None):  # type: (List[Table], Optional[str]) -> None
         self.name = None
         self._body = body
 

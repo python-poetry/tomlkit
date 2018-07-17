@@ -1,7 +1,12 @@
 from typing import Optional
 
 
-class ParseError(ValueError):
+class TOMLKitError(Exception):
+
+    pass
+
+
+class ParseError(ValueError, TOMLKitError):
     """
     This error occurs when the parser encounters a syntax error
     in the TOML being parsed. The error references the line and
@@ -55,6 +60,39 @@ class UnexpectedCharError(ParseError):
         super(UnexpectedCharError, self).__init__(line, col, message=message)
 
 
+class EmptyKeyError(ParseError):
+    """
+    An empty key was found during parsing.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Empty key"
+
+        super(EmptyKeyError, self).__init__(line, col, message=message)
+
+
+class EmptyTableNameError(ParseError):
+    """
+    An empty table name was found during parsing.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Empty table name"
+
+        super(EmptyTableNameError, self).__init__(line, col, message=message)
+
+
+class InvalidCharInStringError(ParseError):
+    """
+    The string being parsed contains an invalid character.
+    """
+
+    def __init__(self, line, col, char):  # type: (int, int, str) -> None
+        message = "Invalid character '{}' in string".format(char)
+
+        super(InvalidCharInStringError, self).__init__(line, col, message=message)
+
+
 class UnexpectedEofError(ParseError):
     """
     The TOML being parsed ended before the end of a statement.
@@ -79,7 +117,7 @@ class InternalParserError(ParseError):
         super(InternalParserError, self).__init__(line, col, message=msg)
 
 
-class NonExistentKey(KeyError):
+class NonExistentKey(KeyError, TOMLKitError):
     """
     A non-existent key was used.
     """
@@ -90,7 +128,7 @@ class NonExistentKey(KeyError):
         super(NonExistentKey, self).__init__(message)
 
 
-class KeyAlreadyPresent(ValueError):
+class KeyAlreadyPresent(TOMLKitError):
     """
     An already present key was used.
     """
