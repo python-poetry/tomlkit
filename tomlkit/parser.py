@@ -567,11 +567,30 @@ class Parser:
             sign = raw[0]
             raw = raw[1:]
 
-        if len(raw) > 1 and raw.startswith("0") and not raw.startswith("0."):
+        if (
+            len(raw) > 1
+            and raw.startswith("0")
+            and not raw.startswith(("0.", "0o", "0x", "0b"))
+        ):
             return
 
+        if raw.startswith(("0o", "0x", "0b")) and sign:
+            return
+
+        digits = "[0-9]"
+        base = 10
+        if raw.startswith("0b"):
+            digits = "[01]"
+            base = 2
+        elif raw.startswith("0o"):
+            digits = "[0-7]"
+            base = 8
+        elif raw.startswith("0x"):
+            digits = "[0-9a-f]"
+            base = 16
+
         # Underscores should be surrounded by digits
-        clean = re.sub("(?<=\d)_(?=\d)", "", raw)
+        clean = re.sub("(?i)(?<={})_(?={})".format(digits, digits), "", raw)
 
         if "_" in clean:
             return
@@ -580,7 +599,7 @@ class Parser:
             return
 
         try:
-            return Integer(int(sign + clean), trivia, sign + raw)
+            return Integer(int(sign + clean, base), trivia, sign + raw)
         except ValueError:
             try:
                 return Float(float(sign + clean), trivia, sign + raw)

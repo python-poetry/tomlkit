@@ -87,3 +87,17 @@ def test_inf_and_nan_are_supported(example):
     assert math.isnan(doc["sf4"])
     assert math.isnan(doc["sf5"])
     assert math.isnan(doc["sf6"])
+
+
+def test_hex_octal_and_bin_integers_are_supported(example):
+    content = example("0.5.0")
+    doc = parse(content)
+
+    assert doc["hex1"] == 3735928559
+    assert doc["hex2"] == 3735928559
+    assert doc["hex3"] == 3735928559
+
+    assert doc["oct1"] == 342391
+    assert doc["oct2"] == 493
+
+    assert doc["bin1"] == 214
