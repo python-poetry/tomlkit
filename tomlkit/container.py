@@ -173,11 +173,12 @@ class Container(dict):
                         v.as_string(prefix=key),
                     )
                 elif isinstance(v, AoT):
+                    key = k.as_string()
                     if prefix is not None:
-                        k = Key(prefix + "." + k.as_string())
+                        key = prefix + "." + key
 
                     cur = ""
-                    key = decode(k.as_string())
+                    key = decode(key)
                     for table in v.body:
                         if table.is_super_table():
                             cur += table.as_string(prefix=key)

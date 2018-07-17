@@ -6,6 +6,7 @@ from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
+from tomlkit.items import KeyType
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
@@ -101,3 +102,9 @@ def test_hex_octal_and_bin_integers_are_supported(example):
     assert doc["oct2"] == 493
 
     assert doc["bin1"] == 214
+
+
+def test_key_automatically_sets_proper_string_type_if_not_bare():
+    key = Key("foo.bar")
+
+    assert key.t == KeyType.Basic

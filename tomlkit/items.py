@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import re
+import string
 
 from datetime import date
 from datetime import datetime
@@ -68,7 +69,15 @@ class Key:
     """
 
     def __init__(self, k, t=None, sep=None):  # type: (str) -> None
-        self.t = t or KeyType.Bare
+        if t is None:
+            if any(
+                [c not in string.ascii_letters + string.digits + "-" + "_" for c in k]
+            ):
+                t = KeyType.Basic
+            else:
+                t = KeyType.Bare
+
+        self.t = t
         if sep is None:
             sep = " = "
 
