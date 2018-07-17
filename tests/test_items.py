@@ -1,5 +1,7 @@
+import math
 import pytest
 
+from tomlkit import parse
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
@@ -72,3 +74,13 @@ def test_items_can_be_appended_to_and_removed_from_an_inline_table():
 
     with pytest.raises(NonExistentKey):
         table.remove(Key("foo"))
+
+
+def test_inf_and_nan_are_supported(example):
+    content = example("0.5.0")
+    doc = parse(content)
+
+    assert doc["plus-infinity"] == float("inf")
+    assert doc["minus-infinity"] == float("-inf")
+    assert doc["infinity"] == float("inf")
+    assert math.isnan(doc["not-a-number"])

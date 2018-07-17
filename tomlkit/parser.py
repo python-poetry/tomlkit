@@ -523,7 +523,12 @@ class Parser:
             self.inc()
 
             return InlineTable(elems, trivia)
-        elif c in string.digits + "+" + "-":
+        elif c in string.digits + "+-" or self._peek(4) in {
+            "+inf",
+            "-inf",
+            "inf",
+            "nan",
+        }:
             # Integer, Float, Date, Time or DateTime
             while self._current not in " \t\n\r#,]}" and self.inc():
                 pass
@@ -943,6 +948,26 @@ class Parser:
         self._aot_stack.pop()
 
         return AoT(payload)
+
+    def _peek(self, n):  # type: (int) -> str
+        """
+        Peeks ahead n characters.
+
+        n is the max number of characters that will be peeked.
+        """
+        idx = self._save_idx()
+        buf = ""
+        for _ in range(n):
+            if self._current not in " \t\n\r#,]}":
+                buf += self._current
+                self.inc()
+                continue
+
+            break
+
+        self._restore_idx(*idx)
+
+        return buf
 
     def _peek_unicode(self, is_long):  # type: () -> Tuple[bool, str]
         """

@@ -24,7 +24,7 @@ from tomlkit.toml_document import TOMLDocument
 
 @pytest.mark.parametrize(
     "example_name",
-    ["example", "fruit", "hard", "sections_with_same_start", "pyproject"],
+    ["example", "fruit", "hard", "sections_with_same_start", "pyproject", "0.5.0"],
 )
 def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(parse(example(example_name)), TOMLDocument)
@@ -50,7 +50,7 @@ def test_parse_raises_errors_for_invalid_toml_files(
 
 @pytest.mark.parametrize(
     "example_name",
-    ["example", "fruit", "hard", "sections_with_same_start", "pyproject"],
+    ["example", "fruit", "hard", "sections_with_same_start", "pyproject", "0.5.0"],
 )
 def test_original_string_and_dumped_string_are_equal(example, example_name):
     content = example(example_name)
