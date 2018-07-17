@@ -69,7 +69,10 @@ class Key:
 
     def __init__(self, k, t=None, sep=None):  # type: (str) -> None
         self.t = t or KeyType.Bare
-        self.sep = sep or " = "
+        if sep is None:
+            sep = " = "
+
+        self.sep = sep
         self.key = k
 
     @property
@@ -365,11 +368,18 @@ class Table(Item):
     """
 
     def __init__(
-        self, value, trivia, is_aot_element, is_super_table=False, name=None
+        self,
+        value,
+        trivia,
+        is_aot_element,
+        is_super_table=False,
+        name=None,
+        display_name=None,
     ):  # type: (tomlkit.container.Container, Trivia, bool) -> None
         super(Table, self).__init__(trivia)
 
         self.name = name
+        self.display_name = display_name
         self._value = value
         self._is_aot_element = is_aot_element
         self._is_super_table = is_super_table
@@ -519,9 +529,10 @@ class InlineTable(Item):
 
                 continue
 
-            buf += "{}{} = {}{}{}".format(
+            buf += "{}{}{}{}{}{}".format(
                 v.trivia.indent,
                 k.as_string(),
+                k.sep,
                 v.as_string(),
                 v.trivia.comment,
                 v.trivia.trail,

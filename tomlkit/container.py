@@ -77,7 +77,7 @@ class Container(dict):
         if not isinstance(item, Item):
             item = _item(item)
 
-        if isinstance(item, (AoT, Table)) and item.name != key.key:
+        if isinstance(item, (AoT, Table)) and item.name is None:
             item.name = key.key
 
         if key is not None and key in self:
@@ -139,8 +139,12 @@ class Container(dict):
 
                         continue
 
-                    if prefix is not None:
-                        k = Key(prefix + "." + k.as_string())
+                    if v.display_name is not None:
+                        key = v.display_name
+                    else:
+                        key = k.as_string()
+                        if prefix is not None:
+                            key = prefix + "." + key
 
                     open_, close = "[", "]"
                     if v.is_aot_element():
@@ -149,12 +153,12 @@ class Container(dict):
                     cur = "{}{}{}{}{}{}{}{}".format(
                         v.trivia.indent,
                         open_,
-                        decode(k.as_string()),
+                        decode(key),
                         close,
                         v.trivia.comment_ws,
                         decode(v.trivia.comment),
                         v.trivia.trail,
-                        v.as_string(prefix=k.as_string()),
+                        v.as_string(prefix=key),
                     )
                 elif isinstance(v, AoT):
                     if prefix is not None:

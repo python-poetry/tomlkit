@@ -43,7 +43,7 @@ def get_tomltest_cases():
             bn, ext = f.rsplit(".", 1)
             if bn not in rv[d]:
                 rv[d][bn] = {}
-            with open(os.path.join(TEST_DIR, d, f)) as inp:
+            with io.open(os.path.join(TEST_DIR, d, f), encoding="utf-8") as inp:
                 rv[d][bn][ext] = inp.read()
     return rv
 

@@ -45,3 +45,4 @@ def test_valid_decode(valid_case):
     toml_val = parse(valid_case["toml"])
 
     assert toml_val == json_val
+    assert toml_val.as_string() == valid_case["toml"]

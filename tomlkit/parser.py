@@ -770,6 +770,7 @@ class Parser:
                             is_aot and i == len(name_parts[1:]) - 1,
                             is_super_table=i < len(name_parts[1:]) - 1,
                             name=_name.key,
+                            display_name=name if i == len(name_parts[1:]) - 1 else None,
                         )
 
                     if is_aot and i == len(name_parts[1:]) - 1:
@@ -815,7 +816,11 @@ class Parser:
                         break
                     else:
                         table = Table(
-                            values, Trivia(indent, cws, comment, trail), is_aot
+                            values,
+                            Trivia(indent, cws, comment, trail),
+                            is_aot,
+                            name=name,
+                            display_name=name,
                         )
 
                         result = table
@@ -832,7 +837,13 @@ class Parser:
                     )
 
         if isinstance(result, Null):
-            result = Table(values, Trivia(indent, cws, comment, trail), is_aot)
+            result = Table(
+                values,
+                Trivia(indent, cws, comment, trail),
+                is_aot,
+                name=name,
+                display_name=name,
+            )
 
         return key, result
 
