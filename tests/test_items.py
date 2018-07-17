@@ -80,7 +80,10 @@ def test_inf_and_nan_are_supported(example):
     content = example("0.5.0")
     doc = parse(content)
 
-    assert doc["plus-infinity"] == float("inf")
-    assert doc["minus-infinity"] == float("-inf")
-    assert doc["infinity"] == float("inf")
-    assert math.isnan(doc["not-a-number"])
+    assert doc["sf1"] == float("inf")
+    assert doc["sf2"] == float("inf")
+    assert doc["sf3"] == float("-inf")
+
+    assert math.isnan(doc["sf4"])
+    assert math.isnan(doc["sf5"])
+    assert math.isnan(doc["sf6"])

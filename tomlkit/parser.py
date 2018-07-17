@@ -527,6 +527,8 @@ class Parser:
             "+inf",
             "-inf",
             "inf",
+            "+nan",
+            "-nan",
             "nan",
         }:
             # Integer, Float, Date, Time or DateTime
