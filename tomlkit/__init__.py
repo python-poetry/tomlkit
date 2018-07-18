@@ -15,6 +15,7 @@ from .api import key_value
 from .api import loads
 from .api import nl
 from .api import parse
+from .api import string
 from .api import table
 from .api import time
 from .api import value

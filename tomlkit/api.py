@@ -73,7 +73,9 @@ def boolean(raw):  # type: (str) -> Bool
 
 
 def string(raw):  # type: (str) -> String
-    return String(StringType.SLB, raw, raw, Trivia())
+    escaped = raw.replace('"', '\\"').replace("\\\\", "\\")
+
+    return String(StringType.SLB, raw, escaped, Trivia())
 
 
 def date(raw):  # type: (str) -> Date

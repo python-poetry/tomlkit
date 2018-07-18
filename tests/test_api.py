@@ -154,3 +154,10 @@ def test_key_value():
 
     assert isinstance(k, Key)
     assert isinstance(i, Integer)
+
+
+def test_string():
+    s = tomlkit.string('foo "')
+
+    assert s.value == 'foo "'
+    assert s.as_string() == '"foo \\""'
