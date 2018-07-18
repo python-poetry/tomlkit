@@ -4,6 +4,7 @@ import pytest
 from tomlkit import parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.items import AoT
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
@@ -149,5 +150,16 @@ def test_array_behaves_like_a_list():
     assert (
         doc.as_string()
         == """a = [1, 2, 3, 4] # Comment
+"""
+    )
+
+
+def test_item_array_of_dicts_converted_to_aot():
+    a = item({"foo": [{"bar": "baz"}]})
+
+    assert (
+        a.as_string()
+        == """[[foo]]
+bar = "baz"
 """
     )

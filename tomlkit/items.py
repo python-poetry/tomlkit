@@ -16,7 +16,7 @@ from ._compat import decode
 from ._compat import unicode
 
 
-def item(value):
+def item(value, _parent=None):
     from .container import Container
 
     if isinstance(value, Item):
@@ -31,13 +31,31 @@ def item(value):
     elif isinstance(value, dict):
         val = Table(Container(), Trivia(), False)
         for k, v in value.items():
-            val[k] = item(v)
+            val[k] = item(v, _parent=val)
 
         return val
     elif isinstance(value, list):
-        a = Array([], Trivia())
+        if value and isinstance(value[0], dict) and _parent is not None:
+            a = AoT([])
+        else:
+            a = Array([], Trivia())
 
         for v in value:
+            if isinstance(v, dict):
+                if _parent is not None:
+                    table = Table(Container(), Trivia(), True)
+                else:
+                    table = InlineTable(Container(), Trivia())
+
+                for k, _v in v.items():
+                    i = item(_v)
+                    if isinstance(table, InlineTable):
+                        i.trivia.trail = ""
+
+                    table[k] = item(i)
+
+                v = table
+
             a.append(v)
 
         return a
@@ -169,7 +187,7 @@ class Item(object):
 
     # Helpers
 
-    def comment(self, comment, inline=True):  # type: (str, bool) -> Item
+    def comment(self, comment):  # type: (str, bool) -> Item
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -468,6 +486,9 @@ class Array(Item, list):
 
             j += 1 if key >= 0 else -1
 
+    def __str__(self):
+        return list.__str__(self)
+
 
 class Table(Item):
     """
@@ -733,8 +754,6 @@ class AoT(Item, list):
         return [v.value for v in self._body]
 
     def append(self, table):  # type: (Table) -> Table
-        self._body.append(table)
-
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if m:
             indent = m.group(1)
@@ -747,6 +766,8 @@ class AoT(Item, list):
 
         if not self._parsed and "\n" not in table.trivia.indent and self._body:
             table.trivia.indent = "\n" + table.trivia.indent
+
+        self._body.append(table)
 
         super(AoT, self).append(table)
 

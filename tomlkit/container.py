@@ -89,14 +89,11 @@ class Container(dict):
         ):
             item.trivia.indent = "\n"
 
-        if (
-            isinstance(item, AoT)
-            and self._body
-            and not self._parsed
-            and item
-            and "\n" not in item[0].trivia.indent
-        ):
-            item[0].trivia.indent = "\n" + item[0].trivia.indent
+        if isinstance(item, AoT) and self._body and not self._parsed:
+            if item and "\n" not in item[0].trivia.indent:
+                item[0].trivia.indent = "\n" + item[0].trivia.indent
+            else:
+                self.append(None, Whitespace("\n"))
 
         if key is not None and key in self:
             current = self._body[self._map[key]][1]
