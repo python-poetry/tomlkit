@@ -125,7 +125,7 @@ It can be created with the following code:
 # Adding the table to the document
 >>> doc.add("owner", owner)
 
->>> atabase = table()
+>>> database = table()
 >>> database["server"] = "192.168.1.1"
 >>> database["ports"] = [8001, 8001, 8002]
 >>> database["connection_max"] = 5000
