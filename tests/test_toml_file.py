@@ -17,5 +17,9 @@ def test_toml_file(example):
 
     toml.write(content)
 
-    with io.open(toml_file, encoding="utf-8") as f:
-        assert original_content == f.read()
+    try:
+        with io.open(toml_file, encoding="utf-8") as f:
+            assert original_content == f.read()
+    finally:
+        with io.open(toml_file, "w", encoding="utf-8") as f:
+            assert f.write(original_content)

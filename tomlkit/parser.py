@@ -546,7 +546,10 @@ class Parser:
 
             self.inc()
 
-            res = Array(elems, trivia)
+            try:
+                res = Array(elems, trivia)
+            except ValueError:
+                raise self.parse_error(MixedArrayTypesError)
 
             if res.is_homogeneous():
                 return res

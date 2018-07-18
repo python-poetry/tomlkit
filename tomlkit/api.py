@@ -1,32 +1,28 @@
 import datetime as _datetime
 
-from typing import Any
-from typing import Dict
 from typing import Tuple
 
-from ._compat import unicode
 from ._utils import parse_rfc3339
 from .container import Container
 from .items import AoT
+from .items import Comment
+from .items import InlineTable
+from .items import Item as _Item
 from .items import Array
 from .items import Bool
-from .items import Comment
+from .items import Key
 from .items import Date
 from .items import DateTime
 from .items import Float
-from .items import InlineTable
-from .items import Integer
-from .items import Item as _Item
-from .items import Key
-from .items import KeyType
-from .items import String
-from .items import StringType
 from .items import Table
-from .items import Time
+from .items import Integer
 from .items import Trivia
 from .items import Whitespace
+from .items import item
+from .items import String
 from .parser import Parser
 from .toml_document import TOMLDocument as _TOMLDocument
+from .items import Time
 
 
 def loads(string):  # type: (str) -> _TOMLDocument
@@ -61,21 +57,19 @@ def document():  # type: () -> _TOMLDocument
 
 # Items
 def integer(raw):  # type: (str) -> Integer
-    return Integer(int(raw), Trivia(), raw)
+    return item(int(raw))
 
 
 def float_(raw):  # type: (str) -> Float
-    return Float(float(raw), Trivia(), raw)
+    return item(float(raw))
 
 
 def boolean(raw):  # type: (str) -> Bool
-    return Bool(raw == "true", Trivia())
+    return item(raw == "true")
 
 
 def string(raw):  # type: (str) -> String
-    escaped = raw.replace('"', '\\"').replace("\\\\", "\\")
-
-    return String(StringType.SLB, raw, escaped, Trivia())
+    return item(raw)
 
 
 def date(raw):  # type: (str) -> Date
@@ -83,7 +77,7 @@ def date(raw):  # type: (str) -> Date
     if not isinstance(value, _datetime.date):
         raise ValueError("date() only accepts date strings.")
 
-    return Date(value, Trivia(), raw)
+    return item(value)
 
 
 def time(raw):  # type: (str) -> Time
@@ -91,7 +85,7 @@ def time(raw):  # type: (str) -> Time
     if not isinstance(value, _datetime.time):
         raise ValueError("time() only accepts time strings.")
 
-    return Time(value, Trivia(), raw)
+    return item(value)
 
 
 def datetime(raw):  # type: (str) -> DateTime
@@ -99,7 +93,7 @@ def datetime(raw):  # type: (str) -> DateTime
     if not isinstance(value, _datetime.datetime):
         raise ValueError("datetime() only accepts datetime strings.")
 
-    return DateTime(value, Trivia(), raw)
+    return item(value)
 
 
 def array(raw=None):  # type: (str) -> Array
@@ -125,11 +119,11 @@ def key(k):  # type: (str) -> Key
     return Key(k)
 
 
-def value(raw):  # type: (str) -> Item
+def value(raw):  # type: (str) -> _Item
     return Parser(raw)._parse_value()
 
 
-def key_value(src):  # type: (str) -> Tuple[Key, Item]
+def key_value(src):  # type: (str) -> Tuple[Key, _Item]
     return Parser(src)._parse_key_value()
 
 
@@ -143,35 +137,3 @@ def nl():  # type: () -> Whitespace
 
 def comment(string):  # type: (str) -> Comment
     return Comment(Trivia(comment_ws="  ", comment="# " + string))
-
-
-def item(value):  # type: (Any) -> Item
-    if isinstance(value, _Item):
-        return value
-
-    if isinstance(value, bool):
-        return boolean(str(value).lower())
-    elif isinstance(value, int):
-        return integer(str(value))
-    elif isinstance(value, float):
-        return float_(str(value))
-    elif isinstance(value, dict):
-        val = table()
-        for k, v in value.items():
-            val[k] = item(v)
-
-        return val
-    elif isinstance(value, list):
-        value = "[{}]".format(", ".join([item(v).as_string() for v in value]))
-
-        return array(value)
-    elif isinstance(value, (str, unicode)):
-        return string(value)
-    elif isinstance(value, _datetime.datetime):
-        return datetime(value.isoformat().replace("+00:00", "Z"))
-    elif isinstance(value, _datetime.date):
-        return date(value.isoformat())
-    elif isinstance(value, _datetime.time):
-        return time(value.isoformat())
-
-    raise ValueError("Invalid type {}".format(type(value)))

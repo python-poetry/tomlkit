@@ -2,6 +2,7 @@ import math
 import pytest
 
 from tomlkit import parse
+from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
@@ -11,6 +12,7 @@ from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
+from tomlkit.items import item
 from tomlkit.parser import Parser
 
 
@@ -108,3 +110,44 @@ def test_key_automatically_sets_proper_string_type_if_not_bare():
     key = Key("foo.bar")
 
     assert key.t == KeyType.Basic
+
+
+def test_array_behaves_like_a_list():
+    a = item([1, 2])
+
+    assert a == [1, 2]
+    assert a.as_string() == "[1, 2]"
+
+    a += [3, 4]
+    assert a == [1, 2, 3, 4]
+    assert a.as_string() == "[1, 2, 3, 4]"
+
+    del a[2]
+    assert a == [1, 2, 4]
+    assert a.as_string() == "[1, 2, 4]"
+
+    del a[-1]
+    assert a == [1, 2]
+    assert a.as_string() == "[1, 2]"
+
+    del a[-2]
+    assert a == [2]
+    assert a.as_string() == "[2]"
+
+    if not PY2:
+        a.clear()
+        assert a == []
+        assert a.as_string() == "[]"
+
+    content = """a = [1, 2] # Comment
+"""
+    doc = parse(content)
+
+    assert doc["a"] == [1, 2]
+    doc["a"] += [3, 4]
+    assert doc["a"] == [1, 2, 3, 4]
+    assert (
+        doc.as_string()
+        == """a = [1, 2, 3, 4] # Comment
+"""
+    )

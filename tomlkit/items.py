@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import os
 import re
 import string
 
@@ -12,7 +11,48 @@ from typing import List
 from typing import Optional
 
 
+from ._compat import PY2
 from ._compat import decode
+from ._compat import unicode
+
+
+def item(value):
+    from .container import Container
+
+    if isinstance(value, Item):
+        return value
+
+    if isinstance(value, bool):
+        return Bool(value, Trivia())
+    elif isinstance(value, int):
+        return Integer(value, Trivia(), str(value))
+    elif isinstance(value, float):
+        return Float(value, Trivia(), str(value))
+    elif isinstance(value, dict):
+        val = Table(Container(), Trivia(), False)
+        for k, v in value.items():
+            val[k] = item(v)
+
+        return val
+    elif isinstance(value, list):
+        a = Array([], Trivia())
+
+        for v in value:
+            a.append(v)
+
+        return a
+    elif isinstance(value, (str, unicode)):
+        escaped = decode(value).replace('"', '\\"').replace("\\\\", "\\")
+
+        return String(StringType.SLB, value, escaped, Trivia())
+    elif isinstance(value, datetime):
+        return DateTime(value, Trivia(), value.isoformat().replace("+00:00", "Z"))
+    elif isinstance(value, date):
+        return Date(value, Trivia(), value.isoformat())
+    elif isinstance(value, time):
+        return Time(value, Trivia(), value.isoformat())
+
+    raise ValueError("Invalid type {}".format(type(value)))
 
 
 class StringType(Enum):
@@ -339,13 +379,17 @@ class Time(Item):
         return self._raw
 
 
-class Array(Item):
+class Array(Item, list):
     """
     An array literal
     """
 
     def __init__(self, value, trivia):  # type: (list, Trivia) -> None
         super(Array, self).__init__(trivia)
+
+        list.__init__(
+            self, [v.value for v in value if not isinstance(v, (Whitespace, Comment))]
+        )
 
         self._value = value
 
@@ -355,12 +399,10 @@ class Array(Item):
 
     @property
     def value(self):  # type: () -> list
-        return [
-            v.value for v in self._value if not isinstance(v, (Whitespace, Comment))
-        ]
+        return self
 
     def is_homogeneous(self):  # type: () -> bool
-        if not self._value:
+        if not self:
             return True
 
         discriminants = [
@@ -372,7 +414,59 @@ class Array(Item):
         return len(set(discriminants)) == 1
 
     def as_string(self):  # type: () -> str
-        return "[{}]".format("".join(item.as_string() for item in self._value))
+        return "[{}]".format("".join(v.as_string() for v in self._value))
+
+    def append(self, _item):  # type: () -> None
+        if self._value:
+            self._value.append(Whitespace(", "))
+
+        it = item(_item)
+        super(Array, self).append(it.value)
+
+        self._value.append(it)
+
+        if not self.is_homogeneous():
+            raise ValueError("Array has mixed types elements")
+
+    if not PY2:
+
+        def clear(self):
+            super(Array, self).clear()
+
+            self._value.clear()
+
+    def __iadd__(self, other):  # type: (list) -> Array
+        if not isinstance(other, list):
+            return NotImplemented
+
+        for v in other:
+            self.append(v)
+
+        return self
+
+    def __delitem__(self, key):
+        super(Array, self).__delitem__(key)
+
+        j = 0 if key >= 0 else -1
+        for i, v in enumerate(self._value if key >= 0 else reversed(self._value)):
+            if key < 0:
+                i = -i - 1
+
+            if isinstance(v, (Comment, Whitespace)):
+                continue
+
+            if j == key:
+                del self._value[i]
+
+                if i < 0 and abs(i) > len(self._value):
+                    i += 1
+
+                if i < len(self._value) - 1 and isinstance(self._value[i], Whitespace):
+                    del self._value[i]
+
+                break
+
+            j += 1 if key >= 0 else -1
 
 
 class Table(Item):

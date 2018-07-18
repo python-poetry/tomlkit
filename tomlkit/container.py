@@ -126,7 +126,6 @@ class Container(dict):
                 if not current.is_super_table():
                     raise KeyAlreadyPresent(key)
 
-                current_key, current_table = current.value.body[0]
                 item_table = item.body[0]
 
                 if not item_table.is_super_table():
