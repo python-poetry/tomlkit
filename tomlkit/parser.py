@@ -235,7 +235,6 @@ class Parser:
 
     def _split_table_name(self, name):  # type: (str) -> Generator[Key]
         in_name = False
-        delim = None
         current = ""
         t = KeyType.Bare
         for c in name:
@@ -939,7 +938,7 @@ class Parser:
                     elif self._is_child(name_next, name):
                         # First [a.b.c] and later only [a] for instance
                         break
-                    else:
+                    elif not result:
                         table = Table(
                             values,
                             Trivia(indent, cws, comment, trail),

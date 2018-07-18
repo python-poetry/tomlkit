@@ -121,3 +121,13 @@ def test_toml_document_with_dotted_keys(example):
 
     assert doc["a"]["b"]["c"] == 1
     assert doc["a"]["b"]["d"] == 2
+
+
+def test_toml_document_super_table_with_different_sub_sections(example):
+    content = example("pyproject")
+
+    doc = parse(content)
+    tool = doc["tool"]
+
+    assert "poetry" in tool
+    assert "black" in tool

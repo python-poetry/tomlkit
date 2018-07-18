@@ -113,7 +113,11 @@ class Container(dict):
 
                     return item
                 elif current.is_super_table():
-                    pass
+                    if item.is_super_table():
+                        for k, v in item.value.body:
+                            current.append(k, v)
+
+                        return current
                 else:
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):

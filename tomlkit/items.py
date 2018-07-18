@@ -487,7 +487,12 @@ class Array(Item, list):
             j += 1 if key >= 0 else -1
 
     def __str__(self):
-        return list.__str__(self)
+        return str(
+            [v.value for v in self._value if not isinstance(v, (Whitespace, Comment))]
+        )
+
+    def __repr__(self):
+        return str(self)
 
 
 class Table(Item):
