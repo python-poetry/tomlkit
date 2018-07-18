@@ -110,7 +110,7 @@ def array(raw=None):  # type: (str) -> Array
 
 
 def table():  # type: () -> Table
-    return Table(Container(), Trivia(indent="\n"), False)
+    return Table(Container(), Trivia(), False)
 
 
 def inline_table():  # type: () -> InlineTable
@@ -155,6 +155,12 @@ def item(value):  # type: (Any) -> Item
         return integer(str(value))
     elif isinstance(value, float):
         return float_(str(value))
+    elif isinstance(value, dict):
+        val = table()
+        for k, v in value.items():
+            val[k] = item(v)
+
+        return val
     elif isinstance(value, list):
         value = "[{}]".format(", ".join([item(v).as_string() for v in value]))
 

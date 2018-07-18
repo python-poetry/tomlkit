@@ -117,7 +117,7 @@ class Parser:
         self._marker = self._idx
 
     def parse(self):  # type: () -> TOMLDocument
-        body = TOMLDocument()
+        body = TOMLDocument(True)
 
         # Take all keyvals outside of tables/AoT's.
         while not self.end():
@@ -139,7 +139,7 @@ class Parser:
                 if name in body:
                     table = body.item(name)
                 else:
-                    table = Table(Container(), Trivia(), False, is_super_table=True)
+                    table = Table(Container(True), Trivia(), False, is_super_table=True)
                     body.append(name, table)
 
                 for i, _name in enumerate(names[1:]):
@@ -155,7 +155,7 @@ class Parser:
                             table = table.append(
                                 _name,
                                 Table(
-                                    Container(),
+                                    Container(True),
                                     Trivia(),
                                     False,
                                     is_super_table=i < len(names) - 2,
@@ -851,7 +851,7 @@ class Parser:
 
         name_parts = name_parts[len(parent_name_parts) :]
 
-        values = Container()
+        values = Container(True)
 
         self.inc()  # Skip closing bracket
         if is_aot:
@@ -870,7 +870,7 @@ class Parser:
                 #
                 # So we have to create the parent tables
                 table = Table(
-                    Container(),
+                    Container(True),
                     Trivia(indent, cws, comment, trail),
                     is_aot and name_parts[0] in self._aot_stack,
                     is_super_table=True,
@@ -887,7 +887,7 @@ class Parser:
                         child = table[_name]
                     else:
                         child = Table(
-                            Container(),
+                            Container(True),
                             Trivia(indent, cws, comment, trail),
                             is_aot and i == len(name_parts[1:]) - 1,
                             is_super_table=i < len(name_parts[1:]) - 1,
@@ -896,7 +896,7 @@ class Parser:
                         )
 
                     if is_aot and i == len(name_parts[1:]) - 1:
-                        table.append(_name, AoT([child], name=table.name))
+                        table.append(_name, AoT([child], name=table.name, parsed=True))
                     else:
                         table.append(_name, child)
 
@@ -1021,7 +1021,7 @@ class Parser:
 
         self._aot_stack.pop()
 
-        return AoT(payload)
+        return AoT(payload, parsed=True)
 
     def _peek(self, n):  # type: (int) -> str
         """

@@ -161,3 +161,15 @@ def test_string():
 
     assert s.value == 'foo "'
     assert s.as_string() == '"foo \\""'
+
+
+def test_item_dict_to_table():
+    t = tomlkit.item({"foo": {"bar": "baz"}})
+
+    assert t.value == {"foo": {"bar": "baz"}}
+    assert (
+        t.as_string()
+        == """[foo]
+bar = "baz"
+"""
+    )

@@ -24,9 +24,10 @@ class Container(dict):
     A container for items within a TOMLDocument.
     """
 
-    def __init__(self):  # type: () -> None
+    def __init__(self, parsed=False):  # type: (bool) -> None
         self._map = {}  # type: Dict[Key, int]
         self._body = []  # type: List[Tuple[Optional[Key], Item]]
+        self._parsed = parsed
 
     @property
     def body(self):  # type: () -> List[Tuple[Optional[Key], Item]]
@@ -80,6 +81,23 @@ class Container(dict):
         if isinstance(item, (AoT, Table)) and item.name is None:
             item.name = key.key
 
+        if (
+            isinstance(item, Table)
+            and self._body
+            and not self._parsed
+            and not item.trivia.indent
+        ):
+            item.trivia.indent = "\n"
+
+        if (
+            isinstance(item, AoT)
+            and self._body
+            and not self._parsed
+            and item
+            and "\n" not in item[0].trivia.indent
+        ):
+            item[0].trivia.indent = "\n" + item[0].trivia.indent
+
         if key is not None and key in self:
             current = self._body[self._map[key]][1]
             if isinstance(item, Table):
@@ -90,7 +108,7 @@ class Container(dict):
                     # New AoT element found later on
                     # Adding it to the current AoT
                     if not isinstance(current, AoT):
-                        current = AoT([current, item])
+                        current = AoT([current, item], parsed=self._parsed)
 
                         self._replace(key, key, current)
                     else:

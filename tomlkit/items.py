@@ -609,16 +609,22 @@ class String(Item):
         return "{}{}{}".format(self._t.value, decode(self._original), self._t.value)
 
 
-class AoT(Item):
+class AoT(Item, list):
     """
     An array of table literal
     """
 
-    def __init__(self, body, name=None):  # type: (List[Table], Optional[str]) -> None
+    def __init__(
+        self, body, name=None, parsed=False
+    ):  # type: (List[Table], Optional[str]) -> None
         self.name = None
-        self._body = body
+        self._body = []
+        self._parsed = parsed
 
         super(AoT, self).__init__(Trivia(trail=""))
+
+        for table in body:
+            self.append(table)
 
     @property
     def body(self):  # type: () -> List[Table]
@@ -636,16 +642,19 @@ class AoT(Item):
         self._body.append(table)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
-        if not m:
-            return table
+        if m:
+            indent = m.group(1)
 
-        indent = m.group(1)
+            m = re.match("(?s)^([^ ]*)(.*)$", table.trivia.indent)
+            if not m:
+                table.trivia.indent = indent
+            else:
+                table.trivia.indent = m.group(1) + indent + m.group(2)
 
-        m = re.match("(?s)^([^ ]*)(.*)$", table.trivia.indent)
-        if not m:
-            table.trivia.indent = indent
-        else:
-            table.trivia.indent = m.group(1) + indent + m.group(2)
+        if not self._parsed and "\n" not in table.trivia.indent and self._body:
+            table.trivia.indent = "\n" + table.trivia.indent
+
+        super(AoT, self).append(table)
 
         return table
 
