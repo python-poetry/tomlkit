@@ -135,7 +135,7 @@ def ws(src):  # type: (str) -> Whitespace
     return Whitespace(src)
 
 
-def nl():  # type: (src) -> Whitespace
+def nl():  # type: () -> Whitespace
     return ws("\n")
 
 
