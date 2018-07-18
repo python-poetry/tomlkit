@@ -22,26 +22,26 @@ def test_items_can_be_appended_to_and_removed_from_a_table():
     _, table = parser._parse_table()
 
     assert isinstance(table, Table)
-    assert "\n" == table.as_string()
+    assert "" == table.as_string()
 
     table.append(Key("foo"), String(StringType.SLB, "bar", "bar", Trivia(trail="\n")))
 
-    assert '\nfoo = "bar"\n' == table.as_string()
+    assert 'foo = "bar"\n' == table.as_string()
 
     table.append(
         Key("baz"),
         Integer(34, Trivia(comment_ws="   ", comment="# Integer", trail=""), "34"),
     )
 
-    assert '\nfoo = "bar"\nbaz = 34   # Integer' == table.as_string()
+    assert 'foo = "bar"\nbaz = 34   # Integer' == table.as_string()
 
     table.remove(Key("baz"))
 
-    assert '\nfoo = "bar"\n' == table.as_string()
+    assert 'foo = "bar"\n' == table.as_string()
 
     table.remove(Key("foo"))
 
-    assert "\n" == table.as_string()
+    assert "" == table.as_string()
 
     with pytest.raises(NonExistentKey):
         table.remove(Key("foo"))

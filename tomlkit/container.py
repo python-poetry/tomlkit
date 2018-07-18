@@ -137,6 +137,16 @@ class Container(dict):
 
         super(Container, self).__delitem__(key.key)
 
+    def item(self, key):  # type: (Key) -> Item
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        idx = self._map.get(key, None)
+        if idx is None:
+            raise NonExistentKey(key)
+
+        return self._body[idx][1]
+
     def last_item(self):  # type: () -> Optional[Item]
         if self._body:
             return self._body[-1][1]
@@ -147,7 +157,28 @@ class Container(dict):
             if k is not None:
                 if isinstance(v, Table):
                     if v.is_super_table():
-                        s += v.as_string(prefix=k.as_string())
+                        if k.is_dotted():
+                            key = k.as_string()
+
+                            for _k, _v in v.value.body:
+                                if isinstance(_v, Table):
+                                    s += v.as_string(prefix=key)
+                                else:
+                                    _key = key
+                                    if prefix is not None:
+                                        _key = prefix + "." + _key
+
+                                    s += "{}{}{}{}{}{}{}".format(
+                                        _v.trivia.indent,
+                                        _key + "." + decode(_k.as_string()),
+                                        _k.sep,
+                                        decode(_v.as_string()),
+                                        _v.trivia.comment_ws,
+                                        decode(_v.trivia.comment),
+                                        _v.trivia.trail,
+                                    )
+                        else:
+                            s += v.as_string(prefix=k.as_string())
 
                         continue
 
@@ -155,6 +186,7 @@ class Container(dict):
                         key = v.display_name
                     else:
                         key = k.as_string()
+
                         if prefix is not None:
                             key = prefix + "." + key
 

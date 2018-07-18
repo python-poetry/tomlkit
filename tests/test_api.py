@@ -1,3 +1,4 @@
+import json
 import pytest
 
 import tomlkit
@@ -29,6 +30,16 @@ from tomlkit.toml_document import TOMLDocument
 def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(parse(example(example_name)), TOMLDocument)
     assert isinstance(loads(example(example_name)), TOMLDocument)
+
+
+@pytest.mark.parametrize("example_name", ["0.5.0"])
+def test_parsed_document_are_properly_json_representable(
+    example, json_example, example_name
+):
+    doc = json.loads(json.dumps(parse(example(example_name))))
+    json_doc = json.loads(json_example(example_name))
+
+    assert doc == json_doc
 
 
 @pytest.mark.parametrize(

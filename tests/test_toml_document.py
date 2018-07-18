@@ -102,3 +102,22 @@ name = "bar"
     d.update(doc)
 
     assert "tool" in d
+
+
+def test_toml_document_with_dotted_keys(example):
+    content = example("0.5.0")
+
+    doc = parse(content)
+
+    assert "physical" in doc
+    assert "color" in doc["physical"]
+    assert "shape" in doc["physical"]
+    assert doc["physical"]["color"] == "orange"
+    assert doc["physical"]["shape"] == "round"
+
+    assert "site" in doc
+    assert "google.com" in doc["site"]
+    assert doc["site"]["google.com"]
+
+    assert doc["a"]["b"]["c"] == 1
+    assert doc["a"]["b"]["d"] == 2

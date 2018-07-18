@@ -16,6 +16,18 @@ def example():
 
 
 @pytest.fixture
+def json_example():
+    def _example(name):
+        with io.open(
+            os.path.join(os.path.dirname(__file__), "examples", "json", name + ".json"),
+            encoding="utf-8",
+        ) as f:
+            return f.read()
+
+    return _example
+
+
+@pytest.fixture
 def invalid_example():
     def _example(name):
         with io.open(

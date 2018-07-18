@@ -131,7 +131,37 @@ class Parser:
                 break
 
             key, value = item
-            if not self._merge_ws(value, body):
+            if key is not None and key.is_dotted():
+                # We actually have a table
+                names = tuple(self._split_table_name(key.key))
+                name = names[0]
+                name._dotted = True
+                if name in body:
+                    table = body.item(name)
+                else:
+                    table = Table(Container(), Trivia(), False, is_super_table=True)
+                    body.append(name, table)
+
+                for i, _name in enumerate(names[1:]):
+                    if i == len(names) - 2:
+                        _name.sep = key.sep
+
+                        table.append(_name, value)
+                    else:
+                        _name._dotted = True
+                        if _name in table.value:
+                            table = table.value.item(_name)
+                        else:
+                            table = table.append(
+                                _name,
+                                Table(
+                                    Container(),
+                                    Trivia(),
+                                    False,
+                                    is_super_table=i < len(names) - 2,
+                                ),
+                            )
+            elif not self._merge_ws(value, body):
                 body.append(key, value)
 
             self.mark()
@@ -345,6 +375,12 @@ class Parser:
         while self._current.is_spaces() and self.inc():
             pass
 
+        if self._current == "\r":
+            self.inc()
+
+        if self._current == "\n":
+            self.inc()
+
         trail = ""
         if self._idx != self._marker or self._current.is_ws():
             trail = self.extract()
@@ -413,6 +449,7 @@ class Parser:
         """
         quote_style = self._current
         key_type = None
+        dotted = False
         for t in KeyType:
             if t.value == quote_style:
                 key_type = t
@@ -428,21 +465,37 @@ class Parser:
             pass
 
         key = self.extract()
-        self.inc()
 
-        return Key(key, key_type, "")
+        if self._current == ".":
+            self.inc()
+            dotted = True
+            key += "." + self._parse_key().as_string()
+            key_type = KeyType.Bare
+        else:
+            self.inc()
+
+        return Key(key, key_type, "", dotted)
 
     def _parse_bare_key(self):  # type: () -> Key
         """
         Parses a bare key.
         """
+        key_type = None
+        dotted = False
+
         self.mark()
         while self._current.is_bare_key_char() and self.inc():
             pass
 
         key = self.extract()
 
-        return Key(key, sep="")
+        if self._current == ".":
+            self.inc()
+            dotted = True
+            key += "." + self._parse_key().as_string()
+            key_type = KeyType.Bare
+
+        return Key(key, key_type, "", dotted)
 
     def _parse_value(self):  # type: () -> Item
         """

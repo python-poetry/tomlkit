@@ -68,7 +68,7 @@ class Key:
     A key value.
     """
 
-    def __init__(self, k, t=None, sep=None):  # type: (str) -> None
+    def __init__(self, k, t=None, sep=None, dotted=False):  # type: (str) -> None
         if t is None:
             if any(
                 [c not in string.ascii_letters + string.digits + "-" + "_" for c in k]
@@ -83,10 +83,14 @@ class Key:
 
         self.sep = sep
         self.key = k
+        self._dotted = dotted
 
     @property
     def delimiter(self):  # type: () -> str
         return self.t.value
+
+    def is_dotted(self):  # type: () -> bool
+        return self._dotted
 
     def as_string(self):  # type: () -> str
         return "{}{}{}".format(self.delimiter, self.key, self.delimiter)
