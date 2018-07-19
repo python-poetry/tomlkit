@@ -154,6 +154,32 @@ def test_array_behaves_like_a_list():
     )
 
 
+def test_dicts_are_converted_to_tables():
+    t = item({"foo": {"bar": "baz"}})
+
+    assert (
+        t.as_string()
+        == """[foo]
+bar = "baz"
+"""
+    )
+
+
+def test_dicts_with_sub_dicts_are_properly_converted():
+    t = item({"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}})
+
+    assert (
+        t.as_string()
+        == """[foo]
+float = 3.14
+int = 34
+
+[foo.bar]
+string = "baz"
+"""
+    )
+
+
 def test_item_array_of_dicts_converted_to_aot():
     a = item({"foo": [{"bar": "baz"}]})
 

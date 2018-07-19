@@ -30,7 +30,7 @@ def item(value, _parent=None):
         return Float(value, Trivia(), str(value))
     elif isinstance(value, dict):
         val = Table(Container(), Trivia(), False)
-        for k, v in value.items():
+        for k, v in sorted(value.items(), key=lambda i: (isinstance(i[1], dict), i[0])):
             val[k] = item(v, _parent=val)
 
         return val
