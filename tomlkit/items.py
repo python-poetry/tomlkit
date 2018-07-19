@@ -35,17 +35,14 @@ def item(value, _parent=None):
 
         return val
     elif isinstance(value, list):
-        if value and isinstance(value[0], dict) and _parent is not None:
+        if value and isinstance(value[0], dict):
             a = AoT([])
         else:
             a = Array([], Trivia())
 
         for v in value:
             if isinstance(v, dict):
-                if _parent is not None:
-                    table = Table(Container(), Trivia(), True)
-                else:
-                    table = InlineTable(Container(), Trivia())
+                table = Table(Container(), Trivia(), True)
 
                 for k, _v in v.items():
                     i = item(_v)
