@@ -213,8 +213,9 @@ class Whitespace(Item):
     A whitespace literal.
     """
 
-    def __init__(self, s):  # type: (str) -> None
+    def __init__(self, s, fixed=False):  # type: (str, bool) -> None
         self._s = s
+        self._fixed = fixed
 
     @property
     def s(self):  # type: () -> str
@@ -231,6 +232,9 @@ class Whitespace(Item):
     @property
     def discriminant(self):  # type: () -> int
         return 0
+
+    def is_fixed(self):  # type: () -> bool
+        return self._fixed
 
     def as_string(self):  # type: () -> str
         return self._s

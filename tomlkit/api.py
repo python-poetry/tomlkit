@@ -128,7 +128,7 @@ def key_value(src):  # type: (str) -> Tuple[Key, _Item]
 
 
 def ws(src):  # type: (str) -> Whitespace
-    return Whitespace(src)
+    return Whitespace(src, fixed=True)
 
 
 def nl():  # type: () -> Whitespace

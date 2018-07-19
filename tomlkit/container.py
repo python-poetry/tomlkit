@@ -1,10 +1,12 @@
 from __future__ import unicode_literals
 
+from typing import Any
 from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 from ._compat import decode
 from .exceptions import KeyAlreadyPresent
@@ -15,8 +17,8 @@ from .items import Item
 from .items import Key
 from .items import Null
 from .items import Table
-from .items import Trivia
 from .items import Whitespace
+from .items import item as _item
 
 
 class Container(dict):
@@ -53,6 +55,16 @@ class Container(dict):
 
         return d
 
+    def parsing(self, parsing):  # type: (bool) -> None
+        self._parsed = parsing
+
+        for k, v in self._body:
+            if isinstance(v, Table):
+                v.value.parsing(parsing)
+            elif isinstance(v, AoT):
+                for t in v.body:
+                    t.value.parsing(parsing)
+
     def add(
         self, key, item=None
     ):  # type: (Union[Key, Item, str], Optional[Item]) -> Item
@@ -69,9 +81,7 @@ class Container(dict):
 
         return self.append(key, item)
 
-    def append(self, key, item):  # type: (Key, Item) -> None
-        from .api import item as _item
-
+    def append(self, key, item):  # type: (Key, Item) -> Item
         if not isinstance(key, Key) and key is not None:
             key = Key(key)
 
@@ -137,6 +147,33 @@ class Container(dict):
         if key is not None:
             super(Container, self).__setitem__(key.key, item.value)
 
+        is_table = isinstance(item, (Table, AoT))
+        if key is not None and self._body and not self._parsed:
+            # If there is already at least one table in the current container
+            # an the given item is not a table, we need to find the last
+            # item that is not a table and insert after it
+            # If not such item exists, insert at the top of the table
+            key_after = None
+            idx = 0
+            for k, v in self._body:
+                if isinstance(v, (Whitespace, Null)) and not v.is_fixed():
+                    continue
+
+                if not is_table and isinstance(v, (Table, AoT)):
+                    break
+
+                key_after = k or idx
+                idx += 1
+
+            if key_after is not None:
+                if isinstance(key_after, int):
+                    if key_after + 1 < len(self._body) - 1:
+                        return self._insert_at(key_after + 1, key, item)
+                else:
+                    return self._insert_after(key_after, key, item)
+            else:
+                return self._insert_at(0, key, item)
+
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
@@ -154,6 +191,85 @@ class Container(dict):
         self._body[idx] = (None, Null())
 
         super(Container, self).__delitem__(key.key)
+
+    def _insert_before(
+        self, key, other_key, item
+    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Item
+        if key is None:
+            raise ValueError("Key cannot be null in insert_before()")
+
+        if key not in self:
+            raise NonExistentKey(key)
+
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        if not isinstance(other_key, Key):
+            other_key = Key(other_key)
+
+        item = _item(item)
+
+        idx = self._map[key]
+
+        # Increment indices after the current index
+        for k, v in self._map.items():
+            if v >= idx:
+                self._map[k] = v + 1
+
+        self._map[other_key] = idx
+        self._body.insert(idx, (other_key, item))
+
+        return item
+
+    def _insert_after(
+        self, key, other_key, item
+    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Item
+        if key is None:
+            raise ValueError("Key cannot be null in insert_before()")
+
+        if key not in self:
+            raise NonExistentKey(key)
+
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        if not isinstance(other_key, Key):
+            other_key = Key(other_key)
+
+        item = _item(item)
+
+        idx = self._map[key]
+
+        # Increment indices after the current index
+        for k, v in self._map.items():
+            if v > idx:
+                self._map[k] = v + 1
+
+        self._map[other_key] = idx + 1
+        self._body.insert(idx + 1, (other_key, item))
+
+        return item
+
+    def _insert_at(
+        self, idx, key, item
+    ):  # type: (int, Union[str, Key], Union[Item, Any]) -> Item
+        if idx > len(self._body) - 1:
+            raise ValueError("Unable to insert at position {}".format(idx))
+
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        item = _item(item)
+
+        # Increment indices after the current index
+        for k, v in self._map.items():
+            if v >= idx:
+                self._map[k] = v + 1
+
+        self._map[key] = idx
+        self._body.insert(idx, (key, item))
+
+        return item
 
     def item(self, key):  # type: (Key) -> Item
         if not isinstance(key, Key):
@@ -323,8 +439,6 @@ class Container(dict):
         self._replace_at(idx, new_key, value)
 
     def _replace_at(self, idx, new_key, value):  # type: (int, Key, Item) -> None
-        from .api import item as _item
-
         k, v = self._body[idx]
 
         self._map[new_key] = self._map.pop(k)

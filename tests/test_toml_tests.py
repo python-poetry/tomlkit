@@ -1,7 +1,6 @@
 import json
 import pytest
 
-from tomlkit import dumps
 from tomlkit import parse
 from tomlkit._compat import decode
 from tomlkit._compat import unicode

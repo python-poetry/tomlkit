@@ -45,7 +45,3 @@ hosts = [
   name = "Nail"
   sku = 284758393
   color = "gray"
-
-float = 3.14
-date = 1979-05-27
-time = 07:32:00

@@ -60,9 +60,9 @@ def test_build_example(example):
         "just an update to make sure parsers support it"
     )
 
-    doc.add(nl())
-    doc.add(comment("Line breaks are OK when inside arrays"))
-    doc["hosts"] = array(
+    clients.add(nl())
+    clients.add(comment("Line breaks are OK when inside arrays"))
+    clients["hosts"] = array(
         """[
   "alpha",
   "omega"
@@ -86,11 +86,6 @@ def test_build_example(example):
 
     products.append(hammer)
     products.append(nail)
-
-    doc.add(nl())
-    doc["float"] = 3.14
-    doc["date"] = datetime.date(1979, 5, 27)
-    doc["time"] = datetime.time(7, 32)
 
     assert content == doc.as_string()
 

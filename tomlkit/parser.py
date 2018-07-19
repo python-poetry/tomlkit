@@ -175,9 +175,11 @@ class Parser:
 
             body.append(key, value)
 
+        body.parsing(False)
+
         return body
 
-    def _merge_ws(self, item, container):  # type: (Item, Container) -> bool:
+    def _merge_ws(self, item, container):  # type: (Item, Container) -> bool
         """
         Merges the given Item with the last one currently in the given Container if
         both are whitespace items.
@@ -556,7 +558,7 @@ class Parser:
             raise self.parse_error(MixedArrayTypesError)
         elif c == "{":
             # Inline table
-            elems = Container()
+            elems = Container(True)
             self.inc()
 
             while self._current != "}":

@@ -131,3 +131,23 @@ def test_toml_document_super_table_with_different_sub_sections(example):
 
     assert "poetry" in tool
     assert "black" in tool
+
+
+def test_adding_an_element_to_existing_table_with_ws_remove_ws():
+    content = """[foo]
+
+[foo.bar]
+
+"""
+
+    doc = parse(content)
+    doc["foo"]["int"] = 34
+
+    expected = """[foo]
+int = 34
+
+[foo.bar]
+
+"""
+
+    assert expected == doc.as_string()

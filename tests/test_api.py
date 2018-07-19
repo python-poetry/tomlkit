@@ -3,6 +3,10 @@ import pytest
 
 import tomlkit
 
+from datetime import date
+from datetime import datetime
+from datetime import time
+
 from tomlkit import dumps
 from tomlkit import loads
 from tomlkit import parse
@@ -23,6 +27,14 @@ from tomlkit.items import Time
 from tomlkit.toml_document import TOMLDocument
 
 
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime, date, time)):
+        return obj.isoformat()
+
+    raise TypeError("Type {} not serializable".format(type(obj)))
+
+
 @pytest.mark.parametrize(
     "example_name",
     ["example", "fruit", "hard", "sections_with_same_start", "pyproject", "0.5.0"],
@@ -36,7 +48,7 @@ def test_parse_can_parse_valid_toml_files(example, example_name):
 def test_parsed_document_are_properly_json_representable(
     example, json_example, example_name
 ):
-    doc = json.loads(json.dumps(parse(example(example_name))))
+    doc = json.loads(json.dumps(parse(example(example_name)), default=json_serial))
     json_doc = json.loads(json_example(example_name))
 
     assert doc == json_doc
