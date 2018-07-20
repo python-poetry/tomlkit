@@ -670,7 +670,6 @@ class Parser:
         return self._parse_string('"')
 
     def _parse_string(self, delim):  # type: (str) -> Item
-        # TODO: handle escaping
         multiline = False
         value = ""
 
@@ -707,7 +706,11 @@ class Parser:
         previous = None
         escaped = False
         while True:
-            if previous != "\\" and self._current == delim:
+            if (
+                previous != "\\"
+                or previous == "\\"
+                and (escaped or str_type.is_literal())
+            ) and self._current == delim:
                 val = self.extract()
 
                 if multiline:
