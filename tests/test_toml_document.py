@@ -151,3 +151,18 @@ int = 34
 """
 
     assert expected == doc.as_string()
+
+
+def test_document_with_aot_after_sub_tables():
+    content = """[foo.bar]
+name = "Bar"
+
+[foo.bar.baz]
+name = "Baz"
+
+[[foo.bar.tests]]
+name = "Test 1"
+"""
+
+    doc = parse(content)
+    assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"

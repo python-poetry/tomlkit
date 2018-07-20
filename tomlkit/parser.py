@@ -10,11 +10,11 @@ from copy import copy
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 from ._compat import PY2
 from ._compat import chr
 from ._compat import decode
-from ._compat import string_escape
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import EmptyKeyError
@@ -807,7 +807,7 @@ class Parser:
 
     def _parse_table(
         self, parent_name=None
-    ):  # type: (Optional[str]) -> Tuple[Key, Item]
+    ):  # type: (Optional[str]) -> Tuple[Key, Union[Table, AoT]]
         """
         Parses a table element.
         """
@@ -876,15 +876,15 @@ class Parser:
                 table = Table(
                     Container(True),
                     Trivia(indent, cws, comment, trail),
-                    is_aot and name_parts[0] in self._aot_stack,
+                    is_aot and name_parts[0].key in self._aot_stack,
                     is_super_table=True,
                     name=name_parts[0].key,
                 )
 
                 result = table
                 key = name_parts[0]
-                if is_aot and name_parts[0] not in self._aot_stack:
-                    self._aot_stack.append(name_parts[0])
+                if is_aot and name_parts[0].key not in self._aot_stack:
+                    self._aot_stack.append(name_parts[0].key)
 
                 for i, _name in enumerate(name_parts[1:]):
                     if _name in table:
@@ -906,8 +906,12 @@ class Parser:
 
                     table = child
                     values = table.value
-                    if is_aot and _name not in self._aot_stack:
-                        self._aot_stack.append(_name)
+                    if (
+                        is_aot
+                        and ".".join(str(n) for n in name_parts[1 : i + 1])
+                        not in self._aot_stack
+                    ):
+                        self._aot_stack.append(str(n) for n in name_parts[1 : i + 1])
         else:
             if name_parts:
                 key = name_parts[0]
@@ -937,23 +941,6 @@ class Parser:
                             key_next, table_next = self._parse_table(name)
 
                             values.append(key_next, table_next)
-                    elif self._is_child(name_next, name):
-                        # First [a.b.c] and later only [a] for instance
-                        break
-                    elif not result:
-                        table = Table(
-                            values,
-                            Trivia(indent, cws, comment, trail),
-                            is_aot,
-                            name=name,
-                            display_name=name,
-                        )
-
-                        result = table
-                        if is_aot and (
-                            not self._aot_stack or name != self._aot_stack[-1]
-                        ):
-                            result = self._parse_aot(table, name)
 
                     break
                 else:
@@ -970,6 +957,9 @@ class Parser:
                 name=name,
                 display_name=name,
             )
+
+            if is_aot and (not self._aot_stack or name != self._aot_stack[-1]):
+                result = self._parse_aot(result, name)
 
         return key, result
 
@@ -1008,7 +998,7 @@ class Parser:
 
         return is_aot, table_name
 
-    def _parse_aot(self, first, name_first):  # type: (Item, str) -> Item
+    def _parse_aot(self, first, name_first):  # type: (Table, str) -> AoT
         """
         Parses all siblings of the provided table first and bundles them into
         an AoT.

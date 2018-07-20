@@ -192,35 +192,6 @@ class Container(dict):
 
         super(Container, self).__delitem__(key.key)
 
-    def _insert_before(
-        self, key, other_key, item
-    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Item
-        if key is None:
-            raise ValueError("Key cannot be null in insert_before()")
-
-        if key not in self:
-            raise NonExistentKey(key)
-
-        if not isinstance(key, Key):
-            key = Key(key)
-
-        if not isinstance(other_key, Key):
-            other_key = Key(other_key)
-
-        item = _item(item)
-
-        idx = self._map[key]
-
-        # Increment indices after the current index
-        for k, v in self._map.items():
-            if v >= idx:
-                self._map[k] = v + 1
-
-        self._map[other_key] = idx
-        self._body.insert(idx, (other_key, item))
-
-        return item
-
     def _insert_after(
         self, key, other_key, item
     ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Item
