@@ -165,6 +165,23 @@ bar = "baz"
     )
 
 
+def test_dicts_are_converted_to_tables_and_sorted():
+    t = item({"foo": {"bar": "baz", "abc": 123, "baz": [{"c": 3, "b": 2, "a": 1}]}})
+
+    assert (
+        t.as_string()
+        == """[foo]
+abc = 123
+bar = "baz"
+
+[[foo.baz]]
+a = 1
+b = 2
+c = 3
+"""
+    )
+
+
 def test_dicts_with_sub_dicts_are_properly_converted():
     t = item({"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}})
 

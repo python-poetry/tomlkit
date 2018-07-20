@@ -44,7 +44,9 @@ def item(value, _parent=None):
             if isinstance(v, dict):
                 table = Table(Container(), Trivia(), True)
 
-                for k, _v in v.items():
+                for k, _v in sorted(
+                    v.items(), key=lambda i: (isinstance(i[1], dict), i[0])
+                ):
                     i = item(_v)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
