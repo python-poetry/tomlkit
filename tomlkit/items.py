@@ -413,15 +413,27 @@ class Bool(Item):
         return str(self._value).lower()
 
 
-class DateTime(Item):
+class DateTime(datetime, Item):
     """
     A datetime literal.
     """
 
-    def __init__(self, value, trivia, raw):  # type: (datetime, Trivia, str) -> None
+    def __new__(cls, value, *_):  # type: (datetime, ...) -> datetime
+        return datetime.__new__(
+            cls,
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            value.microsecond,
+            tzinfo=value.tzinfo,
+        )
+
+    def __init__(self, _, trivia, raw):  # type: (datetime, Trivia, str) -> None
         super(DateTime, self).__init__(trivia)
 
-        self._value = value
         self._raw = raw
 
     @property
@@ -430,21 +442,38 @@ class DateTime(Item):
 
     @property
     def value(self):  # type: () -> datetime
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return self._raw
 
+    def __add__(self, other):
+        result = super(DateTime, self).__add__(other)
 
-class Date(Item):
+        return self._new(result)
+
+    def __sub__(self, other):
+        result = super(DateTime, self).__sub__(other)
+
+        return self._new(result)
+
+    def _new(self, result):
+        raw = result.isoformat()
+
+        return DateTime(result, self._trivia, raw)
+
+
+class Date(date, Item):
     """
     A date literal.
     """
 
-    def __init__(self, value, trivia, raw):  # type: (date, Trivia, str) -> None
+    def __new__(cls, value, *_):  # type: (date, ...) -> date
+        return date.__new__(cls, value.year, value.month, value.day)
+
+    def __init__(self, _, trivia, raw):  # type: (date, Trivia, str) -> None
         super(Date, self).__init__(trivia)
 
-        self._value = value
         self._raw = raw
 
     @property
@@ -453,21 +482,40 @@ class Date(Item):
 
     @property
     def value(self):  # type: () -> date
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return self._raw
 
+    def __add__(self, other):
+        result = super(Date, self).__add__(other)
 
-class Time(Item):
+        return self._new(result)
+
+    def __sub__(self, other):
+        result = super(Date, self).__sub__(other)
+
+        return self._new(result)
+
+    def _new(self, result):
+        raw = result.isoformat()
+
+        return Date(result, self._trivia, raw)
+
+
+class Time(time, Item):
     """
     A time literal.
     """
 
-    def __init__(self, value, trivia, raw):  # type: (time, Trivia, str) -> None
+    def __new__(cls, value, *_):  # type: (time, ...) -> time
+        return time.__new__(
+            cls, value.hour, value.minute, value.second, value.microsecond
+        )
+
+    def __init__(self, _, trivia, raw):  # type: (time, Trivia, str) -> None
         super(Time, self).__init__(trivia)
 
-        self._value = value
         self._raw = raw
 
     @property
@@ -476,7 +524,7 @@ class Time(Item):
 
     @property
     def value(self):  # type: () -> time
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return self._raw

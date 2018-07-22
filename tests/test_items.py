@@ -1,6 +1,11 @@
 import math
 import pytest
 
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
+
 from tomlkit import parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
@@ -245,3 +250,50 @@ def test_floats_behave_like_floats():
     doc["float"] += 1
 
     assert doc.as_string() == "float = +35.12"
+
+
+def test_datetimes_behave_like_datetimes():
+    i = item(datetime(2018, 7, 22, 12, 34, 56))
+
+    assert i == datetime(2018, 7, 22, 12, 34, 56)
+    assert i.as_string() == "2018-07-22T12:34:56"
+
+    i += timedelta(days=1)
+    assert i == datetime(2018, 7, 23, 12, 34, 56)
+    assert i.as_string() == "2018-07-23T12:34:56"
+
+    i -= timedelta(days=2)
+    assert i == datetime(2018, 7, 21, 12, 34, 56)
+    assert i.as_string() == "2018-07-21T12:34:56"
+
+    doc = parse("dt = 2018-07-22T12:34:56-05:00")
+    doc["dt"] += timedelta(days=1)
+
+    assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
+
+
+def test_dates_behave_like_dates():
+    i = item(date(2018, 7, 22))
+
+    assert i == date(2018, 7, 22)
+    assert i.as_string() == "2018-07-22"
+
+    i += timedelta(days=1)
+    assert i == datetime(2018, 7, 23)
+    assert i.as_string() == "2018-07-23"
+
+    i -= timedelta(days=2)
+    assert i == date(2018, 7, 21)
+    assert i.as_string() == "2018-07-21"
+
+    doc = parse("dt = 2018-07-22 # Comment")
+    doc["dt"] += timedelta(days=1)
+
+    assert doc.as_string() == "dt = 2018-07-23 # Comment"
+
+
+def test_times_behave_like_times():
+    i = item(time(12, 34, 56))
+
+    assert i == time(12, 34, 56)
+    assert i.as_string() == "12:34:56"
