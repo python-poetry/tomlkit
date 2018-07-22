@@ -628,7 +628,7 @@ class Array(Item, list):
         return str(self)
 
 
-class Table(Item):
+class Table(Item, dict):
     """
     A table literal.
     """
@@ -751,7 +751,7 @@ class Table(Item):
         self.remove(key)
 
 
-class InlineTable(Item):
+class InlineTable(Item, dict):
     """
     An inline table literal.
     """
