@@ -595,7 +595,7 @@ class Parser:
             raw = self.extract()
 
             item = self._parse_number(raw, trivia)
-            if item:
+            if item is not None:
                 return item
 
             try:

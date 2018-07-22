@@ -263,16 +263,23 @@ class Comment(Item):
         return "{}{}".format(self._trivia.indent, decode(self._trivia.comment))
 
 
-class Integer(Item):
+class Integer(int, Item):
     """
     An integer literal.
     """
+
+    def __new__(cls, value, trivia, raw):  # type: (int, Trivia, str) -> Integer
+        return super(Integer, cls).__new__(cls, value)
 
     def __init__(self, value, trivia, raw):  # type: (int, Trivia, str) -> None
         super(Integer, self).__init__(trivia)
 
         self._value = value
         self._raw = raw
+        self._sign = False
+
+        if re.match("^[+\-]\d+$", raw):
+            self._sign = True
 
     @property
     def discriminant(self):  # type: () -> int
@@ -280,10 +287,45 @@ class Integer(Item):
 
     @property
     def value(self):  # type: () -> int
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return self._raw
+
+    def __add__(self, other):
+        result = super(Integer, self).__add__(other)
+
+        return self._new(result)
+
+    def __radd__(self, other):
+        result = super(Integer, self).__radd__(other)
+
+        if isinstance(other, Integer):
+            return self._new(result)
+
+        return result
+
+    def __sub__(self, other):
+        result = super(Integer, self).__sub__(other)
+
+        return self._new(result)
+
+    def __rsub__(self, other):
+        result = super(Integer, self).__rsub__(other)
+
+        if isinstance(other, Integer):
+            return self._new(result)
+
+        return result
+
+    def _new(self, result):
+        raw = str(result)
+
+        if self._sign:
+            sign = "+" if result >= 0 else "-"
+            raw = sign + raw
+
+        return Integer(result, self._trivia, raw)
 
 
 class Float(Item):

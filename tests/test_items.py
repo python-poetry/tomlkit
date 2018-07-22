@@ -4,7 +4,6 @@ import pytest
 from tomlkit import parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
-from tomlkit.items import AoT
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
@@ -206,3 +205,23 @@ def test_item_array_of_dicts_converted_to_aot():
 bar = "baz"
 """
     )
+
+
+def test_integers_behave_like_ints():
+    i = item(34)
+
+    assert i == 34
+    assert i.as_string() == "34"
+
+    i += 1
+    assert i == 35
+    assert i.as_string() == "35"
+
+    i -= 2
+    assert i == 33
+    assert i.as_string() == "33"
+
+    doc = parse("int = +34")
+    doc["int"] += 1
+
+    assert doc.as_string() == "int = +35"
