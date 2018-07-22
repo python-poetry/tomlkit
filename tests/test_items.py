@@ -297,3 +297,23 @@ def test_times_behave_like_times():
 
     assert i == time(12, 34, 56)
     assert i.as_string() == "12:34:56"
+
+
+def test_strings_behave_like_strs():
+    i = item("foo")
+
+    assert i == "foo"
+    assert i.as_string() == '"foo"'
+
+    i += " bar"
+    assert i == "foo bar"
+    assert i.as_string() == '"foo bar"'
+
+    i += " é"
+    assert i == "foo bar é"
+    assert i.as_string() == '"foo bar é"'
+
+    doc = parse('str = "foo" # Comment')
+    doc["str"] += " bar"
+
+    assert doc.as_string() == 'str = "foo bar" # Comment'

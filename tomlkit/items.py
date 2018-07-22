@@ -836,18 +836,20 @@ class InlineTable(Item, dict):
         self.remove(key)
 
 
-class String(Item):
+class String(Item, unicode):
     """
     A string literal.
     """
 
+    def __new__(cls, t, value, original, trivia):
+        return super(String, cls).__new__(cls, value)
+
     def __init__(
-        self, t, value, original, trivia
+        self, t, _, original, trivia
     ):  # type: (StringType, str, original, Trivia) -> None
         super(String, self).__init__(trivia)
 
         self._t = t
-        self._value = value
         self._original = original
 
     @property
@@ -856,10 +858,23 @@ class String(Item):
 
     @property
     def value(self):  # type: () -> str
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return "{}{}{}".format(self._t.value, decode(self._original), self._t.value)
+
+    def __add__(self, other):
+        result = super(String, self).__add__(other)
+
+        return self._new(result)
+
+    def __sub__(self, other):
+        result = super(String, self).__sub__(other)
+
+        return self._new(result)
+
+    def _new(self, result):
+        return String(self._t, result, result, self._trivia)
 
 
 class AoT(Item, list):
