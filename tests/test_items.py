@@ -225,3 +225,23 @@ def test_integers_behave_like_ints():
     doc["int"] += 1
 
     assert doc.as_string() == "int = +35"
+
+
+def test_floats_behave_like_floats():
+    i = item(34.12)
+
+    assert i == 34.12
+    assert i.as_string() == "34.12"
+
+    i += 1
+    assert i == 35.12
+    assert i.as_string() == "35.12"
+
+    i -= 2
+    assert i == 33.12
+    assert i.as_string() == "33.12"
+
+    doc = parse("float = +34.12")
+    doc["float"] += 1
+
+    assert doc.as_string() == "float = +35.12"

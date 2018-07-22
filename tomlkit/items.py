@@ -271,10 +271,9 @@ class Integer(int, Item):
     def __new__(cls, value, trivia, raw):  # type: (int, Trivia, str) -> Integer
         return super(Integer, cls).__new__(cls, value)
 
-    def __init__(self, value, trivia, raw):  # type: (int, Trivia, str) -> None
+    def __init__(self, _, trivia, raw):  # type: (int, Trivia, str) -> None
         super(Integer, self).__init__(trivia)
 
-        self._value = value
         self._raw = raw
         self._sign = False
 
@@ -328,16 +327,22 @@ class Integer(int, Item):
         return Integer(result, self._trivia, raw)
 
 
-class Float(Item):
+class Float(float, Item):
     """
     A float literal.
     """
 
-    def __init__(self, value, trivia, raw):  # type: (float, Trivia, str) -> None
+    def __new__(cls, value, trivia, raw):  # type: (float, Trivia, str) -> Integer
+        return super(Float, cls).__new__(cls, value)
+
+    def __init__(self, _, trivia, raw):  # type: (float, Trivia, str) -> None
         super(Float, self).__init__(trivia)
 
-        self._value = value
         self._raw = raw
+        self._sign = False
+
+        if re.match("^[+\-].+$", raw):
+            self._sign = True
 
     @property
     def discriminant(self):  # type: () -> int
@@ -345,10 +350,45 @@ class Float(Item):
 
     @property
     def value(self):  # type: () -> float
-        return self._value
+        return self
 
     def as_string(self):  # type: () -> str
         return self._raw
+
+    def __add__(self, other):
+        result = super(Float, self).__add__(other)
+
+        return self._new(result)
+
+    def __radd__(self, other):
+        result = super(Float, self).__radd__(other)
+
+        if isinstance(other, Float):
+            return self._new(result)
+
+        return result
+
+    def __sub__(self, other):
+        result = super(Float, self).__sub__(other)
+
+        return self._new(result)
+
+    def __rsub__(self, other):
+        result = super(Float, self).__rsub__(other)
+
+        if isinstance(other, Float):
+            return self._new(result)
+
+        return result
+
+    def _new(self, result):
+        raw = str(result)
+
+        if self._sign:
+            sign = "+" if result >= 0 else "-"
+            raw = sign + raw
+
+        return Float(result, self._trivia, raw)
 
 
 class Bool(Item):
