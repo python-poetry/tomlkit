@@ -18,8 +18,8 @@ from .items import Table
 from .items import Integer
 from .items import Trivia
 from .items import Whitespace
-from .items import item
 from .items import String
+from .items import item
 from .parser import Parser
 from .toml_document import TOMLDocument as _TOMLDocument
 from .items import Time
@@ -38,6 +38,9 @@ def dumps(data):  # type: (_TOMLDocument) -> str
     """
     Dumps a TOMLDocument into a string.
     """
+    if not isinstance(data, _TOMLDocument) and isinstance(data, dict):
+        data = item(data)
+
     return data.as_string()
 
 

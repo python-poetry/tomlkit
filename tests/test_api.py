@@ -98,6 +98,12 @@ def test_original_string_and_dumped_string_are_equal(example, example_name):
     assert content == dumps(parsed)
 
 
+def test_a_raw_dict_can_be_dumped():
+    s = dumps({"foo": "bar"})
+
+    assert s == 'foo = "bar"\n'
+
+
 def test_integer():
     i = tomlkit.integer("34")
 
