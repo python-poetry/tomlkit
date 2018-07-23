@@ -7,6 +7,9 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from enum import Enum
+from typing import Any
+from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 
@@ -202,12 +205,6 @@ class Item(object):
             self._trivia.indent = " " * indent
 
         return self
-
-    def __str__(self):  # type: () -> str
-        return str(self.value)
-
-    def __repr__(self):  # type: () -> str
-        return "<{} {}>".format(self.__class__.__name__, self.as_string())
 
 
 class Whitespace(Item):
@@ -650,6 +647,10 @@ class Table(Item, dict):
         self._is_aot_element = is_aot_element
         self._is_super_table = is_super_table
 
+        for k, v in self._value.body:
+            if k is not None:
+                super(Table, self).__setitem__(k.key, v)
+
     @property
     def value(self):  # type: () -> tomlkit.container.Container
         return self._value
@@ -659,7 +660,7 @@ class Table(Item, dict):
         return 9
 
     @property
-    def value(self):  # type: () -> dict
+    def value(self):  # type: () -> tomlkit.container.Container
         return self._value
 
     def add(self, key, item=None):  # type: (Key, Item) -> Item
@@ -679,6 +680,12 @@ class Table(Item, dict):
         """
         item = self._value.append(key, item)
 
+        if isinstance(key, Key):
+            key = key.key
+
+        if key is not None:
+            super(Table, self).__setitem__(key, self._value[key])
+
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
             return item
@@ -696,6 +703,12 @@ class Table(Item, dict):
 
     def remove(self, key):  # type: (Key) -> None
         self._value.remove(key)
+
+        if isinstance(key, Key):
+            key = key.key
+
+        if key is not None:
+            super(Table, self).__delitem__(key)
 
     def is_aot_element(self):  # type: () -> bool
         return self._is_aot_element
@@ -723,9 +736,6 @@ class Table(Item, dict):
 
         return self
 
-    def __repr__(self):  # type: () -> str
-        return "<Table>"
-
     def keys(self):  # type: () -> Generator[Key]
         for k in self._value.keys():
             yield k
@@ -744,11 +754,14 @@ class Table(Item, dict):
     def __getitem__(self, key):  # type: (Key) -> str
         return self._value[key]
 
-    def __setitem__(self, key, value):  # type: (Key, Item) -> str
+    def __setitem__(self, key, value):  # type: (Key, Item) -> None
         self.append(key, value)
 
-    def __delitem__(self, key):  # type: (Key) -> str
+    def __delitem__(self, key):  # type: (Key) -> None
         self.remove(key)
+
+    def __repr__(self):
+        return super(Table, self).__repr__()
 
 
 class InlineTable(Item, dict):
@@ -763,6 +776,10 @@ class InlineTable(Item, dict):
 
         self._value = value
 
+        for k, v in self._value.body:
+            if k is not None:
+                super(InlineTable, self).__setitem__(k.key, v)
+
     @property
     def discriminant(self):  # type: () -> int
         return 10
@@ -771,18 +788,35 @@ class InlineTable(Item, dict):
     def value(self):  # type: () -> Dict
         return self._value
 
-    def append(self, key, item):  # type: (Key, Item) -> None
+    def append(self, key, _item):  # type: (Key, Item) -> Item
         """
         Appends a (key, item) to the table.
         """
-        if not isinstance(item, (Whitespace, Comment)):
-            if not item.trivia.indent and len(self._value.body) > 0:
-                item.trivia.indent = " "
+        if not isinstance(_item, Item):
+            _item = item(_item)
 
-        return self._value.append(key, item)
+        if not isinstance(_item, (Whitespace, Comment)):
+            if not _item.trivia.indent and len(self._value) > 0:
+                _item.trivia.indent = " "
+
+        self._value.append(key, _item)
+
+        if isinstance(key, Key):
+            key = key.key
+
+        if key is not None:
+            super(InlineTable, self).__setitem__(key, _item)
+
+        return _item
 
     def remove(self, key):  # type: (Key) -> None
         self._value.remove(key)
+
+        if isinstance(key, Key):
+            key = key.key
+
+        if key is not None:
+            super(InlineTable, self).__delitem__(key)
 
     def as_string(self):  # type: () -> str
         buf = "{"
@@ -801,7 +835,7 @@ class InlineTable(Item, dict):
                 k.sep,
                 v.as_string(),
                 v.trivia.comment,
-                v.trivia.trail,
+                v.trivia.trail.replace("\n", ""),
             )
 
             if i != len(self._value.body) - 1:
@@ -829,14 +863,17 @@ class InlineTable(Item, dict):
     def __getitem__(self, key):  # type: (Key) -> str
         return self._value[key]
 
-    def __setitem__(self, key, value):  # type: (Key, Item) -> str
+    def __setitem__(self, key, value):  # type: (Key, Item) -> None
         self.append(key, value)
 
-    def __delitem__(self, key):  # type: (Key) -> str
+    def __delitem__(self, key):  # type: (Key) -> None
         self.remove(key)
 
+    def __repr__(self):
+        return super(InlineTable, self).__repr__()
 
-class String(Item, unicode):
+
+class String(unicode, Item):
     """
     A string literal.
     """

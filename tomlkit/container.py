@@ -12,6 +12,7 @@ from ._compat import decode
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
 from .items import AoT
+from .items import Bool
 from .items import Comment
 from .items import Item
 from .items import Key
@@ -156,7 +157,7 @@ class Container(dict):
             key_after = None
             idx = 0
             for k, v in self._body:
-                if isinstance(v, (Whitespace, Null)) and not v.is_fixed():
+                if isinstance(v, Whitespace) and not v.is_fixed():
                     continue
 
                 if not is_table and isinstance(v, (Table, AoT)):
@@ -383,9 +384,8 @@ class Container(dict):
             raise NonExistentKey(key)
 
         item = self._body[idx][1]
-        value = item.value
 
-        return value
+        return item.value
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         if key is not None and key in self:
