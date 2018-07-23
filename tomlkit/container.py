@@ -68,7 +68,7 @@ class Container(dict):
 
     def add(
         self, key, item=None
-    ):  # type: (Union[Key, Item, str], Optional[Item]) -> Item
+    ):  # type: (Union[Key, Item, str], Optional[Item]) -> Container
         """
         Adds an item to the current Container.
         """
@@ -82,7 +82,7 @@ class Container(dict):
 
         return self.append(key, item)
 
-    def append(self, key, item):  # type: (Key, Item) -> Item
+    def append(self, key, item):  # type: (Union[Key, str], Item) -> Container
         if not isinstance(key, Key) and key is not None:
             key = Key(key)
 
@@ -122,13 +122,13 @@ class Container(dict):
                     else:
                         current.append(item)
 
-                    return item
+                    return self
                 elif current.is_super_table():
                     if item.is_super_table():
                         for k, v in item.value.body:
                             current.append(k, v)
 
-                        return current
+                        return self
                 else:
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):
@@ -179,9 +179,9 @@ class Container(dict):
 
         self._body.append((key, item))
 
-        return item
+        return self
 
-    def remove(self, key):  # type: (Key) -> None
+    def remove(self, key):  # type: (Union[Key, str]) -> Container
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -193,9 +193,11 @@ class Container(dict):
 
         super(Container, self).__delitem__(key.key)
 
+        return self
+
     def _insert_after(
         self, key, other_key, item
-    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Item
+    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Container
         if key is None:
             raise ValueError("Key cannot be null in insert_before()")
 
@@ -220,11 +222,11 @@ class Container(dict):
         self._map[other_key] = idx + 1
         self._body.insert(idx + 1, (other_key, item))
 
-        return item
+        return self
 
     def _insert_at(
         self, idx, key, item
-    ):  # type: (int, Union[str, Key], Union[Item, Any]) -> Item
+    ):  # type: (int, Union[str, Key], Union[Item, Any]) -> Container
         if idx > len(self._body) - 1:
             raise ValueError("Unable to insert at position {}".format(idx))
 
@@ -241,9 +243,9 @@ class Container(dict):
         self._map[key] = idx
         self._body.insert(idx, (key, item))
 
-        return item
+        return self
 
-    def item(self, key):  # type: (Key) -> Item
+    def item(self, key):  # type: (Union[Key, str]) -> Item
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -348,7 +350,7 @@ class Container(dict):
 
     # Dictionary methods
 
-    def keys(self):  # type: () -> Generator[Key]
+    def keys(self):  # type: () -> Generator[str]
         for k, _ in self._body:
             if k is None:
                 continue
@@ -369,13 +371,13 @@ class Container(dict):
 
             yield k, v
 
-    def __contains__(self, key):  # type: (Key) -> bool
+    def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         if not isinstance(key, Key):
             key = Key(key)
 
         return key in self._map
 
-    def __getitem__(self, key):  # type: (Key) -> Item
+    def __getitem__(self, key):  # type: (Union[Key, str]) -> Item
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -396,7 +398,9 @@ class Container(dict):
     def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         self.remove(key)
 
-    def _replace(self, key, new_key, value):  # type: (Key, Key, Item) -> None
+    def _replace(
+        self, key, new_key, value
+    ):  # type: (Union[Key, str], Union[Key, str], Item) -> None
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -409,7 +413,9 @@ class Container(dict):
 
         self._replace_at(idx, new_key, value)
 
-    def _replace_at(self, idx, new_key, value):  # type: (int, Key, Item) -> None
+    def _replace_at(
+        self, idx, new_key, value
+    ):  # type: (int, Union[Key, str], Item) -> None
         k, v = self._body[idx]
 
         self._map[new_key] = self._map.pop(k)

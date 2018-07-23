@@ -12,6 +12,7 @@ from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
+from typing import Union
 
 
 from ._compat import PY2
@@ -189,7 +190,7 @@ class Item(object):
 
     # Helpers
 
-    def comment(self, comment):  # type: (str, bool) -> Item
+    def comment(self, comment):  # type: (str) -> Item
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -663,7 +664,7 @@ class Table(Item, dict):
     def value(self):  # type: () -> tomlkit.container.Container
         return self._value
 
-    def add(self, key, item=None):  # type: (Key, Item) -> Item
+    def add(self, key, item=None):  # type: (Union[Key, Item, str], Any) -> Item
         if item is None:
             if not isinstance(key, (Comment, Whitespace)):
                 raise ValueError(
@@ -674,34 +675,37 @@ class Table(Item, dict):
 
         return self.append(key, item)
 
-    def append(self, key, item):  # type: (Key, Item) -> Item
+    def append(self, key, _item):  # type: (Union[Key, str], Any) -> Table
         """
         Appends a (key, item) to the table.
         """
-        item = self._value.append(key, item)
+        if not isinstance(_item, Item):
+            _item = item(_item)
+
+        self._value.append(key, _item)
 
         if isinstance(key, Key):
             key = key.key
 
         if key is not None:
-            super(Table, self).__setitem__(key, self._value[key])
+            super(Table, self).__setitem__(key, _item)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
-            return item
+            return self
 
         indent = m.group(1)
 
-        if not isinstance(item, Whitespace):
-            m = re.match("(?s)^([^ ]*)(.*)$", item.trivia.indent)
+        if not isinstance(_item, Whitespace):
+            m = re.match("(?s)^([^ ]*)(.*)$", _item.trivia.indent)
             if not m:
-                item.trivia.indent = indent
+                _item.trivia.indent = indent
             else:
-                item.trivia.indent = m.group(1) + indent + m.group(2)
+                _item.trivia.indent = m.group(1) + indent + m.group(2)
 
-        return item
+        return self
 
-    def remove(self, key):  # type: (Key) -> None
+    def remove(self, key):  # type: (Union[Key, str]) -> Table
         self._value.remove(key)
 
         if isinstance(key, Key):
@@ -709,6 +713,8 @@ class Table(Item, dict):
 
         if key is not None:
             super(Table, self).__delitem__(key)
+
+        return self
 
     def is_aot_element(self):  # type: () -> bool
         return self._is_aot_element
@@ -736,7 +742,7 @@ class Table(Item, dict):
 
         return self
 
-    def keys(self):  # type: () -> Generator[Key]
+    def keys(self):  # type: () -> Generator[str]
         for k in self._value.keys():
             yield k
 
@@ -748,16 +754,16 @@ class Table(Item, dict):
         for k, v in self._value.items():
             yield k, v
 
-    def __contains__(self, key):  # type: (Key) -> bool
+    def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
 
-    def __getitem__(self, key):  # type: (Key) -> str
+    def __getitem__(self, key):  # type: (Union[Key, str]) -> Item
         return self._value[key]
 
-    def __setitem__(self, key, value):  # type: (Key, Item) -> None
+    def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         self.append(key, value)
 
-    def __delitem__(self, key):  # type: (Key) -> None
+    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         self.remove(key)
 
     def __repr__(self):
@@ -788,7 +794,7 @@ class InlineTable(Item, dict):
     def value(self):  # type: () -> Dict
         return self._value
 
-    def append(self, key, _item):  # type: (Key, Item) -> Item
+    def append(self, key, _item):  # type: (Union[Key, str], Any) -> InlineTable
         """
         Appends a (key, item) to the table.
         """
@@ -807,9 +813,9 @@ class InlineTable(Item, dict):
         if key is not None:
             super(InlineTable, self).__setitem__(key, _item)
 
-        return _item
+        return self
 
-    def remove(self, key):  # type: (Key) -> None
+    def remove(self, key):  # type: (Union[Key, str]) -> InlineTable
         self._value.remove(key)
 
         if isinstance(key, Key):
@@ -817,6 +823,8 @@ class InlineTable(Item, dict):
 
         if key is not None:
             super(InlineTable, self).__delitem__(key)
+
+        return self
 
     def as_string(self):  # type: () -> str
         buf = "{"
@@ -845,7 +853,7 @@ class InlineTable(Item, dict):
 
         return buf
 
-    def keys(self):  # type: () -> Generator[Key]
+    def keys(self):  # type: () -> Generator[str]
         for k in self._value.keys():
             yield k
 
@@ -857,16 +865,16 @@ class InlineTable(Item, dict):
         for k, v in self._value.items():
             yield k, v
 
-    def __contains__(self, key):  # type: (Key) -> bool
+    def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
 
-    def __getitem__(self, key):  # type: (Key) -> str
+    def __getitem__(self, key):  # type: (Union[Key, str]) -> Item
         return self._value[key]
 
-    def __setitem__(self, key, value):  # type: (Key, Item) -> None
+    def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         self.append(key, value)
 
-    def __delitem__(self, key):  # type: (Key) -> None
+    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         self.remove(key)
 
     def __repr__(self):

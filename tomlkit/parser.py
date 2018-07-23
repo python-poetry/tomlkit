@@ -152,7 +152,7 @@ class Parser:
                         if _name in table.value:
                             table = table.value.item(_name)
                         else:
-                            table = table.append(
+                            table.append(
                                 _name,
                                 Table(
                                     Container(True),
@@ -161,6 +161,8 @@ class Parser:
                                     is_super_table=i < len(names) - 2,
                                 ),
                             )
+
+                            table = table[_name]
             elif not self._merge_ws(value, body):
                 body.append(key, value)
 

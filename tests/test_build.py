@@ -26,8 +26,8 @@ def test_build_example(example):
     owner.add("name", "Tom Preston-Werner")
     owner.add("organization", "GitHub")
     owner.add("bio", "GitHub Cofounder & CEO\\nLikes tater tots and beer.")
-    dob = owner.add("dob", datetime.datetime(1979, 5, 27, 7, 32, tzinfo=_utc))
-    dob.comment("First class dates? Why not?")
+    owner.add("dob", datetime.datetime(1979, 5, 27, 7, 32, tzinfo=_utc))
+    owner["dob"].comment("First class dates? Why not?")
 
     doc.add("owner", owner)
 
@@ -41,23 +41,29 @@ def test_build_example(example):
 
     servers = table()
     servers.add(nl())
-    servers.add(
-        comment("You can indent as you please. Tabs or spaces. TOML don't care.")
-    ).indent(2).trivia.trail = ""
-    alpha = servers.append("alpha", table())
+    c = comment(
+        "You can indent as you please. Tabs or spaces. TOML don't care."
+    ).indent(2)
+    c.trivia.trail = ""
+    servers.add(c)
+    alpha = table()
+    servers.append("alpha", alpha)
     alpha.indent(2)
     alpha.add("ip", "10.0.0.1")
     alpha.add("dc", "eqdc10")
 
-    beta = servers.append("beta", table())
+    beta = table()
+    servers.append("beta", beta)
     beta.add("ip", "10.0.0.2")
     beta.add("dc", "eqdc10")
-    beta.add("country", "中国").comment("This should be parsed as UTF-8")
+    beta.add("country", "中国")
+    beta["country"].comment("This should be parsed as UTF-8")
     beta.indent(2)
 
     doc["servers"] = servers
 
-    clients = doc.add("clients", table())
+    clients = table()
+    doc.add("clients", clients)
     clients["data"] = item([["gamma", "delta"], [1, 2]]).comment(
         "just an update to make sure parsers support it"
     )

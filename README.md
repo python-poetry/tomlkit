@@ -119,8 +119,8 @@ It can be created with the following code:
 >>> owner.add("name", "Tom Preston-Werner")
 >>> owner.add("organization", "GitHub")
 >>> owner.add("bio", "GitHub Cofounder & CEO\\nLikes tater tots and beer.")
->>> dob = owner.add("dob", datetime(1979, 5, 27, 7, 32, tzinfo=utc))
->>> dob.comment("First class dates? Why not?")
+>>> owner.add("dob", datetime(1979, 5, 27, 7, 32, tzinfo=utc))
+>>> owner["dob"].comment("First class dates? Why not?")
 
 # Adding the table to the document
 >>> doc.add("owner", owner)
