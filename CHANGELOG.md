@@ -1,5 +1,21 @@
 # Change Log
 
+## [0.4.0] - 2018-07-23
+
+### Added
+
+- `dumps()` now also accepts a raw dictionary.
+
+### Changed
+
+- `add()`/`append()`/`remove()` now return the current `Container`/`Table` to provide a fluent interface.
+- Most items not behave like their native counterparts.
+
+### Fixed
+
+- Fixed potential new lines inside an inline table.
+
+
 ## [0.3.0] - 2018-07-20
 
 ### Changed
@@ -19,6 +35,7 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.3.0...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.4.0...master
+[0.4.0]: https://github.com/sdispater/tomlkit/releases/tag/0.4.0
 [0.3.0]: https://github.com/sdispater/tomlkit/releases/tag/0.3.0
 [0.2.0]: https://github.com/sdispater/tomlkit/releases/tag/0.2.0
