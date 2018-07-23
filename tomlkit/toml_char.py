@@ -8,7 +8,7 @@ class TOMLChar(unicode):
         super(TOMLChar, self).__init__()
 
         if len(self) > 1:
-            raise ValueError("A TOML character must me of length 1")
+            raise ValueError("A TOML character must be of length 1")
 
     def is_bare_key_char(self):  # type: () -> bool
         """
