@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed adding an element after another element without a new line.
+
+
 ## [0.4.0] - 2018-07-23
 
 ### Added
