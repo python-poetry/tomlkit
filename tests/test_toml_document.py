@@ -186,3 +186,16 @@ bar = 11
 """
 
     assert expected == doc.as_string()
+
+
+def test_toml_document_with_dotted_keys_inside_table(example):
+    content = example("0.5.0")
+
+    doc = parse(content)
+    t = doc["table"]
+
+    assert "a" in t
+
+    assert t["a"]["b"]["c"] == 1
+    assert t["a"]["b"]["d"] == 2
+    assert t["a"]["c"] == 3

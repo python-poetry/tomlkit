@@ -133,36 +133,7 @@ class Parser:
             key, value = item
             if key is not None and key.is_dotted():
                 # We actually have a table
-                names = tuple(self._split_table_name(key.key))
-                name = names[0]
-                name._dotted = True
-                if name in body:
-                    table = body.item(name)
-                else:
-                    table = Table(Container(True), Trivia(), False, is_super_table=True)
-                    body.append(name, table)
-
-                for i, _name in enumerate(names[1:]):
-                    if i == len(names) - 2:
-                        _name.sep = key.sep
-
-                        table.append(_name, value)
-                    else:
-                        _name._dotted = True
-                        if _name in table.value:
-                            table = table.value.item(_name)
-                        else:
-                            table.append(
-                                _name,
-                                Table(
-                                    Container(True),
-                                    Trivia(),
-                                    False,
-                                    is_super_table=i < len(names) - 2,
-                                ),
-                            )
-
-                            table = table[_name]
+                self._handle_dotted_key(body, key, value)
             elif not self._merge_ws(value, body):
                 body.append(key, value)
 
@@ -499,6 +470,40 @@ class Parser:
             key_type = KeyType.Bare
 
         return Key(key, key_type, "", dotted)
+
+    def _handle_dotted_key(
+        self, container, key, value
+    ):  # type: (Container, Key) -> None
+        names = tuple(self._split_table_name(key.key))
+        name = names[0]
+        name._dotted = True
+        if name in container:
+            table = container.item(name)
+        else:
+            table = Table(Container(True), Trivia(), False, is_super_table=True)
+            container.append(name, table)
+
+        for i, _name in enumerate(names[1:]):
+            if i == len(names) - 2:
+                _name.sep = key.sep
+
+                table.append(_name, value)
+            else:
+                _name._dotted = True
+                if _name in table.value:
+                    table = table.value.item(_name)
+                else:
+                    table.append(
+                        _name,
+                        Table(
+                            Container(True),
+                            Trivia(),
+                            False,
+                            is_super_table=i < len(names) - 2,
+                        ),
+                    )
+
+                    table = table[_name]
 
     def _parse_value(self):  # type: () -> Item
         """
@@ -926,7 +931,10 @@ class Parser:
             if item:
                 _key, item = item
                 if not self._merge_ws(item, values):
-                    values.append(_key, item)
+                    if _key is not None and _key.is_dotted():
+                        self._handle_dotted_key(values, _key, item)
+                    else:
+                        values.append(_key, item)
             else:
                 if self._current == "[":
                     is_aot_next, name_next = self._peek_table()

@@ -283,90 +283,150 @@ class Container(dict):
         s = ""
         for k, v in self._body:
             if k is not None:
-                if isinstance(v, Table):
-                    if v.is_super_table():
-                        if k.is_dotted():
-                            key = k.as_string()
-
-                            for _k, _v in v.value.body:
-                                if isinstance(_v, Table):
-                                    s += v.as_string(prefix=key)
-                                else:
-                                    _key = key
-                                    if prefix is not None:
-                                        _key = prefix + "." + _key
-
-                                    s += "{}{}{}{}{}{}{}".format(
-                                        _v.trivia.indent,
-                                        _key + "." + decode(_k.as_string()),
-                                        _k.sep,
-                                        decode(_v.as_string()),
-                                        _v.trivia.comment_ws,
-                                        decode(_v.trivia.comment),
-                                        _v.trivia.trail,
-                                    )
-                        else:
-                            s += v.as_string(prefix=k.as_string())
-
-                        continue
-
-                    if v.display_name is not None:
-                        key = v.display_name
-                    else:
-                        key = k.as_string()
-
-                        if prefix is not None:
-                            key = prefix + "." + key
-
-                    open_, close = "[", "]"
-                    if v.is_aot_element():
-                        open_, close = "[[", "]]"
-
-                    cur = "{}{}{}{}{}{}{}{}".format(
-                        v.trivia.indent,
-                        open_,
-                        decode(key),
-                        close,
-                        v.trivia.comment_ws,
-                        decode(v.trivia.comment),
-                        v.trivia.trail,
-                        v.as_string(prefix=key),
-                    )
-                elif isinstance(v, AoT):
+                if False:
                     key = k.as_string()
-                    if prefix is not None:
-                        key = prefix + "." + key
 
-                    cur = ""
-                    key = decode(key)
-                    for table in v.body:
-                        if table.is_super_table():
-                            cur += table.as_string(prefix=key)
+                    for _k, _v in v.value.body:
+                        if _k is None:
+                            s += v.as_string()
+                        elif isinstance(_v, Table):
+                            s += v.as_string(prefix=key)
                         else:
-                            cur += "{}[[{}]]{}{}{}".format(
-                                table.trivia.indent,
-                                key,
-                                table.trivia.comment_ws,
-                                decode(table.trivia.comment),
-                                table.trivia.trail,
-                            )
-                            cur += table.as_string(prefix=key)
-                else:
-                    cur = "{}{}{}{}{}{}{}".format(
-                        v.trivia.indent,
-                        decode(k.as_string()),
-                        k.sep,
-                        decode(v.as_string()),
-                        v.trivia.comment_ws,
-                        decode(v.trivia.comment),
-                        v.trivia.trail,
-                    )
-            else:
-                cur = v.as_string()
+                            _key = key
+                            if prefix is not None:
+                                _key = prefix + "." + _key
 
-            s += cur
+                            s += "{}{}{}{}{}{}{}".format(
+                                _v.trivia.indent,
+                                _key + "." + decode(_k.as_string()),
+                                _k.sep,
+                                decode(_v.as_string()),
+                                _v.trivia.comment_ws,
+                                decode(_v.trivia.comment),
+                                _v.trivia.trail,
+                            )
+                elif isinstance(v, Table):
+                    s += self._render_table(k, v)
+                elif isinstance(v, AoT):
+                    s += self._render_aot(k, v)
+                else:
+                    s += self._render_simple_item(k, v)
+            else:
+                s += self._render_simple_item(k, v)
 
         return s
+
+    def _render_table(
+        self, key, table, prefix=None
+    ):  # (Key, Table, Optional[str]) -> str
+        cur = ""
+
+        if table.display_name is not None:
+            _key = table.display_name
+        else:
+            _key = key.as_string()
+
+            if prefix is not None:
+                _key = prefix + "." + _key
+
+        if not table.is_super_table():
+            open_, close = "[", "]"
+            if table.is_aot_element():
+                open_, close = "[[", "]]"
+
+            cur += "{}{}{}{}{}{}{}".format(
+                table.trivia.indent,
+                open_,
+                decode(_key),
+                close,
+                table.trivia.comment_ws,
+                decode(table.trivia.comment),
+                table.trivia.trail,
+            )
+
+        for k, v in table.value.body:
+            if isinstance(v, Table):
+                if v.is_super_table():
+                    if k.is_dotted() and not key.is_dotted():
+                        # Dotted key inside table
+                        cur += self._render_table(k, v)
+                    else:
+                        cur += self._render_table(k, v, prefix=_key)
+                else:
+                    cur += self._render_table(k, v, prefix=_key)
+            elif isinstance(v, AoT):
+                cur += self._render_aot(k, v, prefix=_key)
+            else:
+                cur += self._render_simple_item(
+                    k, v, prefix=_key if key.is_dotted() else None
+                )
+
+        return cur
+
+    def _render_aot(self, key, aot, prefix=None):
+        _key = key.as_string()
+        if prefix is not None:
+            _key = prefix + "." + _key
+
+        cur = ""
+        _key = decode(_key)
+        for table in aot.body:
+            cur += self._render_aot_table(table, prefix=_key)
+
+        return cur
+
+    def _render_aot_table(self, table, prefix=None):  # (Table, Optional[str]) -> str
+        cur = ""
+
+        _key = prefix or ""
+
+        if not table.is_super_table():
+            open_, close = "[[", "]]"
+
+            cur += "{}{}{}{}{}{}{}".format(
+                table.trivia.indent,
+                open_,
+                decode(_key),
+                close,
+                table.trivia.comment_ws,
+                decode(table.trivia.comment),
+                table.trivia.trail,
+            )
+
+        for k, v in table.value.body:
+            if isinstance(v, Table):
+                if v.is_super_table():
+                    if k.is_dotted():
+                        # Dotted key inside table
+                        cur += self._render_table(k, v)
+                    else:
+                        cur += self._render_table(k, v, prefix=_key)
+                else:
+                    cur += self._render_table(k, v, prefix=_key)
+            elif isinstance(v, AoT):
+                cur += self._render_aot(k, v, prefix=_key)
+            else:
+                cur += self._render_simple_item(k, v)
+
+        return cur
+
+    def _render_simple_item(self, key, item, prefix=None):
+        if key is None:
+            return item.as_string()
+
+        _key = key.as_string()
+        if prefix is not None:
+            _key = prefix + "." + _key
+
+        return "{}{}{}{}{}{}{}".format(
+            item.trivia.indent,
+            decode(_key),
+            key.sep,
+            decode(item.as_string()),
+            item.trivia.comment_ws,
+            decode(item.trivia.comment),
+            item.trivia.trail,
+        )
 
     # Dictionary methods
 

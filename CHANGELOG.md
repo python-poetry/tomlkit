@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed adding an element after another element without a new line.
+- Fixed parsing of dotted keys inside tables.
 
 
 ## [0.4.0] - 2018-07-23

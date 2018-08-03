@@ -31,3 +31,9 @@ site."google.com" = true
 
 a.b.c = 1
 a.b.d = 2
+
+
+[table]
+a.b.c = 1
+a.b.d = 2
+a.c = 3
