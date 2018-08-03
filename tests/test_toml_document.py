@@ -166,3 +166,23 @@ name = "Test 1"
 
     doc = parse(content)
     assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"
+
+
+def test_inserting_after_element_with_no_new_line_adds_a_new_line():
+    doc = parse("foo = 10")
+    doc["bar"] = 11
+
+    expected = """foo = 10
+bar = 11
+"""
+
+    assert expected == doc.as_string()
+
+    doc = parse("# Comment")
+    doc["bar"] = 11
+
+    expected = """# Comment
+bar = 11
+"""
+
+    assert expected == doc.as_string()

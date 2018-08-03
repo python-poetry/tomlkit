@@ -170,6 +170,14 @@ class Container(dict):
                 if isinstance(key_after, int):
                     if key_after + 1 < len(self._body) - 1:
                         return self._insert_at(key_after + 1, key, item)
+                    else:
+                        previous_item = self._body[-1][1]
+                        if (
+                            not isinstance(previous_item, Whitespace)
+                            and not is_table
+                            and "\n" not in previous_item.trivia.trail
+                        ):
+                            previous_item.trivia.trail += "\n"
                 else:
                     return self._insert_after(key_after, key, item)
             else:
@@ -199,7 +207,7 @@ class Container(dict):
         self, key, other_key, item
     ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Container
         if key is None:
-            raise ValueError("Key cannot be null in insert_before()")
+            raise ValueError("Key cannot be null in insert_after()")
 
         if key not in self:
             raise NonExistentKey(key)
@@ -213,6 +221,9 @@ class Container(dict):
         item = _item(item)
 
         idx = self._map[key]
+        current_item = self._body[idx][1]
+        if "\n" not in current_item.trivia.trail:
+            current_item.trivia.trail += "\n"
 
         # Increment indices after the current index
         for k, v in self._map.items():
@@ -234,6 +245,15 @@ class Container(dict):
             key = Key(key)
 
         item = _item(item)
+
+        if idx > 0:
+            previous_item = self._body[idx - 1][1]
+            if (
+                not isinstance(previous_item, Whitespace)
+                and not isinstance(item, (AoT, Table))
+                and "\n" not in previous_item.trivia.trail
+            ):
+                previous_item.trivia.trail += "\n"
 
         # Increment indices after the current index
         for k, v in self._map.items():
