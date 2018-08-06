@@ -893,8 +893,6 @@ class Parser:
 
                 result = table
                 key = name_parts[0]
-                if is_aot and name_parts[0].key not in self._aot_stack:
-                    self._aot_stack.append(name_parts[0].key)
 
                 for i, _name in enumerate(name_parts[1:]):
                     if _name in table:
@@ -916,12 +914,6 @@ class Parser:
 
                     table = child
                     values = table.value
-                    if (
-                        is_aot
-                        and ".".join(str(n) for n in name_parts[1 : i + 1])
-                        not in self._aot_stack
-                    ):
-                        self._aot_stack.append(str(n) for n in name_parts[1 : i + 1])
         else:
             if name_parts:
                 key = name_parts[0]
@@ -990,7 +982,7 @@ class Parser:
 
         if self._current != "[":
             raise self.parse_error(
-                InternalParserError, ("_peek_table() entered on non-bracket character")
+                InternalParserError, ("_peek_table() entered on non-bracket character",)
             )
 
         # AoT

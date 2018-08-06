@@ -199,3 +199,18 @@ def test_toml_document_with_dotted_keys_inside_table(example):
     assert t["a"]["b"]["c"] == 1
     assert t["a"]["b"]["d"] == 2
     assert t["a"]["c"] == 3
+
+
+def test_toml_document_with_super_aot_after_super_table(example):
+    content = example("pyproject")
+
+    doc = parse(content)
+    aot = doc["tool"]["foo"]
+
+    assert isinstance(aot, list)
+
+    first = aot[0]
+    assert first["name"] == "first"
+
+    second = aot[1]
+    assert second["name"] == "second"

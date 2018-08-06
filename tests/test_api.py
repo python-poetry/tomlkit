@@ -52,7 +52,7 @@ def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(loads(example(example_name)), TOMLDocument)
 
 
-@pytest.mark.parametrize("example_name", ["0.5.0"])
+@pytest.mark.parametrize("example_name", ["0.5.0", "pyproject"])
 def test_parsed_document_are_properly_json_representable(
     example, json_example, example_name
 ):

@@ -78,3 +78,19 @@ exclude = '''
   | tests/toml-test
 )/
 '''
+
+[[tool.foo]]
+name = 'first'
+
+[[tool.foo]]
+name = 'second'
+
+  # CS
+  [[tool.foo]]
+  name = 'third'
+
+[[tool.foo]]
+name = 'fourth'
+
+[[tool.bar]]
+foo = "bar"

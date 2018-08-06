@@ -132,21 +132,15 @@ class Container(dict):
                 else:
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):
-                if not isinstance(current, Table):
+                if not isinstance(current, AoT):
                     raise KeyAlreadyPresent(key)
 
-                if not current.is_super_table():
-                    raise KeyAlreadyPresent(key)
+                for table in item.body:
+                    current.append(table)
 
-                item_table = item.body[0]
-
-                if not item_table.is_super_table():
-                    raise KeyAlreadyPresent(key)
+                return self
             else:
                 raise KeyAlreadyPresent(key)
-
-        if key is not None:
-            super(Container, self).__setitem__(key.key, item.value)
 
         is_table = isinstance(item, (Table, AoT))
         if key is not None and self._body and not self._parsed:
@@ -186,6 +180,9 @@ class Container(dict):
         self._map[key] = len(self._body)
 
         self._body.append((key, item))
+
+        if key is not None:
+            super(Container, self).__setitem__(key.key, item.value)
 
         return self
 
@@ -233,6 +230,9 @@ class Container(dict):
         self._map[other_key] = idx + 1
         self._body.insert(idx + 1, (other_key, item))
 
+        if key is not None:
+            super(Container, self).__setitem__(other_key.key, item.value)
+
         return self
 
     def _insert_at(
@@ -262,6 +262,9 @@ class Container(dict):
 
         self._map[key] = idx
         self._body.insert(idx, (key, item))
+
+        if key is not None:
+            super(Container, self).__setitem__(key.key, item.value)
 
         return self
 
