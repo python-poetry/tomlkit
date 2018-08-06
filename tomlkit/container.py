@@ -151,6 +151,10 @@ class Container(dict):
             key_after = None
             idx = 0
             for k, v in self._body:
+                if isinstance(v, Null):
+                    # This happens only after deletion
+                    continue
+
                 if isinstance(v, Whitespace) and not v.is_fixed():
                     continue
 

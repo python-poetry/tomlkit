@@ -188,6 +188,18 @@ bar = 11
     assert expected == doc.as_string()
 
 
+def test_inserting_after_deletion():
+    doc = parse("foo = 10\n")
+    del doc["foo"]
+
+    doc["bar"] = 11
+
+    expected = """bar = 11
+"""
+
+    assert expected == doc.as_string()
+
+
 def test_toml_document_with_dotted_keys_inside_table(example):
     content = example("0.5.0")
 
