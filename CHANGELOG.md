@@ -2,6 +2,8 @@
 
 ## [0.4.2] - 2018-08-06
 
+### Fixed
+
 - Fixed insertion of an element after deletion.
 
 
