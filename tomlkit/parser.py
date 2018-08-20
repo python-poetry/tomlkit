@@ -15,6 +15,7 @@ from typing import Union
 from ._compat import PY2
 from ._compat import chr
 from ._compat import decode
+from ._utils import _escaped
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import EmptyKeyError
@@ -740,15 +741,6 @@ class Parser:
 
                 return String(str_type, value, val, Trivia())
             else:
-                escape_vals = {
-                    "b": "\b",
-                    "t": "\t",
-                    "n": "\n",
-                    "f": "\f",
-                    "r": "\r",
-                    "\\": "\\",
-                    '"': '"',
-                }
                 if previous == "\\" and self._current.is_ws() and multiline:
                     while self._current.is_ws():
                         previous = self._current
@@ -772,10 +764,10 @@ class Parser:
                             raise self.parse_error(UnexpectedEofError)
 
                         continue
-                    elif self._current in escape_vals and not escaped:
+                    elif self._current in _escaped and not escaped:
                         if not str_type.is_literal():
                             value = value[:-1]
-                            value += escape_vals[self._current]
+                            value += _escaped[self._current]
                         else:
                             value += self._current
                     elif self._current in {"u", "U"} and not escaped:

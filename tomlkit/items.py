@@ -18,6 +18,7 @@ from typing import Union
 from ._compat import PY2
 from ._compat import decode
 from ._compat import unicode
+from ._utils import escape_string
 
 
 def item(value, _parent=None):
@@ -63,7 +64,7 @@ def item(value, _parent=None):
 
         return a
     elif isinstance(value, (str, unicode)):
-        escaped = decode(value).replace('"', '\\"').replace("\\\\", "\\")
+        escaped = escape_string(value)
 
         return String(StringType.SLB, value, escaped, Trivia())
     elif isinstance(value, datetime):

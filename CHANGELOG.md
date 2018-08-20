@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed handling of characters that need escaping when inserting/modifying a string element.
+
+
 ## [0.4.2] - 2018-08-06
 
 ### Fixed

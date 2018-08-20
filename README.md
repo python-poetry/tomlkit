@@ -118,7 +118,7 @@ It can be created with the following code:
 >>> owner = table()
 >>> owner.add("name", "Tom Preston-Werner")
 >>> owner.add("organization", "GitHub")
->>> owner.add("bio", "GitHub Cofounder & CEO\\nLikes tater tots and beer.")
+>>> owner.add("bio", "GitHub Cofounder & CEO\nLikes tater tots and beer.")
 >>> owner.add("dob", datetime(1979, 5, 27, 7, 32, tzinfo=utc))
 >>> owner["dob"].comment("First class dates? Why not?")
 
