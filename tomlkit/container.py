@@ -145,9 +145,9 @@ class Container(dict):
         is_table = isinstance(item, (Table, AoT))
         if key is not None and self._body and not self._parsed:
             # If there is already at least one table in the current container
-            # an the given item is not a table, we need to find the last
+            # and the given item is not a table, we need to find the last
             # item that is not a table and insert after it
-            # If not such item exists, insert at the top of the table
+            # If no such item exists, insert at the top of the table
             key_after = None
             idx = 0
             for k, v in self._body:
@@ -341,7 +341,7 @@ class Container(dict):
             if table.is_aot_element():
                 open_, close = "[[", "]]"
 
-            cur += "{}{}{}{}{}{}{}".format(
+            cur += "{}{}{}{}{}{}{}{}".format(
                 table.trivia.indent,
                 open_,
                 decode(_key),
@@ -349,6 +349,7 @@ class Container(dict):
                 table.trivia.comment_ws,
                 decode(table.trivia.comment),
                 table.trivia.trail,
+                "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else "",
             )
 
         for k, v in table.value.body:

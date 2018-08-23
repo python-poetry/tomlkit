@@ -226,3 +226,22 @@ def test_toml_document_with_super_aot_after_super_table(example):
 
     second = aot[1]
     assert second["name"] == "second"
+
+
+def test_toml_document_has_always_a_new_line_after_table_header():
+    content = """[section.sub]"""
+
+    doc = parse(content)
+    assert doc.as_string() == """[section.sub]"""
+
+    doc["section"]["sub"]["foo"] = "bar"
+    assert (
+        doc.as_string()
+        == """[section.sub]
+foo = "bar"
+"""
+    )
+
+    del doc["section"]["sub"]["foo"]
+
+    assert doc.as_string() == """[section.sub]"""

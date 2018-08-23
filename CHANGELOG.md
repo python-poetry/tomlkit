@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed handling of characters that need escaping when inserting/modifying a string element.
+- Fixed missing newline after table header.
 
 
 ## [0.4.2] - 2018-08-06
