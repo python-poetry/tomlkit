@@ -459,6 +459,10 @@ class Container(dict):
 
             yield k, v
 
+    def update(self, other):  # type: (Dict) -> None
+        for k, v in other.items():
+            self[k] = v
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         if not isinstance(key, Key):
             key = Key(key)

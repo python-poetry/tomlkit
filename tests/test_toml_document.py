@@ -77,6 +77,28 @@ def test_document_is_a_dict(example):
     assert doc["products"][1]["color"] == "black"
     assert nail.get("color") == "black"
 
+    content = """foo = "bar"
+"""
+
+    doc = parse(content)
+    doc.update({"bar": "baz"})
+
+    assert (
+        doc.as_string()
+        == """foo = "bar"
+bar = "baz"
+"""
+    )
+
+    doc.update({"bar": "boom"})
+
+    assert (
+        doc.as_string()
+        == """foo = "bar"
+bar = "boom"
+"""
+    )
+
 
 def test_toml_document_without_super_tables():
     content = """[tool.poetry]

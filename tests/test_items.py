@@ -320,3 +320,31 @@ def test_strings_behave_like_strs():
     doc["str"] += " bar"
 
     assert doc.as_string() == 'str = "foo bar" # Comment'
+
+
+def test_tables_behave_like_dicts():
+    t = item({"foo": "bar"})
+
+    assert (
+        t.as_string()
+        == """foo = "bar"
+"""
+    )
+
+    t.update({"bar": "baz"})
+
+    assert (
+        t.as_string()
+        == """foo = "bar"
+bar = "baz"
+"""
+    )
+
+    t.update({"bar": "boom"})
+
+    assert (
+        t.as_string()
+        == """foo = "bar"
+bar = "boom"
+"""
+    )
