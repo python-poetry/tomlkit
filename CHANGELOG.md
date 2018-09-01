@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed performances issues while parsing on Python 2.7.
+
+
 ## [0.4.3] - 2018-08-28
 
 ### Fixed

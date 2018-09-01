@@ -291,19 +291,20 @@ class Parser:
 
     def _save_idx(self):  # type: () -> Tuple[Iterator, int, str]
         if PY2:
-            return itertools.tee(self._chars)[1], self._idx, self._current
+            # Python 2.7 does not allow to directly copy
+            # an iterator, so we have to make tees of the original
+            # chars iterator.
+            chars1, chars2 = itertools.tee(self._chars)
+
+            # We can no longer use the original chars iterator.
+            self._chars = chars1
+
+            return chars2, self._idx, self._current
 
         return copy(self._chars), self._idx, self._current
 
     def _restore_idx(self, chars, idx, current):  # type: (Iterator, int, str) -> None
-        if PY2:
-            self._chars = iter(
-                [(i + idx, TOMLChar(c)) for i, c in enumerate(self._src[idx:])]
-            )
-            next(self._chars)
-        else:
-            self._chars = chars
-
+        self._chars = chars
         self._idx = idx
         self._current = current
 
