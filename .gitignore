@@ -30,6 +30,7 @@ MANIFEST.in
 /setup.py
 /docs/site/*
 pyproject.lock
+poetry.lock
 /tests/fixtures/simple_project/setup.py
 .mypy_cache
 benchmark.py
