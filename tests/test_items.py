@@ -24,6 +24,15 @@ from tomlkit.items import item
 from tomlkit.parser import Parser
 
 
+def test_key_comparison():
+    k = Key("foo")
+
+    assert k == Key("foo")
+    assert k == "foo"
+    assert k != "bar"
+    assert k != 5
+
+
 def test_items_can_be_appended_to_and_removed_from_a_table():
     string = """[table]
 """

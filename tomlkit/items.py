@@ -161,7 +161,10 @@ class Key:
         return hash(self.key)
 
     def __eq__(self, other):  # type: (Key) -> bool
-        return self.key == other.key
+        if isinstance(other, Key):
+            return self.key == other.key
+
+        return self.key == other
 
     def __str__(self):  # type: () -> str
         return self.as_string()
