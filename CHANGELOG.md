@@ -1,5 +1,13 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed trailing commas not raising an error for key/value.
+- Fixed key comparison.
+
+
 ## [0.4.4] - 2018-09-01
 
 ### Fixed
