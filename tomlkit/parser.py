@@ -340,7 +340,7 @@ class Parser:
                 self.mark()
 
                 break
-            elif c in " \t\r,":
+            elif c in " \t\r":
                 self.inc()
             else:
                 raise self.parse_error(UnexpectedCharError, (c))

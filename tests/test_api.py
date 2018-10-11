@@ -70,6 +70,7 @@ def test_parsed_document_are_properly_json_representable(
         ("array_with_invalid_chars", UnexpectedCharError),
         ("mixed_array_types", MixedArrayTypesError),
         ("invalid_number", InvalidNumberOrDateError),
+        ("trailing_comma", UnexpectedCharError),
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(
