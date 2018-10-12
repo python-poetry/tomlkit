@@ -291,7 +291,7 @@ class Integer(int, Item):
         self._raw = raw
         self._sign = False
 
-        if re.match("^[+\-]\d+$", raw):
+        if re.match(r"^[+\-]\d+$", raw):
             self._sign = True
 
     @property
@@ -358,7 +358,7 @@ class Float(float, Item):
         self._raw = raw
         self._sign = False
 
-        if re.match("^[+\-].+$", raw):
+        if re.match(r"^[+\-].+$", raw):
             self._sign = True
 
     @property
