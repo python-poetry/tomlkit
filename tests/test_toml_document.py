@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import pickle
+
 from datetime import datetime
 
 from tomlkit import parse
@@ -267,3 +269,10 @@ foo = "bar"
     del doc["section"]["sub"]["foo"]
 
     assert doc.as_string() == """[section.sub]"""
+
+
+def test_toml_document_is_pickable(example):
+    content = example("example")
+
+    doc = parse(content)
+    assert pickle.loads(pickle.dumps(doc)).as_string() == content

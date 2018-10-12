@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import math
+import pickle
 import pytest
 
 from datetime import date
@@ -9,6 +10,7 @@ from datetime import datetime
 from datetime import time
 from datetime import timedelta
 
+from tomlkit import inline_table
 from tomlkit import parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
@@ -357,3 +359,61 @@ bar = "baz"
 bar = "boom"
 """
     )
+
+
+def test_items_are_pickable():
+    n = item(12)
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "12"
+
+    n = item(12.34)
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "12.34"
+
+    n = item(True)
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "true"
+
+    n = item(datetime(2018, 10, 11, 12, 34, 56, 123456))
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "2018-10-11T12:34:56.123456"
+
+    n = item(date(2018, 10, 11))
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "2018-10-11"
+
+    n = item(time(12, 34, 56, 123456))
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "12:34:56.123456"
+
+    n = item([1, 2, 3])
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == "[1, 2, 3]"
+
+    n = item({"foo": "bar"})
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == 'foo = "bar"\n'
+
+    n = inline_table()
+    n["foo"] = "bar"
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == '{foo = "bar"}'
+
+    n = item("foo")
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == '"foo"'
+
+    n = item([{"foo": "bar"}])
+
+    s = pickle.dumps(n)
+    assert pickle.loads(s).as_string() == 'foo = "bar"\n'

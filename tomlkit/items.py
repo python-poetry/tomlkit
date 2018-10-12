@@ -211,6 +211,15 @@ class Item(object):
 
         return self
 
+    def _getstate(self, protocol=3):
+        return (self._trivia,)
+
+    def __reduce__(self):
+        return self.__reduce_ex__(2)
+
+    def __reduce_ex__(self, protocol):
+        return self.__class__, self._getstate(protocol)
+
 
 class Whitespace(Item):
     """
@@ -245,6 +254,9 @@ class Whitespace(Item):
 
     def __repr__(self):  # type: () -> str
         return "<{} {}>".format(self.__class__.__name__, repr(self._s))
+
+    def _getstate(self, protocol=3):
+        return self._s, self._fixed
 
 
 class Comment(Item):
@@ -328,6 +340,9 @@ class Integer(int, Item):
 
         return Integer(result, self._trivia, raw)
 
+    def _getstate(self, protocol=3):
+        return int(self), self._trivia, self._raw
+
 
 class Float(float, Item):
     """
@@ -392,6 +407,9 @@ class Float(float, Item):
 
         return Float(result, self._trivia, raw)
 
+    def _getstate(self, protocol=3):
+        return float(self), self._trivia, self._raw
+
 
 class Bool(Item):
     """
@@ -414,13 +432,16 @@ class Bool(Item):
     def as_string(self):  # type: () -> str
         return str(self._value).lower()
 
+    def _getstate(self, protocol=3):
+        return self._value, self._trivia
 
-class DateTime(datetime, Item):
+
+class DateTime(Item, datetime):
     """
     A datetime literal.
     """
 
-    def __new__(cls, value, *_):  # type: (datetime, ...) -> datetime
+    def __new__(cls, value, *_):  # type: (..., datetime, ...) -> datetime
         return datetime.__new__(
             cls,
             value.year,
@@ -464,13 +485,29 @@ class DateTime(datetime, Item):
 
         return DateTime(result, self._trivia, raw)
 
+    def _getstate(self, protocol=3):
+        return (
+            datetime(
+                self.year,
+                self.month,
+                self.day,
+                self.hour,
+                self.minute,
+                self.second,
+                self.microsecond,
+                self.tzinfo,
+            ),
+            self._trivia,
+            self._raw,
+        )
 
-class Date(date, Item):
+
+class Date(Item, date):
     """
     A date literal.
     """
 
-    def __new__(cls, value, *_):  # type: (date, ...) -> date
+    def __new__(cls, value, *_):  # type: (..., date, ...) -> date
         return date.__new__(cls, value.year, value.month, value.day)
 
     def __init__(self, _, trivia, raw):  # type: (date, Trivia, str) -> None
@@ -504,8 +541,11 @@ class Date(date, Item):
 
         return Date(result, self._trivia, raw)
 
+    def _getstate(self, protocol=3):
+        return (datetime(self.year, self.month, self.day), self._trivia, self._raw)
 
-class Time(time, Item):
+
+class Time(Item, time):
     """
     A time literal.
     """
@@ -530,6 +570,13 @@ class Time(time, Item):
 
     def as_string(self):  # type: () -> str
         return self._raw
+
+    def _getstate(self, protocol=3):
+        return (
+            time(self.hour, self.minute, self.second, self.microsecond, self.tzinfo),
+            self._trivia,
+            self._raw,
+        )
 
 
 class Array(Item, list):
@@ -629,6 +676,9 @@ class Array(Item, list):
     def __repr__(self):
         return str(self)
 
+    def _getstate(self, protocol=3):
+        return self._value, self._trivia
+
 
 class Table(Item, dict):
     """
@@ -643,7 +693,7 @@ class Table(Item, dict):
         is_super_table=False,
         name=None,
         display_name=None,
-    ):  # type: (tomlkit.container.Container, Trivia, bool) -> None
+    ):  # type: (tomlkit.container.Container, Trivia, bool, ...) -> None
         super(Table, self).__init__(trivia)
 
         self.name = name
@@ -796,6 +846,16 @@ class Table(Item, dict):
     def __repr__(self):
         return super(Table, self).__repr__()
 
+    def _getstate(self, protocol=3):
+        return (
+            self._value,
+            self._trivia,
+            self._is_aot_element,
+            self._is_super_table,
+            self.name,
+            self.display_name,
+        )
+
 
 class InlineTable(Item, dict):
     """
@@ -930,6 +990,9 @@ class InlineTable(Item, dict):
     def __repr__(self):
         return super(InlineTable, self).__repr__()
 
+    def _getstate(self, protocol=3):
+        return (self._value, self._trivia)
+
 
 class String(unicode, Item):
     """
@@ -971,6 +1034,9 @@ class String(unicode, Item):
     def _new(self, result):
         return String(self._t, result, result, self._trivia)
 
+    def _getstate(self, protocol=3):
+        return self._t, unicode(self), self._original, self._trivia
+
 
 class AoT(Item, list):
     """
@@ -980,7 +1046,7 @@ class AoT(Item, list):
     def __init__(
         self, body, name=None, parsed=False
     ):  # type: (List[Table], Optional[str]) -> None
-        self.name = None
+        self.name = name
         self._body = []
         self._parsed = parsed
 
@@ -1031,6 +1097,9 @@ class AoT(Item, list):
     def __repr__(self):  # type: () -> str
         return "<AoT {}>".format(self.value)
 
+    def _getstate(self, protocol=3):
+        return self._body, self.name, self._parsed
+
 
 class Null(Item):
     """
@@ -1050,3 +1119,6 @@ class Null(Item):
 
     def as_string(self):  # type: () -> str
         return ""
+
+    def _getstate(self, protocol=3):
+        return tuple()

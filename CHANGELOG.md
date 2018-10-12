@@ -6,6 +6,7 @@
 
 - Fixed trailing commas not raising an error for key/value.
 - Fixed key comparison.
+- Fixed an error when using pickle on TOML documents.
 
 
 ## [0.4.4] - 2018-09-01
