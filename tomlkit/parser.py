@@ -49,6 +49,65 @@ from .toml_char import TOMLChar
 from .toml_document import TOMLDocument
 
 
+class _State:
+    def __init__(self, parser, marker=False):  # type: (Parser, Optional[bool]) -> None
+        self.parser = parser
+        self.save_marker = marker
+
+    def __enter__(self):  # type: () -> None
+        # Entering this context manager - save the state
+        self.save()
+
+    def __exit__(self, exception_type, exception_val, trace):
+        # Exiting this context manager - restore the prior state
+        self.restore()
+
+    def save(self):  # type: (Optional[bool]) -> None
+        if PY2:
+            # Python 2.7 does not allow to directly copy
+            # an iterator, so we have to make tees of the original
+            # chars iterator.
+            # We can no longer use the original chars iterator.
+            self.parser._chars, chars = itertools.tee(self.parser._chars)
+        else:
+            chars = copy(self.parser._chars)
+
+        self.chars = chars
+        self.idx = self.parser._idx
+        self.current = self.parser._current
+        if self.save_marker:
+            self.marker = self.parser._marker
+
+    def restore(self):  # type: () -> None
+        self.parser._chars = self.chars
+        self.parser._idx = self.idx
+        self.parser._current = self.current
+        if self.save_marker:
+            self.parser._marker = self.marker
+
+
+class _StateHandler:
+    """
+    State preserver for the Parser.
+    """
+
+    def __init__(self, parser):  # type: (Parser) -> None
+        self._parser = parser
+        self._states = []
+
+    def __call__(self, marker=False):
+        return _State(parser=self._parser, marker=marker)
+
+    def __enter__(self):  # type: () -> None
+        state = self()
+        self._states.append(state)
+        state.save()
+
+    def __exit__(self, exception_type, exception_val, trace):
+        state = self._states.pop()
+        state.restore()
+
+
 class Parser:
     """
     Parser for TOML documents.
@@ -67,6 +126,9 @@ class Parser:
         self._marker = 0
 
         self._aot_stack = []
+
+        # The state preserver (for peeking)
+        self._state = _StateHandler(self)
 
         self.inc()
 
@@ -260,7 +322,8 @@ class Parser:
         if the item is value-like.
         """
         self.mark()
-        saved_idx = self._save_idx()
+        state = self._state()
+        state.save()
 
         while True:
             c = self._current
@@ -286,29 +349,10 @@ class Parser:
                 # Begining of a KV pair.
                 # Return to beginning of whitespace so it gets included
                 # as indentation for the KV about to be parsed.
-                self._restore_idx(*saved_idx)
+                state.restore()
                 key, value = self._parse_key_value(True)
 
                 return key, value
-
-    def _save_idx(self):  # type: () -> Tuple[Iterator, int, str]
-        if PY2:
-            # Python 2.7 does not allow to directly copy
-            # an iterator, so we have to make tees of the original
-            # chars iterator.
-            chars1, chars2 = itertools.tee(self._chars)
-
-            # We can no longer use the original chars iterator.
-            self._chars = chars1
-
-            return chars2, self._idx, self._current
-
-        return copy(self._chars), self._idx, self._current
-
-    def _restore_idx(self, chars, idx, current):  # type: (Iterator, int, str) -> None
-        self._chars = chars
-        self._idx = idx
-        self._current = current
 
     def _parse_comment_trail(self):  # type: () -> Tuple[str, str, str]
         """
@@ -974,32 +1018,26 @@ class Parser:
         Returns the name of the table about to be parsed,
         as well as whether it is part of an AoT.
         """
-        # Save initial state
-        idx = self._save_idx()
-        marker = self._marker
+        with self._state(marker=True):
+            if self._current != "[":
+                raise self.parse_error(
+                    InternalParserError,
+                    ("_peek_table() entered on non-bracket character",),
+                )
 
-        if self._current != "[":
-            raise self.parse_error(
-                InternalParserError, ("_peek_table() entered on non-bracket character",)
-            )
-
-        # AoT
-        self.inc()
-        is_aot = False
-        if self._current == "[":
+            # AoT
             self.inc()
-            is_aot = True
+            is_aot = False
+            if self._current == "[":
+                self.inc()
+                is_aot = True
 
-        self.mark()
+            self.mark()
 
-        while self._current != "]" and self.inc():
-            table_name = self.extract()
+            while self._current != "]" and self.inc():
+                table_name = self.extract()
 
-        # Restore initial state
-        self._restore_idx(*idx)
-        self._marker = marker
-
-        return is_aot, table_name
+            return is_aot, table_name
 
     def _parse_aot(self, first, name_first):  # type: (Table, str) -> AoT
         """
@@ -1026,19 +1064,16 @@ class Parser:
 
         n is the max number of characters that will be peeked.
         """
-        idx = self._save_idx()
-        buf = ""
-        for _ in range(n):
-            if self._current not in " \t\n\r#,]}":
-                buf += self._current
-                self.inc()
-                continue
+        with self._state:
+            buf = ""
+            for _ in range(n):
+                if self._current not in " \t\n\r#,]}":
+                    buf += self._current
+                    self.inc()
+                    continue
 
-            break
-
-        self._restore_idx(*idx)
-
-        return buf
+                break
+            return buf
 
     def _peek_unicode(self, is_long):  # type: () -> Tuple[bool, str]
         """
@@ -1047,36 +1082,30 @@ class Parser:
 
         Returns the unicode value is it's a valid one else None.
         """
-        # Save initial state
-        idx = self._save_idx()
-        marker = self._marker
+        with self._state(marker=True):
+            if self._current not in {"u", "U"}:
+                raise self.parse_error(
+                    InternalParserError,
+                    ("_peek_unicode() entered on non-unicode value"),
+                )
 
-        if self._current not in {"u", "U"}:
-            raise self.parse_error(
-                InternalParserError, ("_peek_unicode() entered on non-unicode value")
-            )
+            # AoT
+            self.inc()  # Dropping prefix
+            self.mark()
 
-        # AoT
-        self.inc()  # Dropping prefix
-        self.mark()
+            if is_long:
+                chars = 8
+            else:
+                chars = 4
 
-        if is_long:
-            chars = 8
-        else:
-            chars = 4
+            if not self.inc_n(chars):
+                value, extracted = None, None
+            else:
+                extracted = self.extract()
 
-        if not self.inc_n(chars):
-            value, extracted = None, None
-        else:
-            extracted = self.extract()
+                try:
+                    value = chr(int(extracted, 16))
+                except ValueError:
+                    value = None
 
-            try:
-                value = chr(int(extracted, 16))
-            except ValueError:
-                value = None
-
-        # Restore initial state
-        self._restore_idx(*idx)
-        self._marker = marker
-
-        return value, extracted
+            return value, extracted
