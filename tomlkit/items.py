@@ -20,6 +20,11 @@ from ._compat import decode
 from ._compat import unicode
 from ._utils import escape_string
 
+if PY2:
+    from functools32 import lru_cache
+else:
+    from functools import lru_cache
+
 
 def item(value, _parent=None):
     from .container import Container
@@ -78,17 +83,74 @@ def item(value, _parent=None):
 
 
 class StringType(Enum):
-
+    # Single Line Basic
     SLB = '"'
+    # Multi Line Basic
     MLB = '"""'
+    # Single Line Literal
     SLL = "'"
+    # Multi Line Literal
     MLL = "'''"
 
-    def is_literal(self):  # type: () -> bool
-        return self in {StringType.SLL, StringType.MLL}
+    @property
+    @lru_cache(maxsize=None)
+    def unit(self):  # type: () -> str
+        try:
+            # use cached value
+            return self._unit
+        except AttributeError:
+            self._unit = self.value[0]
+            return self._unit
 
+    @lru_cache(maxsize=None)
+    def is_basic(self):  # type: () -> bool
+        try:
+            # use cached value
+            return self._basic
+        except AttributeError:
+            self._basic = self in {StringType.SLB, StringType.MLB}
+            return self._basic
+
+    @lru_cache(maxsize=None)
+    def is_literal(self):  # type: () -> bool
+        try:
+            # use cached value
+            return self._literal
+        except AttributeError:
+            self._literal = self in {StringType.SLL, StringType.MLL}
+            return self._literal
+
+    @lru_cache(maxsize=None)
+    def is_singleline(self):  # type: () -> bool
+        try:
+            # use cached value
+            return self._singleline
+        except AttributeError:
+            self._singleline = self in {StringType.SLB, StringType.SLL}
+            return self._singleline
+
+    @lru_cache(maxsize=None)
     def is_multiline(self):  # type: () -> bool
-        return self in {StringType.MLB, StringType.MLL}
+        try:
+            # use cached value
+            return self._multiline
+        except AttributeError:
+            self._multiline = self in {StringType.MLB, StringType.MLL}
+            return self._multiline
+
+    @lru_cache(maxsize=None)
+    def toggle(self):  # type: () -> StringType
+        try:
+            # use cached value
+            return self._other
+        except AttributeError:
+            self._other = {
+                StringType.SLB: StringType.MLB,
+                StringType.MLB: StringType.SLB,
+                StringType.SLL: StringType.MLL,
+                StringType.MLL: StringType.SLL,
+            }[self]
+            return self._other
 
 
 class Trivia:
