@@ -680,28 +680,72 @@ class Parser:
     def _parse_basic_string(self):  # type: () -> Item
         return self._parse_string(StringType.SLB)
 
+    def _parse_escaped_char(self, multiline):
+        if multiline and self._current.is_ws():
+            # When the last non-whitespace character on a line is
+            # a \, it will be trimmed along with all whitespace
+            # (including newlines) up to the next non-whitespace
+            # character or closing delimiter.
+            # """\
+            #     hello \
+            #     world"""
+            tmp = ""
+            while self._current.is_ws():
+                tmp += self._current
+                # consume the whitespace, EOF here is an issue
+                # (middle of string)
+                self.inc(exception=UnexpectedEofError)
+                continue
+
+            # the escape followed by whitespace must have a newline
+            # before any other chars
+            if "\n" not in tmp:
+                raise self.parse_error(InvalidCharInStringError, (self._current,))
+
+            return ""
+
+        if self._current in _escaped:
+            c = _escaped[self._current]
+
+            # consume this char, EOF here is an issue (middle of string)
+            self.inc(exception=UnexpectedEofError)
+
+            return c
+
+        if self._current in {"u", "U"}:
+            # this needs to be a unicode
+            u, ue = self._peek_unicode(self._current == "U")
+            if u is not None:
+                # consume the U char and the unicode value
+                self.inc_n(len(ue) + 1)
+
+                return u
+
+        raise self.parse_error(InvalidCharInStringError, (self._current,))
+
     def _parse_string(self, delim):  # type: (str) -> Item
         delim = StringType(delim)
         assert delim.is_singleline()
 
         # only keep parsing for string if the current character matches the delim
-        if self._current != delim.value:
-            raise ValueError("Expecting a {!r} character".format(StringType.SLL))
+        if self._current != delim.unit:
+            raise ValueError("Expecting a {!r} character".format(delim))
 
-        # consume the opening delim, EOF here is an issue (middle of string)
+        # consume the opening/first delim, EOF here is an issue
+        # (middle of string or middle of delim)
         self.inc(exception=UnexpectedEofError)
 
-        if self._current == delim.value:
-            # consume the second/closing delim, we do not care if EOF occurs as
+        if self._current == delim.unit:
+            # consume the closing/second delim, we do not care if EOF occurs as
             # that would simply imply an empty single line string
-            if not self.inc() or self._current != delim.value:
+            if not self.inc() or self._current != delim.unit:
                 # Empty string
                 return String(delim, "", "", Trivia())
-            else:
-                # consume the third delim, EOF here is an issue (middle of string)
-                self.inc(exception=UnexpectedEofError)
 
-                delim = delim.toggle()  # convert delim to multi delim
+            # consume the third delim, EOF here is an issue (middle of string)
+            self.inc(exception=UnexpectedEofError)
+
+            delim = delim.toggle()  # convert delim to multi delim
 
         self.mark()  # to extract the original string with whitespace and all
         value = ""
@@ -714,12 +758,11 @@ class Parser:
         ESCAPE = "\\"
         escaped = False  # whether the previous key was ESCAPE
         while True:
-            if not delim.is_multiline() and self._current.is_nl():
+            if delim.is_singleline() and self._current.is_nl():
                 # single line cannot have actual newline characters
-                raise self.parse_error(UnexpectedEofError)
+                raise self.parse_error(InvalidCharInStringError, (self._current,))
             elif not escaped and self._current == delim.unit:
                 # try to process current as a closing delim
-
                 original = self.extract()
 
                 close = ""
@@ -750,64 +793,20 @@ class Parser:
                     self.inc()
 
                 return String(delim, value, original, Trivia())
+            elif delim.is_basic() and escaped:
+                # attempt to parse the current char as an escaped value, an exception
+                # is raised if this fails
+                value += self._parse_escaped_char(delim.is_multiline())
+
+                # no longer escaped
+                escaped = False
+            elif delim.is_basic() and self._current == ESCAPE:
+                # the next char is being escaped
+                escaped = True
+
+                # consume this char, EOF here is an issue (middle of string)
+                self.inc(exception=UnexpectedEofError)
             else:
-                if delim.is_basic():
-                    if escaped:
-                        if delim.is_multiline() and self._current.is_ws():
-                            # we have an escape at the end of line inside of a
-                            # multiline, consume all of the whitespace up to the
-                            # next char
-                            # """\
-                            #     hello \
-                            #     world"""
-                            tmp = ""
-                            while self._current.is_ws():
-                                tmp += self._current
-                                # consume the whitespace, EOF here is an issue
-                                # (middle of string)
-                                self.inc(exception=UnexpectedEofError)
-                                continue
-
-                            # the escape followed by whitespace must have a newline
-                            # before any other chars
-                            if "\n" not in tmp:
-                                raise self.parse_error(
-                                    InvalidCharInStringError, (self._current,)
-                                )
-                        elif self._current in _escaped:
-                            # remove the previous (ESCAPE) and add the special character
-                            value += _escaped[self._current]
-
-                            # consume this char, EOF here is an issue (middle of string)
-                            self.inc(exception=UnexpectedEofError)
-                        elif self._current in {"u", "U"}:
-                            # this needs to be a unicode
-                            u, ue = self._peek_unicode(self._current == "U")
-                            if u is not None:
-                                value += u
-                                # consume the U char and the unicode value
-                                self.inc_n(len(ue) + 1)
-                            else:
-                                raise self.parse_error(
-                                    InvalidCharInStringError, (self._current,)
-                                )
-                        else:
-                            # this char(s) is not escapable
-                            raise self.parse_error(
-                                InvalidCharInStringError, (self._current,)
-                            )
-
-                        # no longer escaped
-                        escaped = False
-                        continue
-                    elif self._current == ESCAPE:
-                        escaped = True  # the next char is being escaped
-
-                        # consume this char, EOF here is an issue (middle of string)
-                        self.inc(exception=UnexpectedEofError)
-
-                        continue
-
                 # this is either a literal string where we keep everything as is,
                 # or this is not a special escaped char in a basic string
                 value += self._current

@@ -13,6 +13,7 @@ from tomlkit import parse
 from tomlkit.exceptions import InvalidNumberOrDateError
 from tomlkit.exceptions import MixedArrayTypesError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.exceptions import InvalidCharInStringError
 from tomlkit.items import AoT
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -45,6 +46,9 @@ def json_serial(obj):
         "pyproject",
         "0.5.0",
         "test",
+        "newline_in_strings",
+        "preserve_quotes_in_string",
+        "string_slash_whitespace_newline",
     ],
 )
 def test_parse_can_parse_valid_toml_files(example, example_name):
@@ -71,6 +75,8 @@ def test_parsed_document_are_properly_json_representable(
         ("mixed_array_types", MixedArrayTypesError),
         ("invalid_number", InvalidNumberOrDateError),
         ("trailing_comma", UnexpectedCharError),
+        ("newline_in_singleline_string", InvalidCharInStringError),
+        ("string_slash_whitespace_char", InvalidCharInStringError),
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(
