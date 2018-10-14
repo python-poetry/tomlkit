@@ -95,62 +95,32 @@ class StringType(Enum):
     @property
     @lru_cache(maxsize=None)
     def unit(self):  # type: () -> str
-        try:
-            # use cached value
-            return self._unit
-        except AttributeError:
-            self._unit = self.value[0]
-            return self._unit
+        return self.value[0]
 
     @lru_cache(maxsize=None)
     def is_basic(self):  # type: () -> bool
-        try:
-            # use cached value
-            return self._basic
-        except AttributeError:
-            self._basic = self in {StringType.SLB, StringType.MLB}
-            return self._basic
+        return self in {StringType.SLB, StringType.MLB}
 
     @lru_cache(maxsize=None)
     def is_literal(self):  # type: () -> bool
-        try:
-            # use cached value
-            return self._literal
-        except AttributeError:
-            self._literal = self in {StringType.SLL, StringType.MLL}
-            return self._literal
+        return self in {StringType.SLL, StringType.MLL}
 
     @lru_cache(maxsize=None)
     def is_singleline(self):  # type: () -> bool
-        try:
-            # use cached value
-            return self._singleline
-        except AttributeError:
-            self._singleline = self in {StringType.SLB, StringType.SLL}
-            return self._singleline
+        return self in {StringType.SLB, StringType.SLL}
 
     @lru_cache(maxsize=None)
     def is_multiline(self):  # type: () -> bool
-        try:
-            # use cached value
-            return self._multiline
-        except AttributeError:
-            self._multiline = self in {StringType.MLB, StringType.MLL}
-            return self._multiline
+        return self in {StringType.MLB, StringType.MLL}
 
     @lru_cache(maxsize=None)
     def toggle(self):  # type: () -> StringType
-        try:
-            # use cached value
-            return self._other
-        except AttributeError:
-            self._other = {
-                StringType.SLB: StringType.MLB,
-                StringType.MLB: StringType.SLB,
-                StringType.SLL: StringType.MLL,
-                StringType.MLL: StringType.SLL,
-            }[self]
-            return self._other
+        return {
+            StringType.SLB: StringType.MLB,
+            StringType.MLB: StringType.SLB,
+            StringType.SLL: StringType.MLL,
+            StringType.MLL: StringType.SLL,
+        }[self]
 
 
 class Trivia:
