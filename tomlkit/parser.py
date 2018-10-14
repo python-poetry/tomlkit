@@ -755,7 +755,6 @@ class Parser:
             # consume the newline, EOF here is an issue (middle of string)
             self.inc(exception=UnexpectedEofError)
 
-        ESCAPE = "\\"
         escaped = False  # whether the previous key was ESCAPE
         while True:
             if delim.is_singleline() and self._current.is_nl():
@@ -800,7 +799,7 @@ class Parser:
 
                 # no longer escaped
                 escaped = False
-            elif delim.is_basic() and self._current == ESCAPE:
+            elif delim.is_basic() and self._current == "\\":
                 # the next char is being escaped
                 escaped = True
 
