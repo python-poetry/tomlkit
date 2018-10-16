@@ -14,6 +14,7 @@ from typing import Union
 
 from ._compat import PY2
 from ._compat import chr
+from ._compat import unicode
 from ._compat import decode
 from ._utils import _escaped
 from ._utils import parse_rfc3339
@@ -51,8 +52,8 @@ from .toml_document import TOMLDocument
 
 class _State:
     def __init__(self, parser, marker=False):  # type: (Parser, Optional[bool]) -> None
-        self.parser = parser
-        self.save_marker = marker
+        self._src = parser._src
+        self._save_marker = marker
 
     def __enter__(self):  # type: () -> None
         # Entering this context manager - save the state
@@ -62,28 +63,14 @@ class _State:
         # Exiting this context manager - restore the prior state
         self.restore()
 
-    def save(self):  # type: (Optional[bool]) -> None
-        if PY2:
-            # Python 2.7 does not allow to directly copy
-            # an iterator, so we have to make tees of the original
-            # chars iterator.
-            # We can no longer use the original chars iterator.
-            self.parser._chars, chars = itertools.tee(self.parser._chars)
-        else:
-            chars = copy(self.parser._chars)
-
-        self.chars = chars
-        self.idx = self.parser._idx
-        self.current = self.parser._current
-        if self.save_marker:
-            self.marker = self.parser._marker
+    def save(self):  # type: () -> None
+        self._index = self._src._index
+        self._marker = self._src._marker
 
     def restore(self):  # type: () -> None
-        self.parser._chars = self.chars
-        self.parser._idx = self.idx
-        self.parser._current = self.current
-        if self.save_marker:
-            self.parser._marker = self.marker
+        self._src.index = self._index
+        if self._save_marker:
+            self._src.marker = self._marker
 
 
 class _StateHandler:
@@ -108,57 +95,81 @@ class _StateHandler:
         state.restore()
 
 
-class Parser:
-    """
-    Parser for TOML documents.
-    """
+class _Source(unicode):
+    EOF = TOMLChar("\0")
 
-    def __init__(self, string):  # type: (str) -> None
-        # Input to parse
-        self._src = decode(string)  # type: str
-        # Iterator used for getting characters from src.
-        self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self._src)])
-        # Current byte offset into src.
-        self._idx = 0
-        # Current character
-        self._current = TOMLChar("")  # type: TOMLChar
-        # Index into src between which and idx slices will be extracted
+    def __init__(self, src):  # type: (unicode) -> None
+        super(_Source, self).__init__()
+        # Collection of TOMLChars
+        self._chars = {}
+        self._index = 0
         self._marker = 0
 
-        self._aot_stack = []
+    @property
+    def index(self):  # type: () -> int
+        return self._index
 
-        # The state preserver (for peeking)
-        self._state = _StateHandler(self)
+    @index.setter
+    def index(self, index):  # type: (int) -> None
+        index = int(index)
+        assert index >= 0
+        assert index <= len(self)
+        self._index = index
 
-        self.inc()
+    @property
+    def current(self):  # type: () -> TOMLChar
+        try:
+            return self[self._index]
+        except IndexError:
+            return self.EOF
 
-    def extract(self):  # type: () -> str
+    @property
+    def marker(self):  # type: () -> int
+        return self._marker
+
+    @marker.setter
+    def marker(self, index):  # type: (int) -> None
+        index = int(index)
+        assert index >= 0
+        assert index < len(self)
+        self._marker = index
+
+    def __getitem__(
+        self, item
+    ):  # type: (Optional[int, slice]) -> Optional[TOMLChar, unicode]
+        # return TOMLChar
+        if isinstance(item, int):
+            try:
+                return self._chars[item]
+            except KeyError:
+                char = super(_Source, self).__getitem__(item)
+                return self._chars.setdefault(item, TOMLChar(char))
+
+        # return a slice of unicode
+        return super(_Source, self).__getitem__(item)
+
+    def extract(self):  # type: () -> None
         """
         Extracts the value between marker and index
         """
-        if self.end():
-            return self._src[self._marker :]
-        else:
-            return self._src[self._marker : self._idx]
+        return self[self._marker : self._index]
 
-    def inc(self, exception=None):  # type: () -> bool
+    def inc(self, exception=None):  # type: (Exception) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
-        try:
-            self._idx, self._current = next(self._chars)
-
+        # only increment index if we are not at the last index yet
+        if self._index < (len(self) - 1):
+            self._index += 1
             return True
-        except StopIteration:
-            self._idx = len(self._src)
-            self._current = TOMLChar("\0")
 
-            if not exception:
-                return False
+        self._index = len(self)
+        if exception:
             raise exception
+        return False
 
-    def inc_n(self, n, exception=None):  # type: (int) -> bool
+    def inc_n(self, n, exception=None):  # type: (int, Exception) -> bool
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -173,13 +184,72 @@ class Parser:
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._idx >= len(self._src) or self._current == "\0"
+        return self._index >= len(self)
 
     def mark(self):  # type: () -> None
         """
         Sets the marker to the index's current position
         """
-        self._marker = self._idx
+        self._marker = self._index
+
+
+class Parser:
+    """
+    Parser for TOML documents.
+    """
+
+    def __init__(self, string):  # type: (str) -> None
+        # Input to parse
+        self._src = _Source(decode(string))
+
+        self._aot_stack = []
+
+        # The state preserver (for peeking)
+        self._state = _StateHandler(self)
+
+    @property
+    def _idx(self):
+        return self._src.index
+
+    @property
+    def _current(self):
+        return self._src.current
+
+    @property
+    def _marker(self):
+        return self._src.marker
+
+    def extract(self):  # type: () -> str
+        """
+        Extracts the value between marker and index
+        """
+        return self._src.extract()
+
+    def inc(self, exception=None):  # type: () -> bool
+        """
+        Increments the parser if the end of the input has not been reached.
+        Returns whether or not it was able to advance.
+        """
+        return self._src.inc(exception=exception)
+
+    def inc_n(self, n, exception=None):  # type: (int) -> bool
+        """
+        Increments the parser by n characters
+        if the end of the input has not been reached.
+        """
+        return self._src.inc_n(n=n, exception=exception)
+
+    def end(self):  # type: () -> bool
+        """
+        Returns True if the parser has reached the end of the input.
+        """
+        return self._src.end()
+
+    def mark(self):  # type: () -> None
+        """
+        Sets the marker to the index's current position
+        """
+        self._src.mark()
 
     def parse(self):  # type: () -> TOMLDocument
         body = TOMLDocument(True)
