@@ -66,11 +66,21 @@ class _State:
         self.restore()
 
     def save(self):  # type: () -> None
+        if PY2:
+            # Python 2.7 does not allow to directly copy
+            # an iterator, so we have to make tees of the original
+            # chars iterator.
+            self._source._chars, self._chars = itertools.tee(self._source._chars)
+        else:
+            self._chars = copy(self._source._chars)
         self._idx = self._source._idx
+        self._current = self._source._current
         self._marker = self._source._marker
 
     def restore(self):  # type: () -> None
-        self._source.idx = self._idx
+        self._source._chars = self._chars
+        self._source._idx = self._idx
+        self._source._current = self._current
         if self._save_marker:
             self._source.marker = self._marker
 
@@ -103,9 +113,10 @@ class _Source(unicode):
     def __init__(self, src):  # type: (unicode) -> None
         super(_Source, self).__init__()
         # Collection of TOMLChars
-        self._chars = {}
-        self._idx = 0
+        self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self)])
         self._marker = 0
+
+        self.inc()
 
     @property
     def state(self):  # type: () -> _StateHandler
@@ -119,44 +130,13 @@ class _Source(unicode):
     def idx(self):  # type: () -> int
         return self._idx
 
-    @idx.setter
-    def idx(self, idx):  # type: (int) -> None
-        idx = int(idx)
-        assert idx >= 0
-        assert idx <= len(self)
-        self._idx = idx
-
     @property
     def current(self):  # type: () -> TOMLChar
-        try:
-            return self[self._idx]
-        except IndexError:
-            return self.EOF
+        self._current
 
     @property
     def marker(self):  # type: () -> int
         return self._marker
-
-    @marker.setter
-    def marker(self, idx):  # type: (int) -> None
-        idx = int(idx)
-        assert idx >= 0
-        assert idx < len(self)
-        self._marker = idx
-
-    def __getitem__(
-        self, item
-    ):  # type: (Optional[int, slice]) -> Optional[TOMLChar, unicode]
-        # return TOMLChar
-        if isinstance(item, int):
-            try:
-                return self._chars[item]
-            except KeyError:
-                char = super(_Source, self).__getitem__(item)
-                return self._chars.setdefault(item, TOMLChar(char))
-
-        # return a slice of unicode
-        return super(_Source, self).__getitem__(item)
 
     def extract(self):  # type: () -> None
         """
@@ -169,15 +149,14 @@ class _Source(unicode):
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
-        # only increment index if we are not at the last index yet
-        if self._idx < (len(self) - 1):
-            self._idx += 1
-            return True
-
-        self._idx = len(self)
-        if exception:
+        try:
+            self._idx, self._current = next(self._chars)
+        except StopIteration:
+            self._idx = len(self)
+            self._current = self.EOF
+            if not exception:
+                return False
             raise exception
-        return False
 
     def inc_n(self, n, exception=None):  # type: (int, Exception) -> bool
         """
