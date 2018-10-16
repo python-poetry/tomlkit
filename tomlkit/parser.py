@@ -52,9 +52,9 @@ from .toml_document import TOMLDocument
 
 class _State:
     def __init__(
-        self, parser, save_marker=False
-    ):  # type: (Parser, Optional[bool]) -> None
-        self._src = parser._src
+        self, source, save_marker=False
+    ):  # type: (_Source, Optional[bool]) -> None
+        self._source = source
         self._save_marker = save_marker
 
     def __enter__(self):  # type: () -> None
@@ -66,13 +66,13 @@ class _State:
         self.restore()
 
     def save(self):  # type: () -> None
-        self._idx = self._src._idx
-        self._marker = self._src._marker
+        self._idx = self._source._idx
+        self._marker = self._source._marker
 
     def restore(self):  # type: () -> None
-        self._src.idx = self._idx
+        self._source.idx = self._idx
         if self._save_marker:
-            self._src.marker = self._marker
+            self._source.marker = self._marker
 
 
 class _StateHandler:
@@ -80,12 +80,12 @@ class _StateHandler:
     State preserver for the Parser.
     """
 
-    def __init__(self, parser):  # type: (Parser) -> None
-        self._parser = parser
+    def __init__(self, source):  # type: (_Source) -> None
+        self._source = source
         self._states = []
 
     def __call__(self, save_marker=False):
-        return _State(parser=self._parser, save_marker=save_marker)
+        return _State(source=self._source, save_marker=save_marker)
 
     def __enter__(self):  # type: () -> None
         state = self()
@@ -106,6 +106,14 @@ class _Source(unicode):
         self._chars = {}
         self._idx = 0
         self._marker = 0
+
+    @property
+    def state(self):  # type: () -> _StateHandler
+        try:
+            return self._state
+        except AttributeError:
+            self._state = _StateHandler(self)
+            return self._state
 
     @property
     def idx(self):  # type: () -> int
@@ -206,8 +214,9 @@ class Parser:
 
         self._aot_stack = []
 
-        # The state preserver (for peeking)
-        self._state = _StateHandler(self)
+    @property
+    def _state(self):
+        return self._src.state
 
     @property
     def _idx(self):
