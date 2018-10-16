@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed string parsing behavior.
+
+
 ## [0.4.5] - 2018-10-12
 
 ### Fixed
