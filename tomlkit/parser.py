@@ -28,6 +28,7 @@ from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
 from .exceptions import UnexpectedEofError
+from .exceptions import Restore
 from .items import AoT
 from .items import Array
 from .items import Bool
@@ -52,18 +53,25 @@ from .toml_document import TOMLDocument
 
 class _State:
     def __init__(
-        self, source, save_marker=False
+        self, source, save_marker=False, restore=False
     ):  # type: (_Source, Optional[bool]) -> None
         self._source = source
         self._save_marker = save_marker
+        self._restore = restore
 
     def __enter__(self):  # type: () -> None
         # Entering this context manager - save the state
         self.save()
+        return self
 
     def __exit__(self, exception_type, exception_val, trace):
         # Exiting this context manager - restore the prior state
-        self.restore()
+        if self._restore or exception_type:
+            self.restore()
+
+            # Restore exceptions are silently consumed, other exceptions need to
+            # propagate
+            return exception_type == Restore
 
     def save(self):  # type: () -> None
         if PY2:
@@ -94,17 +102,17 @@ class _StateHandler:
         self._source = source
         self._states = []
 
-    def __call__(self, save_marker=False):
-        return _State(source=self._source, save_marker=save_marker)
+    def __call__(self, *args, **kwargs):
+        return _State(self._source, *args, **kwargs)
 
     def __enter__(self):  # type: () -> None
         state = self()
         self._states.append(state)
-        state.save()
+        return state.__enter__()
 
     def __exit__(self, exception_type, exception_val, trace):
         state = self._states.pop()
-        state.restore()
+        return state.__exit__(exception_type, exception_val, trace)
 
 
 class _Source(unicode):
@@ -619,14 +627,16 @@ class Parser:
         Attempts to parse a value at the current position.
         """
         self.mark()
-        trivia = Trivia()
 
-        c = self._current
-        if c == '"':
+        with self._state:
             return self._parse_basic_string()
-        elif c == "'":
+
+        with self._state:
             return self._parse_literal_string()
-        elif c == "t" and self._src[self._idx :].startswith("true"):
+
+        trivia = Trivia()
+        c = self._current
+        if c == "t" and self._src[self._idx :].startswith("true"):
             # Boolean: true
             self.inc_n(4)
 
@@ -834,7 +844,7 @@ class Parser:
 
         # only keep parsing for string if the current character matches the delim
         if self._current != delim.unit:
-            raise ValueError("Expecting a {!r} character".format(delim))
+            raise Restore
 
         # consume the opening/first delim, EOF here is an issue
         # (middle of string or middle of delim)
@@ -1079,7 +1089,8 @@ class Parser:
         Returns the name of the table about to be parsed,
         as well as whether it is part of an AoT.
         """
-        with self._state(save_marker=True):
+        # we always want to restore after exiting this scope
+        with self._state(save_marker=True, restore=True):
             if self._current != "[":
                 raise self.parse_error(
                     InternalParserError,
@@ -1125,7 +1136,8 @@ class Parser:
 
         n is the max number of characters that will be peeked.
         """
-        with self._state:
+        # we always want to restore after exiting this scope
+        with self._state(restore=True):
             buf = ""
             for _ in range(n):
                 if self._current not in " \t\n\r#,]}":
@@ -1143,7 +1155,8 @@ class Parser:
 
         Returns the unicode value is it's a valid one else None.
         """
-        with self._state(save_marker=True):
+        # we always want to restore after exiting this scope
+        with self._state(save_marker=True, restore=True):
             if self._current not in {"u", "U"}:
                 raise self.parse_error(
                     InternalParserError,

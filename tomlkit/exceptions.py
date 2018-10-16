@@ -137,3 +137,15 @@ class KeyAlreadyPresent(TOMLKitError):
         message = 'Key "{}" already exists.'.format(key)
 
         super(KeyAlreadyPresent, self).__init__(message)
+
+
+class Restore(TOMLKitError):
+    """
+    The current parsing path failed, restore to the previous state. This should only
+    be raised within a with the state handler context manager.
+    """
+
+    def __init__(self):  # type: () -> None
+        message = "Restore to the previous state."
+
+        super(Restore, self).__init__(message)
