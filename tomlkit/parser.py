@@ -66,11 +66,11 @@ class _State:
         self.restore()
 
     def save(self):  # type: () -> None
-        self._index = self._src._index
+        self._idx = self._src._idx
         self._marker = self._src._marker
 
     def restore(self):  # type: () -> None
-        self._src.index = self._index
+        self._src.idx = self._idx
         if self._save_marker:
             self._src.marker = self._marker
 
@@ -104,24 +104,24 @@ class _Source(unicode):
         super(_Source, self).__init__()
         # Collection of TOMLChars
         self._chars = {}
-        self._index = 0
+        self._idx = 0
         self._marker = 0
 
     @property
-    def index(self):  # type: () -> int
-        return self._index
+    def idx(self):  # type: () -> int
+        return self._idx
 
-    @index.setter
-    def index(self, index):  # type: (int) -> None
-        index = int(index)
-        assert index >= 0
-        assert index <= len(self)
-        self._index = index
+    @idx.setter
+    def idx(self, idx):  # type: (int) -> None
+        idx = int(idx)
+        assert idx >= 0
+        assert idx <= len(self)
+        self._idx = idx
 
     @property
     def current(self):  # type: () -> TOMLChar
         try:
-            return self[self._index]
+            return self[self._idx]
         except IndexError:
             return self.EOF
 
@@ -130,11 +130,11 @@ class _Source(unicode):
         return self._marker
 
     @marker.setter
-    def marker(self, index):  # type: (int) -> None
-        index = int(index)
-        assert index >= 0
-        assert index < len(self)
-        self._marker = index
+    def marker(self, idx):  # type: (int) -> None
+        idx = int(idx)
+        assert idx >= 0
+        assert idx < len(self)
+        self._marker = idx
 
     def __getitem__(
         self, item
@@ -154,7 +154,7 @@ class _Source(unicode):
         """
         Extracts the value between marker and index
         """
-        return self[self._marker : self._index]
+        return self[self._marker : self._idx]
 
     def inc(self, exception=None):  # type: (Exception) -> bool
         """
@@ -162,11 +162,11 @@ class _Source(unicode):
         Returns whether or not it was able to advance.
         """
         # only increment index if we are not at the last index yet
-        if self._index < (len(self) - 1):
-            self._index += 1
+        if self._idx < (len(self) - 1):
+            self._idx += 1
             return True
 
-        self._index = len(self)
+        self._idx = len(self)
         if exception:
             raise exception
         return False
@@ -186,13 +186,13 @@ class _Source(unicode):
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._index >= len(self)
+        return self._idx >= len(self)
 
     def mark(self):  # type: () -> None
         """
         Sets the marker to the index's current position
         """
-        self._marker = self._index
+        self._marker = self._idx
 
 
 class Parser:
@@ -211,7 +211,7 @@ class Parser:
 
     @property
     def _idx(self):
-        return self._src.index
+        return self._src.idx
 
     @property
     def _current(self):
