@@ -51,9 +51,11 @@ from .toml_document import TOMLDocument
 
 
 class _State:
-    def __init__(self, parser, marker=False):  # type: (Parser, Optional[bool]) -> None
+    def __init__(
+        self, parser, save_marker=False
+    ):  # type: (Parser, Optional[bool]) -> None
         self._src = parser._src
-        self._save_marker = marker
+        self._save_marker = save_marker
 
     def __enter__(self):  # type: () -> None
         # Entering this context manager - save the state
@@ -82,8 +84,8 @@ class _StateHandler:
         self._parser = parser
         self._states = []
 
-    def __call__(self, marker=False):
-        return _State(parser=self._parser, marker=marker)
+    def __call__(self, save_marker=False):
+        return _State(parser=self._parser, save_marker=save_marker)
 
     def __enter__(self):  # type: () -> None
         state = self()
@@ -1088,7 +1090,7 @@ class Parser:
         Returns the name of the table about to be parsed,
         as well as whether it is part of an AoT.
         """
-        with self._state(marker=True):
+        with self._state(save_marker=True):
             if self._current != "[":
                 raise self.parse_error(
                     InternalParserError,
@@ -1152,7 +1154,7 @@ class Parser:
 
         Returns the unicode value is it's a valid one else None.
         """
-        with self._state(marker=True):
+        with self._state(save_marker=True):
             if self._current not in {"u", "U"}:
                 raise self.parse_error(
                     InternalParserError,
