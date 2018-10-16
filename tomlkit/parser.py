@@ -82,7 +82,7 @@ class _State:
         self._source._idx = self._idx
         self._source._current = self._current
         if self._save_marker:
-            self._source.marker = self._marker
+            self._source._marker = self._marker
 
 
 class _StateHandler:
@@ -132,7 +132,7 @@ class _Source(unicode):
 
     @property
     def current(self):  # type: () -> TOMLChar
-        self._current
+        return self._current
 
     @property
     def marker(self):  # type: () -> int
@@ -151,6 +151,7 @@ class _Source(unicode):
         """
         try:
             self._idx, self._current = next(self._chars)
+            return True
         except StopIteration:
             self._idx = len(self)
             self._current = self.EOF
