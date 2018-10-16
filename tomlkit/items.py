@@ -20,6 +20,11 @@ from ._compat import decode
 from ._compat import unicode
 from ._utils import escape_string
 
+if PY2:
+    from functools32 import lru_cache
+else:
+    from functools import lru_cache
+
 
 def item(value, _parent=None):
     from .container import Container
@@ -78,17 +83,44 @@ def item(value, _parent=None):
 
 
 class StringType(Enum):
-
+    # Single Line Basic
     SLB = '"'
+    # Multi Line Basic
     MLB = '"""'
+    # Single Line Literal
     SLL = "'"
+    # Multi Line Literal
     MLL = "'''"
 
+    @property
+    @lru_cache(maxsize=None)
+    def unit(self):  # type: () -> str
+        return self.value[0]
+
+    @lru_cache(maxsize=None)
+    def is_basic(self):  # type: () -> bool
+        return self in {StringType.SLB, StringType.MLB}
+
+    @lru_cache(maxsize=None)
     def is_literal(self):  # type: () -> bool
         return self in {StringType.SLL, StringType.MLL}
 
+    @lru_cache(maxsize=None)
+    def is_singleline(self):  # type: () -> bool
+        return self in {StringType.SLB, StringType.SLL}
+
+    @lru_cache(maxsize=None)
     def is_multiline(self):  # type: () -> bool
         return self in {StringType.MLB, StringType.MLL}
+
+    @lru_cache(maxsize=None)
+    def toggle(self):  # type: () -> StringType
+        return {
+            StringType.SLB: StringType.MLB,
+            StringType.MLB: StringType.SLB,
+            StringType.SLL: StringType.MLL,
+            StringType.MLL: StringType.SLL,
+        }[self]
 
 
 class Trivia:
