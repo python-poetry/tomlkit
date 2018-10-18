@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/sdispater/tomlkit.svg?branch=master)](https://travis-ci.com/sdispater/tomlkit)
+[![codecov](https://codecov.io/gh/sdispater/tomlkit/branch/master/graph/badge.svg)](https://codecov.io/gh/sdispater/tomlkit)
+
 # TOML Kit - Style-preserving TOML library for Python
 
 TOML Kit is a **0.5.0-compliant** [TOML](https://github.com/toml-lang/toml) library.
