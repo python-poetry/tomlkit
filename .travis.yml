@@ -14,7 +14,11 @@ install:
   - pip install poetry --pre
   - poetry install -v
 
-script: pytest -q tests/
+script:
+  - pytest --cov-report xml --cov-report term-missing --cov-append --cov tomlkit tests/
+
+after_success:
+  - codecov
 
 jobs:
   include:
