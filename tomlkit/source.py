@@ -8,6 +8,7 @@ from copy import copy
 from ._compat import PY2
 from ._compat import unicode
 from .exceptions import UnexpectedEofError
+from .exceptions import UnexpectedCharError
 from .exceptions import Restore
 from .exceptions import ParseError
 from .toml_char import TOMLChar
@@ -142,6 +143,20 @@ class Source(unicode):
                 return False
 
         return True
+
+    def consume(self, chars, min=0, max=-1, restore=True):
+        """
+        Consume chars until min/max is satisfied is valid.
+        """
+        while self.current in chars and max != 0:
+            min -= 1
+            max -= 1
+            if not self.inc():
+                break
+
+        # failed to consume minimum number of characters
+        if min > 0:
+            raise Restore if restore else self.parse_error(UnexpectedCharError)
 
     def end(self):  # type: () -> bool
         """
