@@ -480,8 +480,10 @@ class Parser:
         with self._state:
             return self._parse_literal_string()
 
-        with self._state:
-            return self._parse_inline_table()
+        try:
+            return self._is_inline_table()
+        except Restore:
+            pass
 
         trivia = Trivia()
         c = self._current
@@ -568,10 +570,14 @@ class Parser:
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_inline_table(self):
-        if self._current != "{":
-            raise Restore
+    def _is_inline_table(self):
+        if self._current == "{":
+            with self._state:
+                return self._parse_inline_table()
 
+        raise Restore
+
+    def _parse_inline_table(self):
         # consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=True)
 
