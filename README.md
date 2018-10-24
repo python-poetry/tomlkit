@@ -1,9 +1,10 @@
-[![GitHub Release](https://img.shields.io/github/release/sdispater/tomlkit.svg)](https://github.com/sdispater/tomlkit/releases/)
-[![PyPI Version](https://img.shields.io/pypi/v/tomlkit.svg)](https://pypi.python.org/pypi/tomlkit/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/tomlkit.svg)](https://pypi.python.org/pypi/tomlkit/)
-[![License](https://img.shields.io/github/license/sdispater/tomlkit.svg)](https://github.com/sdispater/tomlkit/blob/master/LICENSE)
-[![Travis CI](https://img.shields.io/travis/com/sdispater/tomlkit.svg)](https://travis-ci.com/sdispater/tomlkit)
-[![Codecov](https://img.shields.io/codecov/c/github/sdispater/tomlkit/master.svg)](https://codecov.io/gh/sdispater/tomlkit)
+[![GitHub Release](https://img.shields.io/github/release/sdispater/tomlkit.svg?logo=github&logoColor=white)](https://github.com/sdispater/tomlkit/releases/)
+[![PyPI Version](https://img.shields.io/pypi/v/tomlkit.svg?logo=python&logoColor=white)](https://pypi.python.org/pypi/tomlkit/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/tomlkit.svg?logo=python&logoColor=white)](https://pypi.python.org/pypi/tomlkit/)
+[![License](https://img.shields.io/github/license/sdispater/tomlkit.svg?logo=github&logoColor=white)](https://github.com/sdispater/tomlkit/blob/master/LICENSE)
+[![Travis CI](https://img.shields.io/travis/com/sdispater/tomlkit.svg?logo=travis&logoColor=white&label=Travis%20CI)](https://travis-ci.com/sdispater/tomlkit)
+[![AppVeyor](https://img.shields.io/appveyor/ci/sdispater/tomlkit.svg?logo=appveyor&logoColor=white&label=AppVeyor)](https://ci.appveyor.com/project/sdispater/tomlkit)
+[![Codecov](https://img.shields.io/codecov/c/github/sdispater/tomlkit/master.svg?logo=codecov)](https://codecov.io/gh/sdispater/tomlkit)
 
 
 # TOML Kit - Style-preserving TOML library for Python
