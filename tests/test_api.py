@@ -78,6 +78,7 @@ def test_parsed_document_are_properly_json_representable(
         ("trailing_comma", UnexpectedCharError),
         ("newline_in_singleline_string", InvalidCharInStringError),
         ("string_slash_whitespace_char", InvalidCharInStringError),
+        ("inline-table-no-comma", UnexpectedCharError),
         ("inline-table-duplicate-comma", EmptyKeyError),
         ("inline-table-leading-comma", EmptyKeyError),
         ("inline-table-trailing-comma", UnexpectedCharError),
