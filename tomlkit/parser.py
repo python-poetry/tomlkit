@@ -95,6 +95,12 @@ class Parser:
         """
         return self._src.inc_n(n=n, exception=exception)
 
+    def consume(self, chars, min=0, max=-1, restore=True):
+        """
+        Consume chars until min/max is satisfied is valid.
+        """
+        return self._src.consume(chars=chars, min=min, max=max, restore=restore)
+
     def end(self):  # type: () -> bool
         """
         Returns True if the parser has reached the end of the input.
@@ -474,6 +480,9 @@ class Parser:
         with self._state:
             return self._parse_literal_string()
 
+        with self._state:
+            return self._parse_inline_table()
+
         trivia = Trivia()
         c = self._current
         if c == "t" and self._src[self._idx :].startswith("true"):
@@ -522,30 +531,6 @@ class Parser:
                 return res
 
             raise self.parse_error(MixedArrayTypesError)
-        elif c == "{":
-            # Inline table
-            elems = Container(True)
-            self.inc()
-
-            while self._current != "}":
-                self.mark()
-                while self._current.is_spaces() or self._current == ",":
-                    self.inc()
-
-                if self._idx != self._marker:
-                    ws = self.extract().lstrip(",")
-                    if ws:
-                        elems.append(None, Whitespace(ws))
-
-                if self._current == "}":
-                    break
-
-                key, val = self._parse_key_value(False, inline=True)
-                elems.append(key, val)
-
-            self.inc()
-
-            return InlineTable(elems, trivia)
         elif c in string.digits + "+-" or self._peek(4) in {
             "+inf",
             "-inf",
@@ -582,6 +567,55 @@ class Parser:
                 raise self.parse_error(InvalidNumberOrDateError)
         else:
             raise self.parse_error(UnexpectedCharError, c)
+
+    def _parse_inline_table(self):
+        if self._current != "{":
+            raise Restore
+
+        # consume opening bracket, EOF here is an issue (middle of array)
+        self.inc(exception=True)
+
+        elems = Container(True)
+        trailing_comma = None
+        while True:
+            # consume leading whitespace
+            mark = self._idx
+            self.consume(TOMLChar.SPACES)
+            raw = self._src[mark : self._idx]
+            if raw:
+                elems.add(Whitespace(raw))
+
+            if not trailing_comma:
+                # None: empty inline table
+                # False: previous key-value pair was not followed by a comma
+                if self._current == "}":
+                    # consume closing bracket, EOF here doesn't matter
+                    self.inc()
+                    break
+                if trailing_comma is False:
+                    raise self.parse_error(UnexpectedCharError, self._current)
+            else:
+                # True: previous key-value pair was followed by a comma
+                if self._current == "}":
+                    raise self.parse_error(UnexpectedCharError, self._current)
+
+            key, val = self._parse_key_value(False, inline=True)
+            elems.add(key, val)
+
+            # consume trailing whitespace
+            mark = self._idx
+            self.consume(TOMLChar.SPACES)
+            raw = self._src[mark : self._idx]
+            if raw:
+                elems.add(Whitespace(raw))
+
+            # consume trailing comma
+            trailing_comma = self._current == ","
+            if trailing_comma:
+                # consume closing bracket, EOF here is an issue (middle of inline table)
+                self.inc(exception=True)
+
+        return InlineTable(elems, Trivia())
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
