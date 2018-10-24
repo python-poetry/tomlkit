@@ -474,6 +474,9 @@ class Parser:
         with self._state:
             return self._parse_literal_string()
 
+        with self._state:
+            return self._parse_array()
+
         trivia = Trivia()
         c = self._current
         if c == "t" and self._src[self._idx :].startswith("true"):
@@ -486,42 +489,6 @@ class Parser:
             self.inc_n(5)
 
             return Bool(False, trivia)
-        elif c == "[":
-            # Array
-            elems = []  # type: List[Item]
-            self.inc()
-
-            while self._current != "]":
-                self.mark()
-                while self._current.is_ws() or self._current == ",":
-                    self.inc()
-
-                if self._idx != self._marker:
-                    elems.append(Whitespace(self.extract()))
-
-                if self._current == "]":
-                    break
-
-                if self._current == "#":
-                    cws, comment, trail = self._parse_comment_trail()
-
-                    next_ = Comment(Trivia("", cws, comment, trail))
-                else:
-                    next_ = self._parse_value()
-
-                elems.append(next_)
-
-            self.inc()
-
-            try:
-                res = Array(elems, trivia)
-            except ValueError:
-                raise self.parse_error(MixedArrayTypesError)
-
-            if res.is_homogeneous():
-                return res
-
-            raise self.parse_error(MixedArrayTypesError)
         elif c == "{":
             # Inline table
             elems = Container(True)
@@ -582,6 +549,46 @@ class Parser:
                 raise self.parse_error(InvalidNumberOrDateError)
         else:
             raise self.parse_error(UnexpectedCharError, c)
+
+    def _parse_array(self):
+        if self._current != "[":
+            raise Restore
+
+        # consume opening bracket, EOF here is an issue (middle of array)
+        self.inc(exception=True)
+
+        elems = []  # type: List[Item]
+        while True:
+            mark = self._idx
+            while self._current.is_ws() or self._current == ",":
+                self.inc(exception=True)
+            raw = self._src[mark : self._idx]
+            if raw:
+                elems.append(Whitespace(raw))
+
+            if self._current == "]":
+                # consume closing bracket, EOF here doesn't matter
+                self.inc()
+                break
+
+            if self._current == "#":
+                cws, comment, trail = self._parse_comment_trail()
+
+                next_ = Comment(Trivia("", cws, comment, trail))
+            else:
+                next_ = self._parse_value()
+
+            elems.append(next_)
+
+        try:
+            res = Array(elems, Trivia())
+        except ValueError:
+            pass
+        else:
+            if res.is_homogeneous():
+                return res
+
+        raise self.parse_error(MixedArrayTypesError)
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
