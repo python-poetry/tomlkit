@@ -148,15 +148,19 @@ class Source(unicode):
         """
         Consume chars until min/max is satisfied is valid.
         """
+        count = 0
         while self.current in chars and max != 0:
             min -= 1
             max -= 1
             if not self.inc():
                 break
+            count += 1
 
         # failed to consume minimum number of characters
         if min > 0:
             raise Restore if restore else self.parse_error(UnexpectedCharError)
+
+        return count
 
     def end(self):  # type: () -> bool
         """

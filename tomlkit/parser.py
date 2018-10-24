@@ -95,6 +95,12 @@ class Parser:
         """
         return self._src.inc_n(n=n, exception=exception)
 
+    def consume(self, chars, min=0, max=-1, restore=True):
+        """
+        Consume chars until min/max is satisfied is valid.
+        """
+        return self._src.consume(chars=chars, min=min, max=max, restore=restore)
+
     def end(self):  # type: () -> bool
         """
         Returns True if the parser has reached the end of the input.
@@ -564,27 +570,51 @@ class Parser:
         self.inc(exception=True)
 
         elems = []  # type: List[Item]
+        prev_value = None
         while True:
+            # consume whitespace
             mark = self._idx
-            while self._current.is_ws() or self._current == ",":
-                self.inc(exception=True)
-            raw = self._src[mark : self._idx]
-            if raw:
-                elems.append(Whitespace(raw))
+            self.consume(TOMLChar.SPACES)
+            newline = self.consume(TOMLChar.NL)
+            indent = self._src[mark : self._idx]
+            if newline:
+                elems.append(Whitespace(indent))
+                continue
 
+            # consume comment
+            if self._current == "#":
+                cws, comment, trail = self._parse_comment_trail()
+                elems.append(Comment(Trivia(indent, cws, comment, trail)))
+                continue
+
+            # consume indent
+            if indent:
+                elems.append(Whitespace(indent))
+                continue
+
+            # consume value
+            if not prev_value:
+                try:
+                    elems.append(self._parse_value())
+                    prev_value = True
+                    continue
+                except UnexpectedCharError:
+                    pass
+
+            # consume comma
+            if prev_value and self._current == ",":
+                self.inc(exception=True)
+                elems.append(Whitespace(","))
+                prev_value = False
+                continue
+
+            # consume closing bracket
             if self._current == "]":
                 # consume closing bracket, EOF here doesn't matter
                 self.inc()
                 break
 
-            if self._current == "#":
-                cws, comment, trail = self._parse_comment_trail()
-
-                next_ = Comment(Trivia("", cws, comment, trail))
-            else:
-                next_ = self._parse_value()
-
-            elems.append(next_)
+            raise self.parse_error(UnexpectedCharError, self._current)
 
         try:
             res = Array(elems, Trivia())
