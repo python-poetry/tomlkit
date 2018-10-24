@@ -73,7 +73,7 @@ def test_parsed_document_are_properly_json_representable(
         ("key_value_with_trailing_chars", UnexpectedCharError),
         ("array_with_invalid_chars", UnexpectedCharError),
         ("mixed_array_types", MixedArrayTypesError),
-        ("invalid_number", InvalidNumberOrDateError),
+        ("invalid_number", UnexpectedCharError),
         ("trailing_comma", UnexpectedCharError),
         ("newline_in_singleline_string", InvalidCharInStringError),
         ("string_slash_whitespace_char", InvalidCharInStringError),

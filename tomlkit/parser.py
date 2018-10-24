@@ -12,8 +12,9 @@ from typing import Union
 
 from ._compat import chr
 from ._compat import decode
+from ._compat import timezone
 from ._utils import _escaped
-from ._utils import parse_rfc3339
+from ._utils import _utc
 from .container import Container
 from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
@@ -32,6 +33,7 @@ from .items import Comment
 from .items import Date
 from .items import DateTime
 from .items import Float
+from .items import FloatType
 from .items import InlineTable
 from .items import Integer
 from .items import Key
@@ -94,6 +96,12 @@ class Parser:
         if the end of the input has not been reached.
         """
         return self._src.inc_n(n=n, exception=exception)
+
+    def consume(self, chars, min=0, max=-1, restore=True):
+        """
+        Consume chars until min/max is satisfied is valid.
+        """
+        self._src.consume(chars=chars, min=min, max=max, restore=restore)
 
     def end(self):  # type: () -> bool
         """
@@ -474,6 +482,21 @@ class Parser:
         with self._state:
             return self._parse_literal_string()
 
+        with self._state:
+            return self._parse_datetime()
+
+        with self._state:
+            return self._parse_date()
+
+        with self._state:
+            return self._parse_time()
+
+        with self._state:
+            return self._parse_float()
+
+        with self._state:
+            return self._parse_integer()
+
         trivia = Trivia()
         c = self._current
         if c == "t" and self._src[self._idx :].startswith("true"):
@@ -546,88 +569,365 @@ class Parser:
             self.inc()
 
             return InlineTable(elems, trivia)
-        elif c in string.digits + "+-" or self._peek(4) in {
-            "+inf",
-            "-inf",
-            "inf",
-            "+nan",
-            "-nan",
-            "nan",
-        }:
-            # Integer, Float, Date, Time or DateTime
-            while self._current not in " \t\n\r#,]}" and self.inc():
-                pass
-
-            raw = self.extract()
-
-            item = self._parse_number(raw, trivia)
-            if item is not None:
-                return item
-
-            try:
-                res = parse_rfc3339(raw)
-            except ValueError:
-                res = None
-
-            if res is None:
-                raise self.parse_error(InvalidNumberOrDateError)
-
-            if isinstance(res, datetime.datetime):
-                return DateTime(res, trivia, raw)
-            elif isinstance(res, datetime.time):
-                return Time(res, trivia, raw)
-            elif isinstance(res, datetime.date):
-                return Date(res, trivia, raw)
-            else:
-                raise self.parse_error(InvalidNumberOrDateError)
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
-        # Leading zeros are not allowed
+    def _get_offset(self):
+        mark_offset = self._idx
+
+        # sign
+        sign = self._current
+        self.inc(exception=True)
+
+        # hour
+        mark = self._idx
+        if self._current in "01":
+            self.inc(exception=True)
+            self.consume(string.digits, min=1, max=1)
+        elif self._current in "2":
+            self.inc(exception=True)
+            self.consume("0123", min=1, max=1)
+        else:
+            raise Restore
+        hour = int(self._src[mark : self._idx])
+
+        # delimiter [:]
+        self.consume(":", min=1, max=1)
+
+        # minute
+        mark = self._idx
+        if self._current in "012345":
+            self.inc(exception=True)
+            self.consume(string.digits, min=1, max=1)
+        else:
+            raise Restore
+        minute = int(self._src[mark : self._idx])
+
+        seconds = hour * 3600 + minute * 60
+        offset = datetime.timedelta(seconds=seconds)
+        if sign == "-":
+            offset = -offset
+
+        raw = self._src[mark_offset : self._idx]
+        return timezone(offset, str(raw))
+
+    def _parse_datetime(self):
+        mark = self._idx
+
+        year, month, day = self._get_date()
+
+        # delimiter [T ]
+        self.consume("T ", min=1, max=1)
+
+        hour, minute, second, microsecond = self._get_time()
+
+        # delimiter [Z] or timezone
+        tzinfo = {}
+        if self._current in "Z":
+            self.inc()
+            tzinfo = {"tzinfo": _utc}
+        elif self._current in "+-":
+            tzinfo = {"tzinfo": self._get_offset()}
+
+        value = datetime.datetime(
+            year, month, day, hour, minute, second, microsecond, **tzinfo
+        )
+        raw = self._src[mark : self._idx]
+
+        return DateTime(value, Trivia(), raw)
+
+    def _get_date(self):
+        # year
+        mark = self._idx
+        self.consume(string.digits, min=1)
+        year = int(self._src[mark : self._idx])
+
+        # delimiter [-]
+        self.consume("-", min=1, max=1)
+
+        # month
+        mark = self._idx
+        if self._current in "0":
+            self.inc(exception=True)
+            self.consume("123456789", min=1, max=1)
+        elif self._current in "1":
+            self.inc(exception=True)
+            self.consume("012", min=1, max=1)
+        else:
+            raise Restore
+        month = int(self._src[mark : self._idx])
+
+        # delimiter [-]
+        self.consume("-", min=1, max=1)
+
+        # day
+        mark = self._idx
+        if self._current in "0":
+            self.inc(exception=True)
+            self.consume("123456789", min=1, max=1)
+        elif self._current in "12":
+            self.inc(exception=True)
+            self.consume(string.digits, min=1, max=1)
+        elif self._current in "3":
+            self.inc(exception=True)
+            self.consume("01", min=1, max=1)
+        else:
+            raise Restore
+        day = int(self._src[mark : self._idx])
+
+        return year, month, day
+
+    def _parse_date(self):
+        mark = self._idx
+
+        year, month, day = self._get_date()
+
+        value = datetime.date(year, month, day)
+        raw = self._src[mark : self._idx]
+
+        return Date(value, Trivia(), raw)
+
+    def _get_time(self):
+        # hour
+        mark = self._idx
+        if self._current in "01":
+            self.inc(exception=True)
+            self.consume(string.digits, 1, 1)
+        elif self._current in "2":
+            self.inc(exception=True)
+            self.consume("0123", 1, 1)
+        else:
+            raise Restore
+        hour = int(self._src[mark : self._idx])
+
+        # delimiter [:]
+        self.consume(":", 1, 1)
+
+        # minute
+        mark = self._idx
+        if self._current in "012345":
+            self.inc(exception=True)
+            self.consume(string.digits, 1, 1)
+        else:
+            raise Restore
+        minute = int(self._src[mark : self._idx])
+
+        # delimiter [:]
+        self.consume(":", 1, 1)
+
+        # second
+        mark = self._idx
+        if self._current in "012345":
+            self.inc(exception=True)
+            self.consume(string.digits, 1, 1)
+        elif self._current in "6":
+            self.inc(exception=True)
+            self.consume("0", 1, 1)
+        else:
+            raise Restore
+        second = int(self._src[mark : self._idx])
+
+        # microsecond
+        mark = self._idx
+        microsecond = 0
+        if self._current == ".":
+            self.inc(exception=True)
+            self.consume(string.digits, 1, 6)
+            microsecond = int("{:<06s}".format(self._src[mark : self._idx]))
+
+        return hour, minute, second, microsecond
+
+    def _parse_time(self):
+        mark = self._idx
+
+        hour, minute, second, microsecond = self._get_time()
+
+        value = datetime.time(hour, minute, second, microsecond)
+        raw = self._src[mark : self._idx]
+
+        return Time(value, Trivia(), raw)
+
+    def _get_sign(self):  # type: (Parser) -> str
+        # if the current char is a sign, consume it
         sign = ""
-        if raw.startswith(("+", "-")):
-            sign = raw[0]
-            raw = raw[1:]
+        if self._current in "+-":
+            sign = self._current
 
-        if (
-            len(raw) > 1
-            and raw.startswith("0")
-            and not raw.startswith(("0.", "0o", "0x", "0b"))
-        ):
-            return
+            # consume this sign, EOF here is problematic as it would be a bare sign
+            self.inc(exception=True)
 
-        if raw.startswith(("0o", "0x", "0b")) and sign:
-            return
+        return sign
 
-        digits = "[0-9]"
-        base = 10
-        if raw.startswith("0b"):
-            digits = "[01]"
-            base = 2
-        elif raw.startswith("0o"):
-            digits = "[0-7]"
-            base = 8
-        elif raw.startswith("0x"):
-            digits = "[0-9a-f]"
-            base = 16
-
+    def _remove_underscore(self, raw, digits):
         # Underscores should be surrounded by digits
-        clean = re.sub("(?i)(?<={})_(?={})".format(digits, digits), "", raw)
-
+        pattern = "(?i)(?<=[{0}])_(?=[{0}])".format(digits)
+        clean = re.sub(pattern, "", raw)
         if "_" in clean:
-            return
+            raise Restore
 
-        if clean.endswith("."):
-            return
+        return clean
+
+    def _is_zero(self):
+        if self._current == "0":
+            # consume this zero, EOF here means its just a zero
+            self.inc()
+
+            if self._current in string.digits:
+                # there is at least one leading zero, this is not allowed
+                raise Restore
+
+            return True
+        return False
+
+    def _parse_special_float(self, style, sign):
+        style = FloatType(style)
+
+        # mark the start of the special
+        mark = self._idx
+
+        # only keep parsing for special float if the characters match the style
+        # try consuming rest of chars in style
+        for c in style:
+            self.consume(c, min=1, max=1)
+
+        raw = self._src[mark : self._idx]
+
+        return Float(float(sign + style.value), Trivia(), sign + raw)
+
+    def _parse_float(self):
+        # get the sign if there is one
+        sign = self._get_sign()
+
+        # try inf
+        with self._state:
+            return self._parse_special_float(FloatType.INF, sign)
+
+        # try nan
+        with self._state:
+            return self._parse_special_float(FloatType.NAN, sign)
+
+        # assert the next value is a digit
+        if self._current not in string.digits:
+            raise Restore
+
+        # mark the start of the number
+        mark = self._idx
+
+        # if the first digit is zero check for leading zero
+        zero = self._is_zero()
+
+        # what characters are allowed
+        digits = string.digits
+        digitsu = digits + "_"
+
+        # consume as many valid characters as possible
+        # (must consume at least one if we didn't get a zero value)
+        self.consume(digitsu, min=0 if zero else 1)
+
+        decimal = exponent = False
+        if self._current == ".":
+            # decimal
+            decimal = True
+
+            # consume this char, EOF here is problematic (middle of number)
+            self.inc(exception=True)
+
+            # consume as many valid characters as possible (at least one)
+            self.consume(digitsu, min=1)
+
+        if self._current in "eE":
+            # exponent
+            exponent = True
+
+            # consume this char, EOF here is problematic (middle of number)
+            self.inc(exception=True)
+
+            self._get_sign()
+
+            # consume as many valid characters as possible (at least one)
+            self.consume(digitsu, min=1)
+
+        # must have a decimal and/or exponent
+        if not (decimal or exponent):
+            raise Restore
+
+        # get the raw number
+        raw = self._src[mark : self._idx]
+
+        # cleanup number as needed
+        clean = self._remove_underscore(raw, digits)
 
         try:
-            return Integer(int(sign + clean, base), trivia, sign + raw)
+            return Float(float(sign + clean), Trivia(), sign + raw)
         except ValueError:
-            try:
-                return Float(float(sign + clean), trivia, sign + raw)
-            except ValueError:
-                return
+            pass
+
+        raise Restore
+
+    def _get_base(self, sign, zero):  # type: (str, bool) -> (int, str)
+        # default is decimal
+        base = 10
+        digits = string.digits
+
+        if zero and self._current in "box":
+            # binary, octal, or hexadecimal
+
+            if sign:
+                # cannot have a sign
+                raise Restore
+
+            if self._current == "b":
+                # binary
+                base = 2
+                digits = "01"
+            elif self._current == "o":
+                # octal
+                base = 8
+                digits = "01234567"
+            elif self._current == "x":
+                # hexadecimal
+                base = 16
+                digits = "0123456789abcdefABCDEF"  # ignore case
+
+            # consume this char, EOF here is bad (middle of number)
+            self.inc(exception=True)
+
+        return base, digits
+
+    def _parse_integer(self):
+        # get the sign if there is one
+        sign = self._get_sign()
+
+        # assert the next value is a digit
+        if self._current not in string.digits:
+            raise Restore
+
+        # mark the start of the number
+        mark = self._idx
+
+        # if the first digit is zero check for leading zero
+        zero = self._is_zero()
+
+        # determine what base this is
+        base, digits = self._get_base(sign, zero)
+        digitsu = digits + "_"
+
+        # consume as many valid characters as possible
+        # (must consume at least one if we didn't get a zero value)
+        self.consume(digitsu, min=0 if zero else 1)
+
+        # get the raw number
+        raw = self._src[mark : self._idx]
+
+        # cleanup number as needed
+        clean = self._remove_underscore(raw, digits)
+
+        try:
+            return Integer(int(sign + clean, base), Trivia(), sign + raw)
+        except ValueError:
+            pass
+
+        raise Restore
 
     def _parse_literal_string(self):  # type: () -> Item
         return self._parse_string(StringType.SLL)

@@ -124,6 +124,17 @@ class StringType(Enum):
         }[self]
 
 
+class FloatType(Enum):
+    INF = "inf"
+    NAN = "nan"
+
+    def __iter__(self):
+        return iter(self.value)
+
+    def __len__(self):
+        return len(self.value)
+
+
 class Trivia:
     """
     Trivia information (aka metadata).
