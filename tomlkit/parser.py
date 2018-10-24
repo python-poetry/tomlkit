@@ -2,17 +2,14 @@
 from __future__ import unicode_literals
 
 import datetime
-import itertools
 import re
 import string
 
-from copy import copy
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from ._compat import PY2
 from ._compat import chr
 from ._compat import decode
 from ._utils import _escaped
@@ -27,6 +24,7 @@ from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
 from .exceptions import UnexpectedEofError
+from .exceptions import Restore
 from .items import AoT
 from .items import Array
 from .items import Bool
@@ -45,6 +43,7 @@ from .items import Table
 from .items import Time
 from .items import Trivia
 from .items import Whitespace
+from .source import Source
 from .toml_char import TOMLChar
 from .toml_document import TOMLDocument
 
@@ -56,68 +55,63 @@ class Parser:
 
     def __init__(self, string):  # type: (str) -> None
         # Input to parse
-        self._src = decode(string)  # type: str
-        # Iterator used for getting characters from src.
-        self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self._src)])
-        # Current byte offset into src.
-        self._idx = 0
-        # Current character
-        self._current = TOMLChar("")  # type: TOMLChar
-        # Index into src between which and idx slices will be extracted
-        self._marker = 0
+        self._src = Source(decode(string))
 
         self._aot_stack = []
 
-        self.inc()
+    @property
+    def _state(self):
+        return self._src.state
+
+    @property
+    def _idx(self):
+        return self._src.idx
+
+    @property
+    def _current(self):
+        return self._src.current
+
+    @property
+    def _marker(self):
+        return self._src.marker
 
     def extract(self):  # type: () -> str
         """
         Extracts the value between marker and index
         """
-        if self.end():
-            return self._src[self._marker :]
-        else:
-            return self._src[self._marker : self._idx]
+        return self._src.extract()
 
     def inc(self, exception=None):  # type: () -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
-        try:
-            self._idx, self._current = next(self._chars)
-
-            return True
-        except StopIteration:
-            self._idx = len(self._src)
-            self._current = TOMLChar("\0")
-
-            if not exception:
-                return False
-            raise exception
+        return self._src.inc(exception=exception)
 
     def inc_n(self, n, exception=None):  # type: (int) -> bool
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
         """
-        for _ in range(n):
-            if not self.inc(exception=exception):
-                return False
-
-        return True
+        return self._src.inc_n(n=n, exception=exception)
 
     def end(self):  # type: () -> bool
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._idx >= len(self._src) or self._current == "\0"
+        return self._src.end()
 
     def mark(self):  # type: () -> None
         """
         Sets the marker to the index's current position
         """
-        self._marker = self._idx
+        self._src.mark()
+
+    def parse_error(self, exception=ParseError, *args):
+        """
+        Creates a generic "parse error" at the current position.
+        """
+        return self._src.parse_error(exception, *args)
 
     def parse(self):  # type: () -> TOMLDocument
         body = TOMLDocument(True)
@@ -176,27 +170,6 @@ class Parser:
         )
 
         return True
-
-    def parse_error(self, kind=ParseError, args=None):  # type: () -> None
-        """
-        Creates a generic "parse error" at the current position.
-        """
-        line, col = self._to_linecol(self._idx)
-
-        if args:
-            return kind(line, col, *args)
-        else:
-            return kind(line, col)
-
-    def _to_linecol(self, offset):  # type: (int) -> Tuple[int, int]
-        cur = 0
-        for i, line in enumerate(self._src.splitlines()):
-            if cur + len(line) + 1 > offset:
-                return (i + 1, offset - cur)
-
-            cur += len(line) + 1
-
-        return len(self._src.splitlines()), 0
 
     def _is_child(self, parent, child):  # type: (str, str) -> bool
         """
@@ -260,55 +233,35 @@ class Parser:
         if the item is value-like.
         """
         self.mark()
-        saved_idx = self._save_idx()
+        with self._state as state:
+            while True:
+                c = self._current
+                if c == "\n":
+                    # Found a newline; Return all whitespace found up to this point.
+                    self.inc()
 
-        while True:
-            c = self._current
-            if c == "\n":
-                # Found a newline; Return all whitespace found up to this point.
-                self.inc()
-
-                return (None, Whitespace(self.extract()))
-            elif c in " \t\r":
-                # Skip whitespace.
-                if not self.inc():
                     return (None, Whitespace(self.extract()))
-            elif c == "#":
-                # Found a comment, parse it
-                indent = self.extract()
-                cws, comment, trail = self._parse_comment_trail()
+                elif c in " \t\r":
+                    # Skip whitespace.
+                    if not self.inc():
+                        return (None, Whitespace(self.extract()))
+                elif c == "#":
+                    # Found a comment, parse it
+                    indent = self.extract()
+                    cws, comment, trail = self._parse_comment_trail()
 
-                return (None, Comment(Trivia(indent, cws, comment, trail)))
-            elif c == "[":
-                # Found a table, delegate to the calling function.
-                return
-            else:
-                # Begining of a KV pair.
-                # Return to beginning of whitespace so it gets included
-                # as indentation for the KV about to be parsed.
-                self._restore_idx(*saved_idx)
-                key, value = self._parse_key_value(True)
+                    return (None, Comment(Trivia(indent, cws, comment, trail)))
+                elif c == "[":
+                    # Found a table, delegate to the calling function.
+                    return
+                else:
+                    # Begining of a KV pair.
+                    # Return to beginning of whitespace so it gets included
+                    # as indentation for the KV about to be parsed.
+                    state.restore = True
+                    break
 
-                return key, value
-
-    def _save_idx(self):  # type: () -> Tuple[Iterator, int, str]
-        if PY2:
-            # Python 2.7 does not allow to directly copy
-            # an iterator, so we have to make tees of the original
-            # chars iterator.
-            chars1, chars2 = itertools.tee(self._chars)
-
-            # We can no longer use the original chars iterator.
-            self._chars = chars1
-
-            return chars2, self._idx, self._current
-
-        return copy(self._chars), self._idx, self._current
-
-    def _restore_idx(self, chars, idx, current):  # type: (Iterator, int, str) -> None
-        self._chars = chars
-        self._idx = idx
-        self._current = current
+        return self._parse_key_value(True)
 
     def _parse_comment_trail(self):  # type: () -> Tuple[str, str, str]
         """
@@ -345,7 +298,7 @@ class Parser:
             elif c in " \t\r":
                 self.inc()
             else:
-                raise self.parse_error(UnexpectedCharError, (c))
+                raise self.parse_error(UnexpectedCharError, c)
 
             if self.end():
                 break
@@ -387,7 +340,7 @@ class Parser:
         while self._current.is_kv_sep() and self.inc():
             if self._current == "=":
                 if found_equals:
-                    raise self.parse_error(UnexpectedCharError, ("=",))
+                    raise self.parse_error(UnexpectedCharError, "=")
                 else:
                     found_equals = True
             pass
@@ -514,14 +467,16 @@ class Parser:
         Attempts to parse a value at the current position.
         """
         self.mark()
-        trivia = Trivia()
 
-        c = self._current
-        if c == '"':
+        with self._state:
             return self._parse_basic_string()
-        elif c == "'":
+
+        with self._state:
             return self._parse_literal_string()
-        elif c == "t" and self._src[self._idx :].startswith("true"):
+
+        trivia = Trivia()
+        c = self._current
+        if c == "t" and self._src[self._idx :].startswith("true"):
             # Boolean: true
             self.inc_n(4)
 
@@ -626,7 +581,7 @@ class Parser:
             else:
                 raise self.parse_error(InvalidNumberOrDateError)
         else:
-            raise self.parse_error(UnexpectedCharError, (c))
+            raise self.parse_error(UnexpectedCharError, c)
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
@@ -700,7 +655,7 @@ class Parser:
             # the escape followed by whitespace must have a newline
             # before any other chars
             if "\n" not in tmp:
-                raise self.parse_error(InvalidCharInStringError, (self._current,))
+                raise self.parse_error(InvalidCharInStringError, self._current)
 
             return ""
 
@@ -721,7 +676,7 @@ class Parser:
 
                 return u
 
-        raise self.parse_error(InvalidCharInStringError, (self._current,))
+        raise self.parse_error(InvalidCharInStringError, self._current)
 
     def _parse_string(self, delim):  # type: (str) -> Item
         delim = StringType(delim)
@@ -729,7 +684,7 @@ class Parser:
 
         # only keep parsing for string if the current character matches the delim
         if self._current != delim.unit:
-            raise ValueError("Expecting a {!r} character".format(delim))
+            raise Restore
 
         # consume the opening/first delim, EOF here is an issue
         # (middle of string or middle of delim)
@@ -759,7 +714,7 @@ class Parser:
         while True:
             if delim.is_singleline() and self._current.is_nl():
                 # single line cannot have actual newline characters
-                raise self.parse_error(InvalidCharInStringError, (self._current,))
+                raise self.parse_error(InvalidCharInStringError, self._current)
             elif not escaped and self._current == delim.unit:
                 # try to process current as a closing delim
                 original = self.extract()
@@ -821,8 +776,7 @@ class Parser:
         """
         if self._current != "[":
             raise self.parse_error(
-                InternalParserError,
-                ("_parse_table() called on non-bracket character.",),
+                InternalParserError, "_parse_table() called on non-bracket character."
             )
 
         indent = self.extract()
@@ -949,7 +903,7 @@ class Parser:
                 else:
                     raise self.parse_error(
                         InternalParserError,
-                        ("_parse_item() returned None on a non-bracket character.",),
+                        "_parse_item() returned None on a non-bracket character.",
                     )
 
         if isinstance(result, Null):
@@ -974,32 +928,27 @@ class Parser:
         Returns the name of the table about to be parsed,
         as well as whether it is part of an AoT.
         """
-        # Save initial state
-        idx = self._save_idx()
-        marker = self._marker
+        # we always want to restore after exiting this scope
+        with self._state(save_marker=True, restore=True):
+            if self._current != "[":
+                raise self.parse_error(
+                    InternalParserError,
+                    "_peek_table() entered on non-bracket character",
+                )
 
-        if self._current != "[":
-            raise self.parse_error(
-                InternalParserError, ("_peek_table() entered on non-bracket character",)
-            )
-
-        # AoT
-        self.inc()
-        is_aot = False
-        if self._current == "[":
+            # AoT
             self.inc()
-            is_aot = True
+            is_aot = False
+            if self._current == "[":
+                self.inc()
+                is_aot = True
 
-        self.mark()
+            self.mark()
 
-        while self._current != "]" and self.inc():
-            table_name = self.extract()
+            while self._current != "]" and self.inc():
+                table_name = self.extract()
 
-        # Restore initial state
-        self._restore_idx(*idx)
-        self._marker = marker
-
-        return is_aot, table_name
+            return is_aot, table_name
 
     def _parse_aot(self, first, name_first):  # type: (Table, str) -> AoT
         """
@@ -1026,19 +975,17 @@ class Parser:
 
         n is the max number of characters that will be peeked.
         """
-        idx = self._save_idx()
-        buf = ""
-        for _ in range(n):
-            if self._current not in " \t\n\r#,]}":
-                buf += self._current
-                self.inc()
-                continue
+        # we always want to restore after exiting this scope
+        with self._state(restore=True):
+            buf = ""
+            for _ in range(n):
+                if self._current not in " \t\n\r#,]}":
+                    buf += self._current
+                    self.inc()
+                    continue
 
-            break
-
-        self._restore_idx(*idx)
-
-        return buf
+                break
+            return buf
 
     def _peek_unicode(self, is_long):  # type: () -> Tuple[bool, str]
         """
@@ -1047,36 +994,30 @@ class Parser:
 
         Returns the unicode value is it's a valid one else None.
         """
-        # Save initial state
-        idx = self._save_idx()
-        marker = self._marker
+        # we always want to restore after exiting this scope
+        with self._state(save_marker=True, restore=True):
+            if self._current not in {"u", "U"}:
+                raise self.parse_error(
+                    InternalParserError, "_peek_unicode() entered on non-unicode value"
+                )
 
-        if self._current not in {"u", "U"}:
-            raise self.parse_error(
-                InternalParserError, ("_peek_unicode() entered on non-unicode value")
-            )
+            # AoT
+            self.inc()  # Dropping prefix
+            self.mark()
 
-        # AoT
-        self.inc()  # Dropping prefix
-        self.mark()
+            if is_long:
+                chars = 8
+            else:
+                chars = 4
 
-        if is_long:
-            chars = 8
-        else:
-            chars = 4
+            if not self.inc_n(chars):
+                value, extracted = None, None
+            else:
+                extracted = self.extract()
 
-        if not self.inc_n(chars):
-            value, extracted = None, None
-        else:
-            extracted = self.extract()
+                try:
+                    value = chr(int(extracted, 16))
+                except ValueError:
+                    value = None
 
-            try:
-                value = chr(int(extracted, 16))
-            except ValueError:
-                value = None
-
-        # Restore initial state
-        self._restore_idx(*idx)
-        self._marker = marker
-
-        return value, extracted
+            return value, extracted
