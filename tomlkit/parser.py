@@ -474,8 +474,10 @@ class Parser:
         with self._state:
             return self._parse_literal_string()
 
-        with self._state:
-            return self._parse_array()
+        try:
+            return self._is_array()
+        except Restore:
+            pass
 
         trivia = Trivia()
         c = self._current
@@ -550,10 +552,14 @@ class Parser:
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_array(self):
-        if self._current != "[":
-            raise Restore
+    def _is_array(self):
+        if self._current == "[":
+            with self._state:
+                return self._parse_array()
 
+        raise Restore
+
+    def _parse_array(self):
         # consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=True)
 
