@@ -17,6 +17,7 @@ from typing import Union
 
 from ._compat import PY2
 from ._compat import decode
+from ._compat import long
 from ._compat import unicode
 from ._utils import escape_string
 
@@ -309,7 +310,7 @@ class Comment(Item):
         return "{}{}".format(self._trivia.indent, decode(self._trivia.comment))
 
 
-class Integer(int, Item):
+class Integer(long, Item):
     """
     An integer literal.
     """
