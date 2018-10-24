@@ -2,8 +2,8 @@
 [![PyPI Version](https://img.shields.io/pypi/v/tomlkit.svg?logo=python&logoColor=white)](https://pypi.python.org/pypi/tomlkit/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/tomlkit.svg?logo=python&logoColor=white)](https://pypi.python.org/pypi/tomlkit/)
 [![License](https://img.shields.io/github/license/sdispater/tomlkit.svg?logo=github&logoColor=white)](https://github.com/sdispater/tomlkit/blob/master/LICENSE)
-[![Travis CI](https://img.shields.io/travis/com/sdispater/tomlkit.svg?logo=travis&logoColor=white&label=Travis%20CI)](https://travis-ci.com/sdispater/tomlkit)
-[![AppVeyor](https://img.shields.io/appveyor/ci/sdispater/tomlkit.svg?logo=appveyor&logoColor=white&label=AppVeyor)](https://ci.appveyor.com/project/sdispater/tomlkit)
+[![Travis CI](https://img.shields.io/travis/com/sdispater/tomlkit/master.svg?logo=travis&logoColor=white&label=Travis%20CI)](https://travis-ci.com/sdispater/tomlkit)
+[![AppVeyor](https://img.shields.io/appveyor/ci/sdispater/tomlkit/master.svg?logo=appveyor&logoColor=white&label=AppVeyor)](https://ci.appveyor.com/project/sdispater/tomlkit)
 [![Codecov](https://img.shields.io/codecov/c/github/sdispater/tomlkit/master.svg?logo=codecov)](https://codecov.io/gh/sdispater/tomlkit)
 
 
