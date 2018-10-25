@@ -289,29 +289,7 @@ class Container(dict):
         s = ""
         for k, v in self._body:
             if k is not None:
-                if False:
-                    key = k.as_string()
-
-                    for _k, _v in v.value.body:
-                        if _k is None:
-                            s += v.as_string()
-                        elif isinstance(_v, Table):
-                            s += v.as_string(prefix=key)
-                        else:
-                            _key = key
-                            if prefix is not None:
-                                _key = prefix + "." + _key
-
-                            s += "{}{}{}{}{}{}{}".format(
-                                _v.trivia.indent,
-                                _key + "." + decode(_k.as_string()),
-                                _k.sep,
-                                decode(_v.as_string()),
-                                _v.trivia.comment_ws,
-                                decode(_v.trivia.comment),
-                                _v.trivia.trail,
-                            )
-                elif isinstance(v, Table):
+                if isinstance(v, Table):
                     s += self._render_table(k, v)
                 elif isinstance(v, AoT):
                     s += self._render_aot(k, v)
