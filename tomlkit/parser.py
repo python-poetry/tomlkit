@@ -5,7 +5,9 @@ import datetime
 import re
 import string
 
-from typing import Iterator
+from typing import Any
+from typing import Generator
+from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -24,7 +26,6 @@ from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
 from .exceptions import UnexpectedEofError
-from .exceptions import Restore
 from .items import AoT
 from .items import Array
 from .items import Bool
@@ -34,6 +35,7 @@ from .items import DateTime
 from .items import Float
 from .items import InlineTable
 from .items import Integer
+from .items import Item
 from .items import Key
 from .items import KeyType
 from .items import Null
@@ -81,14 +83,14 @@ class Parser:
         """
         return self._src.extract()
 
-    def inc(self, exception=None):  # type: () -> bool
+    def inc(self, exception=None):  # type: (Optional[ParseError]) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n, exception=None):  # type: (int) -> bool
+    def inc_n(self, n, exception=None):  # type: (int, Optional[ParseError]) -> bool
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -240,17 +242,17 @@ class Parser:
                     # Found a newline; Return all whitespace found up to this point.
                     self.inc()
 
-                    return (None, Whitespace(self.extract()))
+                    return None, Whitespace(self.extract())
                 elif c in " \t\r":
                     # Skip whitespace.
                     if not self.inc():
-                        return (None, Whitespace(self.extract()))
+                        return None, Whitespace(self.extract())
                 elif c == "#":
                     # Found a comment, parse it
                     indent = self.extract()
                     cws, comment, trail = self._parse_comment_trail()
 
-                    return (None, Comment(Trivia(indent, cws, comment, trail)))
+                    return None, Comment(Trivia(indent, cws, comment, trail))
                 elif c == "[":
                     # Found a table, delegate to the calling function.
                     return
@@ -318,9 +320,7 @@ class Parser:
 
         return comment_ws, comment, trail
 
-    def _parse_key_value(
-        self, parse_comment=False, inline=True
-    ):  # type: (bool, bool) -> (Key, Item)
+    def _parse_key_value(self, parse_comment=False):  # type: (bool) -> (Key, Item)
         # Leading indent
         self.mark()
 
@@ -430,7 +430,7 @@ class Parser:
 
     def _handle_dotted_key(
         self, container, key, value
-    ):  # type: (Container, Key) -> None
+    ):  # type: (Container, Key, Any) -> None
         names = tuple(self._split_table_name(key.key))
         name = names[0]
         name._dotted = True
@@ -467,16 +467,14 @@ class Parser:
         Attempts to parse a value at the current position.
         """
         self.mark()
-
-        with self._state:
-            return self._parse_basic_string()
-
-        with self._state:
-            return self._parse_literal_string()
-
-        trivia = Trivia()
         c = self._current
-        if c == "t" and self._src[self._idx :].startswith("true"):
+        trivia = Trivia()
+
+        if c == StringType.SLB.value:
+            return self._parse_basic_string()
+        elif c == StringType.SLL.value:
+            return self._parse_literal_string()
+        elif c == "t" and self._src[self._idx :].startswith("true"):
             # Boolean: true
             self.inc_n(4)
 
@@ -540,7 +538,7 @@ class Parser:
                 if self._current == "}":
                     break
 
-                key, val = self._parse_key_value(False, inline=True)
+                key, val = self._parse_key_value(False)
                 elems.append(key, val)
 
             self.inc()
@@ -583,7 +581,9 @@ class Parser:
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
+    def _parse_number(
+        self, raw, trivia
+    ):  # type: (str, Trivia) -> Optional[Union[Integer, Float]]
         # Leading zeros are not allowed
         sign = ""
         if raw.startswith(("+", "-")):
@@ -629,11 +629,13 @@ class Parser:
             except ValueError:
                 return
 
-    def _parse_literal_string(self):  # type: () -> Item
-        return self._parse_string(StringType.SLL)
+    def _parse_literal_string(self):  # type: () -> String
+        with self._state:
+            return self._parse_string(StringType.SLL)
 
-    def _parse_basic_string(self):  # type: () -> Item
-        return self._parse_string(StringType.SLB)
+    def _parse_basic_string(self):  # type: () -> String
+        with self._state:
+            return self._parse_string(StringType.SLB)
 
     def _parse_escaped_char(self, multiline):
         if multiline and self._current.is_ws():
@@ -678,13 +680,13 @@ class Parser:
 
         raise self.parse_error(InvalidCharInStringError, self._current)
 
-    def _parse_string(self, delim):  # type: (str) -> Item
-        delim = StringType(delim)
-        assert delim.is_singleline()
-
+    def _parse_string(self, delim):  # type: (StringType) -> String
         # only keep parsing for string if the current character matches the delim
         if self._current != delim.unit:
-            raise Restore
+            raise self.parse_error(
+                InternalParserError,
+                "Invalid character for string type {}".format(delim),
+            )
 
         # consume the opening/first delim, EOF here is an issue
         # (middle of string or middle of delim)
@@ -740,8 +742,6 @@ class Parser:
                     if not close:  # if there is no close characters, keep parsing
                         continue
                 else:
-                    close = delim.unit
-
                     # consume the closing delim, we do not care if EOF occurs as
                     # that would simply imply the end of self._src
                     self.inc()
@@ -987,7 +987,7 @@ class Parser:
                 break
             return buf
 
-    def _peek_unicode(self, is_long):  # type: () -> Tuple[bool, str]
+    def _peek_unicode(self, is_long):  # type: (bool) -> Tuple[bool, str]
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.

@@ -26,6 +26,14 @@ class ParseError(ValueError, TOMLKitError):
             "{} at line {} col {}".format(message, self._line, self._col)
         )
 
+    @property
+    def line(self):
+        return self._line
+
+    @property
+    def col(self):
+        return self._col
+
 
 class MixedArrayTypesError(ParseError):
     """
@@ -109,7 +117,9 @@ class InternalParserError(ParseError):
     An error that indicates a bug in the parser.
     """
 
-    def __init__(self, line, col, message=None):  # type: (int, int) -> None
+    def __init__(
+        self, line, col, message=None
+    ):  # type: (int, int, Optional[str]) -> None
         msg = "Internal parser error"
         if message:
             msg += " ({})".format(message)
@@ -137,15 +147,3 @@ class KeyAlreadyPresent(TOMLKitError):
         message = 'Key "{}" already exists.'.format(key)
 
         super(KeyAlreadyPresent, self).__init__(message)
-
-
-class Restore(TOMLKitError):
-    """
-    The current parsing path failed, restore to the previous state. This should only
-    be raised within a with the state handler context manager.
-    """
-
-    def __init__(self):  # type: () -> None
-        message = "Restore to the previous state."
-
-        super(Restore, self).__init__(message)

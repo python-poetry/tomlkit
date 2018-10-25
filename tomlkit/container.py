@@ -81,7 +81,7 @@ class Container(dict):
 
         return self.append(key, item)
 
-    def append(self, key, item):  # type: (Union[Key, str], Item) -> Container
+    def append(self, key, item):  # type: (Union[Key, str, None], Item) -> Container
         if not isinstance(key, Key) and key is not None:
             key = Key(key)
 

@@ -4,12 +4,13 @@ from __future__ import unicode_literals
 import itertools
 
 from copy import copy
+from typing import Optional
+from typing import Tuple
 
 from ._compat import PY2
 from ._compat import unicode
 from .exceptions import UnexpectedEofError
 from .exceptions import UnexpectedCharError
-from .exceptions import Restore
 from .exceptions import ParseError
 from .toml_char import TOMLChar
 
@@ -48,7 +49,7 @@ class _State:
 
             # Restore exceptions are silently consumed, other exceptions need to
             # propagate
-            return exception_type == Restore
+            return exception_type is None
 
 
 class _StateHandler:
@@ -76,15 +77,21 @@ class _StateHandler:
 class Source(unicode):
     EOF = TOMLChar("\0")
 
-    def __init__(self, src):  # type: (unicode) -> None
+    def __init__(self, _):  # type: (unicode) -> None
         super(Source, self).__init__()
 
-        self.reset()
-
-    def reset(self):
         # Collection of TOMLChars
         self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self)])
 
+        self._idx = 0
+        self._marker = 0
+        self._current = TOMLChar("")
+
+        self._state = _StateHandler(self)
+
+        self.inc()
+
+    def reset(self):
         # initialize both idx and current
         self.inc()
 
@@ -93,11 +100,7 @@ class Source(unicode):
 
     @property
     def state(self):  # type: () -> _StateHandler
-        try:
-            return self._state
-        except AttributeError:
-            self._state = _StateHandler(self)
-            return self._state
+        return self._state
 
     @property
     def idx(self):  # type: () -> int
@@ -111,7 +114,7 @@ class Source(unicode):
     def marker(self):  # type: () -> int
         return self._marker
 
-    def extract(self):  # type: () -> None
+    def extract(self):  # type: () -> unicode
         """
         Extracts the value between marker and index
         """
@@ -124,13 +127,16 @@ class Source(unicode):
         """
         try:
             self._idx, self._current = next(self._chars)
+
             return True
         except StopIteration:
             self._idx = len(self)
             self._current = self.EOF
             if exception:
                 exception = UnexpectedEofError if exception is True else exception
+
                 raise self.parse_error(exception)
+
             return False
 
     def inc_n(self, n, exception=None):  # type: (int, Exception) -> bool
@@ -144,7 +150,7 @@ class Source(unicode):
 
         return True
 
-    def consume(self, chars, min=0, max=-1, restore=True):
+    def consume(self, chars, min=0, max=-1):
         """
         Consume chars until min/max is satisfied is valid.
         """
@@ -156,7 +162,7 @@ class Source(unicode):
 
         # failed to consume minimum number of characters
         if min > 0:
-            raise Restore if restore else self.parse_error(UnexpectedCharError)
+            self.parse_error(UnexpectedCharError)
 
     def end(self):  # type: () -> bool
         """
@@ -170,14 +176,17 @@ class Source(unicode):
         """
         self._marker = self._idx
 
-    def parse_error(self, exception=ParseError, *args):  # type: () -> None
+    def parse_error(
+        self, exception=ParseError, *args
+    ):  # type: (ParseError.__class__, ...) -> ParseError
         """
         Creates a generic "parse error" at the current position.
         """
         line, col = self._to_linecol()
+
         return exception(line, col, *args)
 
-    def _to_linecol(self):  # type: (int) -> Tuple[int, int]
+    def _to_linecol(self):  # type: () -> Tuple[int, int]
         cur = 0
         for i, line in enumerate(self.splitlines()):
             if cur + len(line) + 1 > self.idx:
