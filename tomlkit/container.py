@@ -106,7 +106,11 @@ class Container(dict):
                 self.append(None, Whitespace("\n"))
 
         if key is not None and key in self:
-            current = self._body[self._map[key]][1]
+            current_idx = self._map[key]
+            if isinstance(current_idx, tuple):
+                current_idx = current_idx[0]
+
+            current = self._body[current_idx][1]
             if isinstance(item, Table):
                 if not isinstance(current, (Table, AoT)):
                     raise KeyAlreadyPresent(key)
@@ -128,7 +132,7 @@ class Container(dict):
                             current.append(k, v)
 
                         return self
-                else:
+                elif not item.is_super_table():
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):
                 if not isinstance(current, AoT):
@@ -180,7 +184,23 @@ class Container(dict):
             else:
                 return self._insert_at(0, key, item)
 
-        self._map[key] = len(self._body)
+        if key in self._map:
+            current_idx = self._map[key]
+            if isinstance(current_idx, tuple):
+                current_idx = current_idx[0]
+
+            current = self._body[current_idx][1]
+            if key is not None and not isinstance(current, Table):
+                raise KeyAlreadyPresent(key)
+
+            # Adding sub tables to a currently existing table
+            idx = self._map[key]
+            if not isinstance(idx, tuple):
+                idx = (idx,)
+
+            self._map[key] = idx + (len(self._body),)
+        else:
+            self._map[key] = len(self._body)
 
         self._body.append((key, item))
 
@@ -227,7 +247,16 @@ class Container(dict):
 
         # Increment indices after the current index
         for k, v in self._map.items():
-            if v > idx:
+            if isinstance(v, tuple):
+                new_indices = []
+                for v_ in v:
+                    if v_ > idx:
+                        v_ = v_ + 1
+
+                    new_indices.append(v_)
+
+                self._map[k] = tuple(new_indices)
+            elif v > idx:
                 self._map[k] = v + 1
 
         self._map[other_key] = idx + 1
@@ -260,7 +289,16 @@ class Container(dict):
 
         # Increment indices after the current index
         for k, v in self._map.items():
-            if v >= idx:
+            if isinstance(v, tuple):
+                new_indices = []
+                for v_ in v:
+                    if v_ >= idx:
+                        v_ = v_ + 1
+
+                    new_indices.append(v_)
+
+                self._map[k] = tuple(new_indices)
+            elif v >= idx:
                 self._map[k] = v + 1
 
         self._map[key] = idx
@@ -453,6 +491,20 @@ class Container(dict):
         idx = self._map.get(key, None)
         if idx is None:
             raise NonExistentKey(key)
+
+        if isinstance(idx, tuple):
+            container = Container(True)
+
+            for i in idx:
+                item = self._body[i][1]
+
+                if isinstance(item, Table):
+                    for k, v in item.value.body:
+                        container.append(k, v)
+                else:
+                    container.append(key, item)
+
+            return container
 
         item = self._body[idx][1]
 
