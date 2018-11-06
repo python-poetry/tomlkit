@@ -10,6 +10,7 @@ from datetime import time
 from tomlkit import dumps
 from tomlkit import loads
 from tomlkit import parse
+from tomlkit.exceptions import EmptyKeyError
 from tomlkit.exceptions import InvalidCharInStringError
 from tomlkit.exceptions import InvalidDateError
 from tomlkit.exceptions import InvalidDateTimeError
@@ -86,6 +87,10 @@ def test_parsed_document_are_properly_json_representable(
         ("array_no_comma", UnexpectedCharError),
         ("array_duplicate_comma", UnexpectedCharError),
         ("array_leading_comma", UnexpectedCharError),
+        ("inline_table_no_comma", UnexpectedCharError),
+        ("inline_table_duplicate_comma", EmptyKeyError),
+        ("inline_table_leading_comma", EmptyKeyError),
+        ("inline_table_trailing_comma", UnexpectedCharError),
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(

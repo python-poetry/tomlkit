@@ -9,6 +9,7 @@
 ### Fixed
 
 - Fixed comma handling when parsing arrays. (Thanks to [@njalerikson](https://github.com/njalerikson))
+- Fixed comma handling when parsing inline tables. (Thanks to [@njalerikson](https://github.com/njalerikson))
 
 
 ## [0.4.6] - 2018-10-16

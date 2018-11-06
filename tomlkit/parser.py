@@ -491,29 +491,7 @@ class Parser:
         elif c == "[":
             return self._parse_array()
         elif c == "{":
-            # Inline table
-            elems = Container(True)
-            self.inc()
-
-            while self._current != "}":
-                self.mark()
-                while self._current.is_spaces() or self._current == ",":
-                    self.inc()
-
-                if self._idx != self._marker:
-                    ws = self.extract().lstrip(",")
-                    if ws:
-                        elems.append(None, Whitespace(ws))
-
-                if self._current == "}":
-                    break
-
-                key, val = self._parse_key_value(False)
-                elems.append(key, val)
-
-            self.inc()
-
-            return InlineTable(elems, trivia)
+            return self._parse_inline_table()
         elif c in "+-" or self._peek(4) in {
             "+inf",
             "-inf",
@@ -646,6 +624,52 @@ class Parser:
                 return res
 
         raise self.parse_error(MixedArrayTypesError)
+
+    def _parse_inline_table(self):  # type: () -> InlineTable
+        # consume opening bracket, EOF here is an issue (middle of array)
+        self.inc(exception=UnexpectedEofError)
+
+        elems = Container(True)
+        trailing_comma = None
+        while True:
+            # consume leading whitespace
+            mark = self._idx
+            self.consume(TOMLChar.SPACES)
+            raw = self._src[mark : self._idx]
+            if raw:
+                elems.add(Whitespace(raw))
+
+            if not trailing_comma:
+                # None: empty inline table
+                # False: previous key-value pair was not followed by a comma
+                if self._current == "}":
+                    # consume closing bracket, EOF here doesn't matter
+                    self.inc()
+                    break
+                if trailing_comma is False:
+                    raise self.parse_error(UnexpectedCharError, self._current)
+            else:
+                # True: previous key-value pair was followed by a comma
+                if self._current == "}":
+                    raise self.parse_error(UnexpectedCharError, self._current)
+
+            key, val = self._parse_key_value(False)
+            elems.add(key, val)
+
+            # consume trailing whitespace
+            mark = self._idx
+            self.consume(TOMLChar.SPACES)
+            raw = self._src[mark : self._idx]
+            if raw:
+                elems.add(Whitespace(raw))
+
+            # consume trailing comma
+            trailing_comma = self._current == ","
+            if trailing_comma:
+                # consume closing bracket, EOF here is an issue (middle of inline table)
+                self.inc(exception=UnexpectedEofError)
+
+        return InlineTable(elems, Trivia())
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
