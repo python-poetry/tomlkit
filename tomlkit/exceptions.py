@@ -46,6 +46,50 @@ class MixedArrayTypesError(ParseError):
         super(MixedArrayTypesError, self).__init__(line, col, message=message)
 
 
+class InvalidNumberError(ParseError):
+    """
+    A numeric field was improperly specified.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Invalid number"
+
+        super(InvalidNumberError, self).__init__(line, col, message=message)
+
+
+class InvalidDateTimeError(ParseError):
+    """
+    A datetime field was improperly specified.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Invalid datetime"
+
+        super(InvalidDateTimeError, self).__init__(line, col, message=message)
+
+
+class InvalidDateError(ParseError):
+    """
+    A date field was improperly specified.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Invalid date"
+
+        super(InvalidDateError, self).__init__(line, col, message=message)
+
+
+class InvalidTimeError(ParseError):
+    """
+    A date field was improperly specified.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Invalid time"
+
+        super(InvalidTimeError, self).__init__(line, col, message=message)
+
+
 class InvalidNumberOrDateError(ParseError):
     """
     A numeric or date field was improperly specified.

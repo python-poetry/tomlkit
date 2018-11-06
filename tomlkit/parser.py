@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import datetime
 import re
 import string
 
@@ -15,13 +14,17 @@ from typing import Union
 from ._compat import chr
 from ._compat import decode
 from ._utils import _escaped
+from ._utils import RFC_3339_LOOSE
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
 from .exceptions import InvalidCharInStringError
-from .exceptions import InvalidNumberOrDateError
+from .exceptions import InvalidDateTimeError
+from .exceptions import InvalidDateError
+from .exceptions import InvalidTimeError
+from .exceptions import InvalidNumberError
 from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
@@ -544,7 +547,7 @@ class Parser:
             self.inc()
 
             return InlineTable(elems, trivia)
-        elif c in string.digits + "+-" or self._peek(4) in {
+        elif c in "+-" or self._peek(4) in {
             "+inf",
             "-inf",
             "inf",
@@ -552,7 +555,7 @@ class Parser:
             "-nan",
             "nan",
         }:
-            # Integer, Float, Date, Time or DateTime
+            # Number
             while self._current not in " \t\n\r#,]}" and self.inc():
                 pass
 
@@ -562,22 +565,40 @@ class Parser:
             if item is not None:
                 return item
 
-            try:
-                res = parse_rfc3339(raw)
-            except ValueError:
-                res = None
+            raise self.parse_error(InvalidNumberError)
+        elif c in string.digits:
+            # Integer, Float, Date, Time or DateTime
+            while self._current not in " \t\n\r#,]}" and self.inc():
+                pass
 
-            if res is None:
-                raise self.parse_error(InvalidNumberOrDateError)
+            raw = self.extract()
 
-            if isinstance(res, datetime.datetime):
-                return DateTime(res, trivia, raw)
-            elif isinstance(res, datetime.time):
-                return Time(res, trivia, raw)
-            elif isinstance(res, datetime.date):
-                return Date(res, trivia, raw)
-            else:
-                raise self.parse_error(InvalidNumberOrDateError)
+            m = RFC_3339_LOOSE.match(raw)
+            if m:
+                if m.group(1) and m.group(5):
+                    # datetime
+                    try:
+                        return DateTime(parse_rfc3339(raw), trivia, raw)
+                    except ValueError:
+                        raise self.parse_error(InvalidDateTimeError)
+
+                if m.group(1):
+                    try:
+                        return Date(parse_rfc3339(raw), trivia, raw)
+                    except ValueError:
+                        raise self.parse_error(InvalidDateError)
+
+                if m.group(5):
+                    try:
+                        return Time(parse_rfc3339(raw), trivia, raw)
+                    except ValueError:
+                        raise self.parse_error(InvalidTimeError)
+
+            item = self._parse_number(raw, trivia)
+            if item is not None:
+                return item
+
+            raise self.parse_error(InvalidNumberError)
         else:
             raise self.parse_error(UnexpectedCharError, c)
 

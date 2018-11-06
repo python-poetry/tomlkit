@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+- Improved distinction between date(time)s and numbers.
+
+
 ## [0.4.6] - 2018-10-16
 
 ### Fixed

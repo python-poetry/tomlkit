@@ -10,10 +10,13 @@ from datetime import time
 from tomlkit import dumps
 from tomlkit import loads
 from tomlkit import parse
-from tomlkit.exceptions import InvalidNumberOrDateError
+from tomlkit.exceptions import InvalidCharInStringError
+from tomlkit.exceptions import InvalidDateError
+from tomlkit.exceptions import InvalidDateTimeError
+from tomlkit.exceptions import InvalidTimeError
+from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import MixedArrayTypesError
 from tomlkit.exceptions import UnexpectedCharError
-from tomlkit.exceptions import InvalidCharInStringError
 from tomlkit.items import AoT
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -73,7 +76,10 @@ def test_parsed_document_are_properly_json_representable(
         ("key_value_with_trailing_chars", UnexpectedCharError),
         ("array_with_invalid_chars", UnexpectedCharError),
         ("mixed_array_types", MixedArrayTypesError),
-        ("invalid_number", InvalidNumberOrDateError),
+        ("invalid_number", InvalidNumberError),
+        ("invalid_date", InvalidDateError),
+        ("invalid_time", InvalidTimeError),
+        ("invalid_datetime", InvalidDateTimeError),
         ("trailing_comma", UnexpectedCharError),
         ("newline_in_singleline_string", InvalidCharInStringError),
         ("string_slash_whitespace_char", InvalidCharInStringError),
