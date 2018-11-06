@@ -32,6 +32,7 @@ from .exceptions import UnexpectedEofError
 from .items import AoT
 from .items import Array
 from .items import Bool
+from .items import BoolType
 from .items import Comment
 from .items import Date
 from .items import DateTime
@@ -99,6 +100,12 @@ class Parser:
         if the end of the input has not been reached.
         """
         return self._src.inc_n(n=n, exception=exception)
+
+    def consume(self, chars, min=0, max=-1):
+        """
+        Consume chars until min/max is satisfied is valid.
+        """
+        return self._src.consume(chars=chars, min=min, max=max)
 
     def end(self):  # type: () -> bool
         """
@@ -477,16 +484,10 @@ class Parser:
             return self._parse_basic_string()
         elif c == StringType.SLL.value:
             return self._parse_literal_string()
-        elif c == "t" and self._src[self._idx :].startswith("true"):
-            # Boolean: true
-            self.inc_n(4)
-
-            return Bool(True, trivia)
-        elif c == "f" and self._src[self._idx :].startswith("false"):
-            # Boolean: true
-            self.inc_n(5)
-
-            return Bool(False, trivia)
+        elif c == BoolType.TRUE.value[0]:
+            return self._parse_true()
+        elif c == BoolType.FALSE.value[0]:
+            return self._parse_false()
         elif c == "[":
             # Array
             elems = []  # type: List[Item]
@@ -602,9 +603,24 @@ class Parser:
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_number(
-        self, raw, trivia
-    ):  # type: (str, Trivia) -> Optional[Union[Integer, Float]]
+    def _parse_true(self):
+        return self._parse_bool(BoolType.TRUE)
+
+    def _parse_false(self):
+        return self._parse_bool(BoolType.FALSE)
+
+    def _parse_bool(self, style):  # type: () -> Item
+        with self._state:
+            style = BoolType(style)
+
+            # only keep parsing for bool if the characters match the style
+            # try consuming rest of chars in style
+            for c in style:
+                self.consume(c, min=1, max=1)
+
+            return Bool(style, Trivia())
+
+    def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed
         sign = ""
         if raw.startswith(("+", "-")):

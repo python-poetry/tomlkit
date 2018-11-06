@@ -124,6 +124,24 @@ class StringType(Enum):
         }[self]
 
 
+class BoolType(Enum):
+    TRUE = "true"
+    FALSE = "false"
+
+    @lru_cache(maxsize=None)
+    def __bool__(self):
+        return {BoolType.TRUE: True, BoolType.FALSE: False}[self]
+
+    if PY2:
+        __nonzero__ = __bool__  # for PY2
+
+    def __iter__(self):
+        return iter(self.value)
+
+    def __len__(self):
+        return len(self.value)
+
+
 class Trivia:
     """
     Trivia information (aka metadata).
@@ -449,10 +467,10 @@ class Bool(Item):
     A boolean literal.
     """
 
-    def __init__(self, value, trivia):  # type: (float, Trivia) -> None
+    def __init__(self, t, trivia):  # type: (float, Trivia) -> None
         super(Bool, self).__init__(trivia)
 
-        self._value = value
+        self._value = bool(t)
 
     @property
     def discriminant(self):  # type: () -> int
