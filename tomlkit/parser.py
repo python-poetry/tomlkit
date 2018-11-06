@@ -87,7 +87,7 @@ class Parser:
         """
         return self._src.extract()
 
-    def inc(self, exception=None):  # type: (Optional[ParseError]) -> bool
+    def inc(self, exception=None):  # type: (Optional[ParseError.__class__]) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
@@ -489,41 +489,7 @@ class Parser:
         elif c == BoolType.FALSE.value[0]:
             return self._parse_false()
         elif c == "[":
-            # Array
-            elems = []  # type: List[Item]
-            self.inc()
-
-            while self._current != "]":
-                self.mark()
-                while self._current.is_ws() or self._current == ",":
-                    self.inc()
-
-                if self._idx != self._marker:
-                    elems.append(Whitespace(self.extract()))
-
-                if self._current == "]":
-                    break
-
-                if self._current == "#":
-                    cws, comment, trail = self._parse_comment_trail()
-
-                    next_ = Comment(Trivia("", cws, comment, trail))
-                else:
-                    next_ = self._parse_value()
-
-                elems.append(next_)
-
-            self.inc()
-
-            try:
-                res = Array(elems, trivia)
-            except ValueError:
-                raise self.parse_error(MixedArrayTypesError)
-
-            if res.is_homogeneous():
-                return res
-
-            raise self.parse_error(MixedArrayTypesError)
+            return self._parse_array()
         elif c == "{":
             # Inline table
             elems = Container(True)
@@ -609,7 +575,7 @@ class Parser:
     def _parse_false(self):
         return self._parse_bool(BoolType.FALSE)
 
-    def _parse_bool(self, style):  # type: () -> Item
+    def _parse_bool(self, style):  # type: (BoolType) -> Bool
         with self._state:
             style = BoolType(style)
 
@@ -619,6 +585,67 @@ class Parser:
                 self.consume(c, min=1, max=1)
 
             return Bool(style, Trivia())
+
+    def _parse_array(self):  # type: () -> Array
+        # Consume opening bracket, EOF here is an issue (middle of array)
+        self.inc(exception=UnexpectedEofError)
+
+        elems = []  # type: List[Item]
+        prev_value = None
+        while True:
+            # consume whitespace
+            mark = self._idx
+            self.consume(TOMLChar.SPACES)
+            newline = self.consume(TOMLChar.NL)
+            indent = self._src[mark : self._idx]
+            if newline:
+                elems.append(Whitespace(indent))
+                continue
+
+            # consume comment
+            if self._current == "#":
+                cws, comment, trail = self._parse_comment_trail()
+                elems.append(Comment(Trivia(indent, cws, comment, trail)))
+                continue
+
+            # consume indent
+            if indent:
+                elems.append(Whitespace(indent))
+                continue
+
+            # consume value
+            if not prev_value:
+                try:
+                    elems.append(self._parse_value())
+                    prev_value = True
+                    continue
+                except UnexpectedCharError:
+                    pass
+
+            # consume comma
+            if prev_value and self._current == ",":
+                self.inc(exception=UnexpectedEofError)
+                elems.append(Whitespace(","))
+                prev_value = False
+                continue
+
+            # consume closing bracket
+            if self._current == "]":
+                # consume closing bracket, EOF here doesn't matter
+                self.inc()
+                break
+
+            raise self.parse_error(UnexpectedCharError, self._current)
+
+        try:
+            res = Array(elems, Trivia())
+        except ValueError:
+            pass
+        else:
+            if res.is_homogeneous():
+                return res
+
+        raise self.parse_error(MixedArrayTypesError)
 
     def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
         # Leading zeros are not allowed

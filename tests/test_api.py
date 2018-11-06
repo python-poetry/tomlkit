@@ -83,6 +83,9 @@ def test_parsed_document_are_properly_json_representable(
         ("trailing_comma", UnexpectedCharError),
         ("newline_in_singleline_string", InvalidCharInStringError),
         ("string_slash_whitespace_char", InvalidCharInStringError),
+        ("array_no_comma", UnexpectedCharError),
+        ("array_duplicate_comma", UnexpectedCharError),
+        ("array_leading_comma", UnexpectedCharError),
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(

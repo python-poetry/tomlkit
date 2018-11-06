@@ -120,7 +120,7 @@ class Source(unicode):
         """
         return self[self._marker : self._idx]
 
-    def inc(self, exception=None):  # type: (Exception) -> bool
+    def inc(self, exception=None):  # type: (Optional[ParseError.__class__]) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
@@ -133,8 +133,6 @@ class Source(unicode):
             self._idx = len(self)
             self._current = self.EOF
             if exception:
-                exception = UnexpectedEofError if exception is True else exception
-
                 raise self.parse_error(exception)
 
             return False

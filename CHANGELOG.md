@@ -6,6 +6,10 @@
 
 - Improved distinction between date(time)s and numbers.
 
+### Fixed
+
+- Fixed comma handling when parsing arrays. (Thanks to [@njalerikson](https://github.com/njalerikson))
+
 
 ## [0.4.6] - 2018-10-16
 
