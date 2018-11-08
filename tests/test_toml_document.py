@@ -192,7 +192,7 @@ name = "Test 1"
     assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"
 
 
-def test_document_with_new_sub_table_after_other_other_table():
+def test_document_with_new_sub_table_after_other_table():
     content = """[foo]
 name = "Bar"
 
@@ -209,6 +209,57 @@ name = "Test 1"
     assert doc["foo"]["baz"]["name"] == "Test 1"
 
     assert doc.as_string() == content
+
+
+def test_document_with_new_sub_table_after_other_table_delete():
+    content = """[foo]
+name = "Bar"
+
+[bar]
+name = "Baz"
+
+[foo.baz]
+name = "Test 1"
+"""
+
+    doc = parse(content)
+
+    del doc["foo"]
+
+    assert (
+        doc.as_string()
+        == """[bar]
+name = "Baz"
+
+"""
+    )
+
+
+def test_document_with_new_sub_table_after_other_table_replace():
+    content = """[foo]
+name = "Bar"
+
+[bar]
+name = "Baz"
+
+[foo.baz]
+name = "Test 1"
+"""
+
+    doc = parse(content)
+
+    doc["foo"] = {"a": "b"}
+
+    assert (
+        doc.as_string()
+        == """[foo]
+a = "b"
+
+[bar]
+name = "Baz"
+
+"""
+    )
 
 
 def test_inserting_after_element_with_no_new_line_adds_a_new_line():

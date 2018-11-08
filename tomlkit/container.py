@@ -217,7 +217,11 @@ class Container(dict):
         if idx is None:
             raise NonExistentKey(key)
 
-        self._body[idx] = (None, Null())
+        if isinstance(idx, tuple):
+            for i in idx:
+                self._body[i] = (None, Null())
+        else:
+            self._body[idx] = (None, Null())
 
         super(Container, self).__delitem__(key.key)
 
@@ -536,10 +540,19 @@ class Container(dict):
 
     def _replace_at(
         self, idx, new_key, value
-    ):  # type: (int, Union[Key, str], Item) -> None
+    ):  # type: (Union[int, Tuple[int]], Union[Key, str], Item) -> None
+        if isinstance(idx, tuple):
+            for i in idx[1:]:
+                self._body[i] = (None, Null())
+
+            idx = idx[0]
+
         k, v = self._body[idx]
 
         self._map[new_key] = self._map.pop(k)
+
+        if isinstance(self._map[new_key], tuple):
+            self._map[new_key] = self._map[new_key][0]
 
         value = _item(value)
 
@@ -549,6 +562,10 @@ class Container(dict):
             value.trivia.comment_ws = v.trivia.comment_ws
             value.trivia.comment = v.trivia.comment
             value.trivia.trail = v.trivia.trail
+
+        if isinstance(value, Table):
+            # Insert a cosmetic new line for tables
+            value.append(None, Whitespace("\n"))
 
         self._body[idx] = (new_key, value)
 

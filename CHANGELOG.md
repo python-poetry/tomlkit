@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed deletion and replacement of sub tables declared after other tables.
+
+
 ## [0.5.0] - 2018-11-06
 
 ### Changed
