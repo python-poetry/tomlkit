@@ -45,7 +45,9 @@ TEST_DIR = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
 
 
 def get_tomltest_cases():
-    dirs = sorted(os.listdir(TEST_DIR))
+    dirs = sorted(
+        f for f in os.listdir(TEST_DIR) if os.path.isdir(os.path.join(TEST_DIR, f))
+    )
     assert dirs == ["invalid", "invalid-encoder", "valid"]
     rv = {}
     for d in dirs:
