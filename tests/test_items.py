@@ -424,5 +424,7 @@ def test_trim_comments_when_building_inline_table():
     row = parse('foo = "bar"  # Comment')
     table.update(row)
     assert table.as_string() == '{foo = "bar"}'
-    table.append("baz", row["foo"])
-    assert "# Comment" not in table.as_string()
+    value = item("foobaz")
+    value.comment("Another comment")
+    table.append("baz", value)
+    assert "# Another comment" not in table.as_string()
