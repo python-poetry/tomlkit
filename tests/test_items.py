@@ -417,3 +417,12 @@ def test_items_are_pickable():
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
+
+
+def test_trim_comments_when_building_inline_table():
+    table = inline_table()
+    row = parse('foo = "bar"  # Comment')
+    table.update(row)
+    assert table.as_string() == '{foo = "bar"}'
+    table.append("baz", row["foo"])
+    assert "# Comment" not in table.as_string()
