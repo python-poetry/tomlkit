@@ -938,6 +938,8 @@ class InlineTable(Item, dict):
         if not isinstance(_item, (Whitespace, Comment)):
             if not _item.trivia.indent and len(self._value) > 0:
                 _item.trivia.indent = " "
+            if _item.trivia.comment:
+                _item.trivia.comment = ""
 
         self._value.append(key, _item)
 
@@ -1017,6 +1019,8 @@ class InlineTable(Item, dict):
 
         if key is not None:
             super(InlineTable, self).__setitem__(key, value)
+        if value.trivia.comment:
+            value.trivia.comment = ""
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
