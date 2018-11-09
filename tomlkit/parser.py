@@ -25,6 +25,7 @@ from .exceptions import InvalidDateTimeError
 from .exceptions import InvalidDateError
 from .exceptions import InvalidTimeError
 from .exceptions import InvalidNumberError
+from .exceptions import InvalidUnicodeValueError
 from .exceptions import MixedArrayTypesError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError
@@ -766,6 +767,8 @@ class Parser:
 
                 return u
 
+            raise self.parse_error(InvalidUnicodeValueError)
+
         raise self.parse_error(InvalidCharInStringError, self._current)
 
     def _parse_string(self, delim):  # type: (StringType) -> String
@@ -1075,7 +1078,9 @@ class Parser:
                 break
             return buf
 
-    def _peek_unicode(self, is_long):  # type: (bool) -> Tuple[bool, str]
+    def _peek_unicode(
+        self, is_long
+    ):  # type: (bool) -> Tuple[Optional[str], Optional[str]]
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
@@ -1089,7 +1094,6 @@ class Parser:
                     InternalParserError, "_peek_unicode() entered on non-unicode value"
                 )
 
-            # AoT
             self.inc()  # Dropping prefix
             self.mark()
 
@@ -1102,6 +1106,9 @@ class Parser:
                 value, extracted = None, None
             else:
                 extracted = self.extract()
+
+                if extracted[0].lower() == "d" and extracted[1].strip("01234567"):
+                    return None, None
 
                 try:
                     value = chr(int(extracted, 16))

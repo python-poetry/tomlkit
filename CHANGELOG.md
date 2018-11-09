@@ -6,6 +6,7 @@
 
 - Fixed table header missing when replacing a super table's sub table with a single item.
 - Fixed comments being displayed in inline tables.
+- Fixed string with non-scalar unicode code points not raising an error.
 
 
 ## [0.5.1] - 2018-11-08

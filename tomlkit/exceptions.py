@@ -101,6 +101,17 @@ class InvalidNumberOrDateError(ParseError):
         super(InvalidNumberOrDateError, self).__init__(line, col, message=message)
 
 
+class InvalidUnicodeValueError(ParseError):
+    """
+    A unicode code was improperly specified.
+    """
+
+    def __init__(self, line, col):  # type: (int, int) -> None
+        message = "Invalid unicode value"
+
+        super(InvalidUnicodeValueError, self).__init__(line, col, message=message)
+
+
 class UnexpectedCharError(ParseError):
     """
     An unexpected character was found during parsing.
