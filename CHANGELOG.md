@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed table header missing when replacing a super table's sub table with a single item.
+- Fixed comments being displayed in inline tables.
 
 
 ## [0.5.1] - 2018-11-08
