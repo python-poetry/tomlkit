@@ -355,7 +355,12 @@ class Container(dict):
             if prefix is not None:
                 _key = prefix + "." + _key
 
-        if not table.is_super_table():
+        if not table.is_super_table() or (
+            any(
+                not isinstance(v, (Table, AoT, Whitespace)) for _, v in table.value.body
+            )
+            and not key.is_dotted()
+        ):
             open_, close = "[", "]"
             if table.is_aot_element():
                 open_, close = "[[", "]]"
@@ -488,7 +493,7 @@ class Container(dict):
 
         return key in self._map
 
-    def __getitem__(self, key):  # type: (Union[Key, str]) -> Item
+    def __getitem__(self, key):  # type: (Union[Key, str]) -> Union[Item, Container]
         if not isinstance(key, Key):
             key = Key(key)
 

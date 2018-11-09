@@ -765,10 +765,6 @@ class Table(Item, dict):
     def discriminant(self):  # type: () -> int
         return 9
 
-    @property
-    def value(self):  # type: () -> tomlkit.container.Container
-        return self._value
-
     def add(self, key, item=None):  # type: (Union[Key, Item, str], Any) -> Item
         if item is None:
             if not isinstance(key, (Comment, Whitespace)):

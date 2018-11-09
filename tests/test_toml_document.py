@@ -346,3 +346,19 @@ def test_toml_document_is_pickable(example):
 
     doc = parse(content)
     assert pickle.loads(pickle.dumps(doc)).as_string() == content
+
+
+def test_toml_document_set_super_table_element():
+    content = """[site.user]
+name = "John"
+"""
+
+    doc = parse(content)
+    doc["site"]["user"] = "Tom"
+
+    assert (
+        doc.as_string()
+        == """[site]
+user = "Tom"
+"""
+    )

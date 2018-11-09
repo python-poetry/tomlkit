@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed table header missing when replacing a super table's sub table with a single item.
+
+
 ## [0.5.1] - 2018-11-08
 
 ### Fixed
