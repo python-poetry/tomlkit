@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed copy of TOML documents.
+
+
 ## [0.5.2] - 2018-11-09
 
 ### Fixed

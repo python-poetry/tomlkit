@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import copy
+import json
 import pickle
 
 from datetime import datetime
@@ -362,3 +364,33 @@ name = "John"
 user = "Tom"
 """
     )
+
+
+def test_toml_document_can_be_copied():
+    content = "[foo]\nbar=1"
+
+    doc = parse(content)
+    doc = copy.copy(doc)
+
+    assert (
+        doc.as_string()
+        == """[foo]
+bar=1"""
+    )
+
+    assert doc == {"foo": {"bar": 1}}
+    assert doc["foo"]["bar"] == 1
+    assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
+
+    doc = parse(content)
+    doc = doc.copy()
+
+    assert (
+        doc.as_string()
+        == """[foo]
+bar=1"""
+    )
+
+    assert doc == {"foo": {"bar": 1}}
+    assert doc["foo"]["bar"] == 1
+    assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
