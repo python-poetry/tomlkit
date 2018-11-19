@@ -11,7 +11,8 @@ cache:
     - $HOME/.cache/pre-commit
 
 install:
-  - pip install poetry --pre
+  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+  - source $HOME/.poetry/env
   - poetry install -v
 
 script:
