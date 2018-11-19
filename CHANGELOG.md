@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed copy of TOML documents.
+- Fixed behavior on PyPy3.
 
 
 ## [0.5.2] - 2018-11-09

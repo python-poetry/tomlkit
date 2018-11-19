@@ -26,6 +26,9 @@ jobs:
     - python: "3.4"
     - python: "3.5"
     - python: "3.6"
+    - python: "3.7"
+      dist: xenial
+    - python: "pypy3"
 
     - stage: linting
       python: "3.6"
