@@ -247,6 +247,9 @@ class Container(dict):
         item = _item(item)
 
         idx = self._map[key]
+        # Insert after the max index if there are many.
+        if isinstance(idx, tuple):
+            idx = max(idx)
         current_item = self._body[idx][1]
         if "\n" not in current_item.trivia.trail:
             current_item.trivia.trail += "\n"

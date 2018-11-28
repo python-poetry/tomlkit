@@ -113,3 +113,18 @@ def test_add_remove():
     doc.remove("foo")
 
     assert doc.as_string() == ""
+
+
+def test_append_table_after_multiple_indices():
+    content = """
+    [packages]
+    foo = "*"
+
+    [settings]
+    enable = false
+
+    [packages.bar]
+    version = "*"
+    """
+    doc = parse(content)
+    doc.append("foobar", {"name": "John"})
