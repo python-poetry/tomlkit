@@ -72,7 +72,7 @@ def item(value, _parent=None):
     elif isinstance(value, (str, unicode)):
         escaped = escape_string(value)
 
-        return String(StringType.SLB, value, escaped, Trivia())
+        return String(StringType.SLB, decode(value), escaped, Trivia())
     elif isinstance(value, datetime):
         return DateTime(value, Trivia(), value.isoformat().replace("+00:00", "Z"))
     elif isinstance(value, date):
