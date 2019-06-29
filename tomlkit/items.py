@@ -919,6 +919,9 @@ class Table(Item, dict):
     def __repr__(self):
         return super(Table, self).__repr__()
 
+    def __str__(self):
+        return str(self.value)
+
     def _getstate(self, protocol=3):
         return (
             self._value,
