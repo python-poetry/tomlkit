@@ -67,12 +67,12 @@ except ImportError:
             if self._name is None:
                 return "%s.%s(%r)" % (
                     self.__class__.__module__,
-                    self.__class__.__qualname__,
+                    self.__class__.__name__,
                     self._offset,
                 )
             return "%s.%s(%r, %r)" % (
                 self.__class__.__module__,
-                self.__class__.__qualname__,
+                self.__class__.__name__,
                 self._offset,
                 self._name,
             )
