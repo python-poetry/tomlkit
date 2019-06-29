@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed the handling of inline tables.
+
+
 ## [0.5.3] - 2018-11-19
 
 ### Fixed

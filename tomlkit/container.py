@@ -522,7 +522,10 @@ class Container(dict):
 
         item = self._body[idx][1]
 
-        return item.value
+        if item.is_boolean():
+            return item.value
+
+        return item
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
         if key is not None and key in self:

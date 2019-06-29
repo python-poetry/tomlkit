@@ -441,15 +441,21 @@ class Parser:
 
     def _handle_dotted_key(
         self, container, key, value
-    ):  # type: (Container, Key, Any) -> None
+    ):  # type: (Union[Container, Table], Key, Any) -> None
         names = tuple(self._split_table_name(key.key))
         name = names[0]
         name._dotted = True
         if name in container:
-            table = container.item(name)
+            if isinstance(container, Table):
+                table = container.value.item(name)
+            else:
+                table = container.item(name)
         else:
             table = Table(Container(True), Trivia(), False, is_super_table=True)
-            container.append(name, table)
+            if isinstance(container, Table):
+                container.raw_append(name, table)
+            else:
+                container.append(name, table)
 
         for i, _name in enumerate(names[1:]):
             if i == len(names) - 2:
@@ -918,6 +924,13 @@ class Parser:
         cws, comment, trail = self._parse_comment_trail()
 
         result = Null()
+        table = Table(
+            values,
+            Trivia(indent, cws, comment, trail),
+            is_aot,
+            name=name,
+            display_name=name,
+        )
 
         if len(name_parts) > 1:
             if missing_table:
@@ -967,9 +980,9 @@ class Parser:
                 _key, item = item
                 if not self._merge_ws(item, values):
                     if _key is not None and _key.is_dotted():
-                        self._handle_dotted_key(values, _key, item)
+                        self._handle_dotted_key(table, _key, item)
                     else:
-                        values.append(_key, item)
+                        table.raw_append(_key, item)
             else:
                 if self._current == "[":
                     is_aot_next, name_next = self._peek_table()
@@ -977,7 +990,7 @@ class Parser:
                     if self._is_child(name, name_next):
                         key_next, table_next = self._parse_table(name)
 
-                        values.append(key_next, table_next)
+                        table.raw_append(key_next, table_next)
 
                         # Picking up any sibling
                         while not self.end():
@@ -988,7 +1001,7 @@ class Parser:
 
                             key_next, table_next = self._parse_table(name)
 
-                            values.append(key_next, table_next)
+                            table.raw_append(key_next, table_next)
 
                     break
                 else:
@@ -998,13 +1011,7 @@ class Parser:
                     )
 
         if isinstance(result, Null):
-            result = Table(
-                values,
-                Trivia(indent, cws, comment, trail),
-                is_aot,
-                name=name,
-                display_name=name,
-            )
+            result = table
 
             if is_aot and (not self._aot_stack or name != self._aot_stack[-1]):
                 result = self._parse_aot(result, name)

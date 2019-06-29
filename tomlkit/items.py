@@ -262,6 +262,15 @@ class Item(object):
 
         return self
 
+    def is_boolean(self):  # type: () -> bool
+        return isinstance(self, Bool)
+
+    def is_table(self):  # type: () -> bool
+        return isinstance(self, Table)
+
+    def is_inline_table(self):  # type: () -> bool
+        return isinstance(self, InlineTable)
+
     def _getstate(self, protocol=3):
         return (self._trivia,)
 
@@ -809,6 +818,20 @@ class Table(Item, dict):
 
         return self
 
+    def raw_append(self, key, _item):  # type: (Union[Key, str], Any) -> Table
+        if not isinstance(_item, Item):
+            _item = item(_item)
+
+        self._value.append(key, _item)
+
+        if isinstance(key, Key):
+            key = key.key
+
+        if key is not None:
+            super(Table, self).__setitem__(key, _item)
+
+        return self
+
     def remove(self, key):  # type: (Union[Key, str]) -> Table
         self._value.remove(key)
 
@@ -913,11 +936,12 @@ class InlineTable(Item, dict):
     """
 
     def __init__(
-        self, value, trivia
-    ):  # type: (tomlkit.container.Container, Trivia) -> None
+        self, value, trivia, new=False
+    ):  # type: (tomlkit.container.Container, Trivia, bool) -> None
         super(InlineTable, self).__init__(trivia)
 
         self._value = value
+        self._new = new
 
         for k, v in self._value.body:
             if k is not None:
@@ -987,6 +1011,8 @@ class InlineTable(Item, dict):
 
             if i != len(self._value.body) - 1:
                 buf += ","
+                if self._new:
+                    buf += " "
 
         buf += "}"
 

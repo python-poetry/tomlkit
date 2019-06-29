@@ -7,6 +7,7 @@ import pickle
 
 from datetime import datetime
 
+import tomlkit
 from tomlkit import parse
 from tomlkit._utils import _utc
 
@@ -394,3 +395,31 @@ bar=1"""
     assert doc == {"foo": {"bar": 1}}
     assert doc["foo"]["bar"] == 1
     assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
+
+
+def test_getting_inline_table_is_still_an_inline_table():
+    content = """\
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+"""
+
+    doc = parse(content)
+    poetry_section = doc["tool"]["poetry"]
+    dependencies = poetry_section["dependencies"]
+    dependencies["foo"] = tomlkit.inline_table()
+    dependencies["foo"]["version"] = "^2.0"
+    dependencies["foo"]["source"] = "local"
+    doc["tool"]["poetry"] = poetry_section
+
+    assert (
+        """\
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+foo = {version = "^2.0", source = "local"}
+"""
+        == doc.as_string()
+    )
