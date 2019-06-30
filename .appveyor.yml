@@ -15,7 +15,8 @@ install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 
   # Installing Poetry
-  - "curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python"
+  - "curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py"
+  - "python get-poetry.py --preview -y"
   - "SET PATH=%USERPROFILE%\\.poetry\\bin;%PATH%"
 
   # Ensure latest pip in Poetry's virtualenv
