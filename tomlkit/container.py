@@ -501,6 +501,14 @@ class Container(dict):
 
         return self[key]
 
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        if key not in self:
+            self[key] = default
+
+        return self[key]
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         if not isinstance(key, Key):
             key = Key(key)

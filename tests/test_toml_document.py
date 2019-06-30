@@ -104,6 +104,25 @@ bar = "boom"
 """
     )
 
+    assert doc.setdefault("bar", "waldo") == "boom"
+
+    assert (
+        doc.as_string()
+        == """foo = "bar"
+bar = "boom"
+"""
+    )
+
+    assert doc.setdefault("thud", "waldo") == "waldo"
+
+    assert (
+        doc.as_string()
+        == """foo = "bar"
+bar = "boom"
+thud = "waldo"
+"""
+    )
+
 
 def test_toml_document_without_super_tables():
     content = """[tool.poetry]

@@ -15,6 +15,7 @@
 - Fixed behavior on PyPy3.
 - Fixed date, datetime and time handling on Python 3.8.
 - Fixed behavior for sub table declaration with intermediate tables.
+- Fixed behavior of `setdefault()` on containers.
 
 
 ## [0.5.2] - 2018-11-09
