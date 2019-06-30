@@ -29,10 +29,12 @@ jobs:
     - python: "3.6"
     - python: "3.7"
       dist: xenial
+    - python: "3.8-dev"
+      dist: xenial
     - python: "pypy3"
 
     - stage: linting
-      python: "3.6"
+      python: "3.7"
       install:
         - pip install pre-commit
         - pre-commit install-hooks

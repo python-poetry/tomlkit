@@ -13,6 +13,7 @@
 
 - Fixed copy of TOML documents.
 - Fixed behavior on PyPy3.
+- Fixed date, datetime and time handling on Python 3.8.
 
 
 ## [0.5.2] - 2018-11-09

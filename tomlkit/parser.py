@@ -530,19 +530,41 @@ class Parser:
                 if m.group(1) and m.group(5):
                     # datetime
                     try:
-                        return DateTime(parse_rfc3339(raw), trivia, raw)
+                        dt = parse_rfc3339(raw)
+                        return DateTime(
+                            dt.year,
+                            dt.month,
+                            dt.day,
+                            dt.hour,
+                            dt.minute,
+                            dt.second,
+                            dt.microsecond,
+                            dt.tzinfo,
+                            trivia,
+                            raw,
+                        )
                     except ValueError:
                         raise self.parse_error(InvalidDateTimeError)
 
                 if m.group(1):
                     try:
-                        return Date(parse_rfc3339(raw), trivia, raw)
+                        dt = parse_rfc3339(raw)
+                        return Date(dt.year, dt.month, dt.day, trivia, raw)
                     except ValueError:
                         raise self.parse_error(InvalidDateError)
 
                 if m.group(5):
                     try:
-                        return Time(parse_rfc3339(raw), trivia, raw)
+                        t = parse_rfc3339(raw)
+                        return Time(
+                            t.hour,
+                            t.minute,
+                            t.second,
+                            t.microsecond,
+                            t.tzinfo,
+                            trivia,
+                            raw,
+                        )
                     except ValueError:
                         raise self.parse_error(InvalidTimeError)
 

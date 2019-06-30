@@ -137,6 +137,7 @@ except ImportError:
 
 PY2 = sys.version_info[0] == 2
 PY36 = sys.version_info >= (3, 6)
+PY38 = sys.version_info >= (3, 8)
 
 if PY2:
     unicode = unicode
