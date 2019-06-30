@@ -674,7 +674,10 @@ class Date(Item, date):
         else:
             result = super(Date, self).__sub__(other)
 
-        return self._new(result)
+        if isinstance(result, date):
+            result = self._new(result)
+
+        return result
 
     def _new(self, result):
         raw = result.isoformat()
