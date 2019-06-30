@@ -23,9 +23,9 @@ functools32 = { version = "^3.2.3", python = "~2.7" }
 typing = { version = "^3.6", python = "~2.7 || ~3.4" }
 
 [tool.poetry.dev-dependencies]
-pytest = "^3.6"
+pytest = "^4.6"
 pytest-cov = "^2.5"
-black = { version = "^18.6b4", python = "^3.6" }
+black = { version = "^19.3b0", python = "^3.6" }
 pre-commit = "^1.10"
 tox = "^3.1"
 codecov = "^2.0"
