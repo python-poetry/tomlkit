@@ -5,6 +5,10 @@
 ### Fixed
 
 - Fixed the handling of inline tables.
+- Fixed date, datetime and time handling on Python 3.8.
+- Fixed behavior for sub table declaration with intermediate tables.
+- Fixed behavior of `setdefault()` on containers (Thanks to [@AndyKluger](https://github.com/AndyKluger)).
+- Fixed tables string representation.
 
 
 ## [0.5.3] - 2018-11-19
@@ -13,9 +17,6 @@
 
 - Fixed copy of TOML documents.
 - Fixed behavior on PyPy3.
-- Fixed date, datetime and time handling on Python 3.8.
-- Fixed behavior for sub table declaration with intermediate tables.
-- Fixed behavior of `setdefault()` on containers.
 
 
 ## [0.5.2] - 2018-11-09
