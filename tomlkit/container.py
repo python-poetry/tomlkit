@@ -492,6 +492,15 @@ class Container(dict):
         for k, v in other.items():
             self[k] = v
 
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        if not isinstance(key, Key):
+            key = Key(key)
+
+        if key not in self:
+            return default
+
+        return self[key]
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         if not isinstance(key, Key):
             key = Key(key)

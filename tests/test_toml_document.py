@@ -423,3 +423,22 @@ foo = {version = "^2.0", source = "local"}
 """
         == doc.as_string()
     )
+
+
+def test_declare_sub_table_with_intermediate_table():
+    content = """
+[students]
+tommy = 87
+mary = 66
+
+[subjects]
+maths = "maths"
+english = "english"
+
+[students.bob]
+score = 91
+"""
+
+    doc = parse(content)
+    assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]
+    assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc.get("students")

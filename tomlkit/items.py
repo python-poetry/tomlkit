@@ -968,6 +968,9 @@ class Table(Item, dict):
         for k, v in other.items():
             self[k] = v
 
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        return self._value.get(key, default)
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
 
@@ -1119,6 +1122,9 @@ class InlineTable(Item, dict):
     def update(self, other):  # type: (Dict) -> None
         for k, v in other.items():
             self[k] = v
+
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        return self._value.get(key, default)
 
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
