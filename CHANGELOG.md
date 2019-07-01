@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.5.5] - 2019-07-01
 
 ### Fixed
 
@@ -138,7 +138,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.4...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.5...master
+[0.5.5]: https://github.com/sdispater/tomlkit/releases/tag/0.5.5
 [0.5.4]: https://github.com/sdispater/tomlkit/releases/tag/0.5.4
 [0.5.3]: https://github.com/sdispater/tomlkit/releases/tag/0.5.3
 [0.5.2]: https://github.com/sdispater/tomlkit/releases/tag/0.5.2
