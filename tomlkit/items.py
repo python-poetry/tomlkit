@@ -1055,7 +1055,7 @@ class InlineTable(Item, dict):
             _item = item(_item)
 
         if not isinstance(_item, (Whitespace, Comment)):
-            if not _item.trivia.indent and len(self._value) > 0:
+            if not _item.trivia.indent and len(self._value) > 0 and not self._new:
                 _item.trivia.indent = " "
             if _item.trivia.comment:
                 _item.trivia.comment = ""
@@ -1086,7 +1086,10 @@ class InlineTable(Item, dict):
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
                 if i == len(self._value.body) - 1:
-                    buf = buf.rstrip(",")
+                    if self._new:
+                        buf = buf.rstrip(", ")
+                    else:
+                        buf = buf.rstrip(",")
 
                 buf += v.as_string()
 

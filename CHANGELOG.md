@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed display of inline tables after element deletion.
+
+
 ## [0.5.4] - 2019-06-30
 
 ### Fixed

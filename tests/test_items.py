@@ -428,3 +428,25 @@ def test_trim_comments_when_building_inline_table():
     value.comment("Another comment")
     table.append("baz", value)
     assert "# Another comment" not in table.as_string()
+    assert '{foo = "bar", baz = "foobaz"}' == table.as_string()
+
+
+def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
+    table = inline_table()
+    table["foo"] = "bar"
+    table["baz"] = "boom"
+
+    assert '{foo = "bar", baz = "boom"}' == table.as_string()
+
+    del table["baz"]
+
+    assert '{foo = "bar"}' == table.as_string()
+
+    table = inline_table()
+    table["foo"] = "bar"
+
+    del table["foo"]
+
+    table["baz"] = "boom"
+
+    assert '{baz = "boom"}' == table.as_string()
