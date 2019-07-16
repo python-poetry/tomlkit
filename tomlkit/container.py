@@ -155,7 +155,7 @@ class Container(dict):
             # If no such item exists, insert at the top of the table
             key_after = None
             idx = 0
-            for k, v in self._body:
+            for idx, (k, v) in enumerate(self._body):
                 if isinstance(v, Null):
                     # This happens only after deletion
                     continue
@@ -167,7 +167,6 @@ class Container(dict):
                     break
 
                 key_after = k or idx
-                idx += 1
 
             if key_after is not None:
                 if isinstance(key_after, int):
