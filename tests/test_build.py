@@ -128,3 +128,17 @@ def test_append_table_after_multiple_indices():
     """
     doc = parse(content)
     doc.append("foobar", {"name": "John"})
+
+
+def test_append_after_multiple_removes():
+    content = """
+    foo = 1
+    # comment
+    bar = 2
+    # comment
+    """
+    doc = parse(content)
+    del doc['foo']
+    del doc['bar']
+    doc['baz'] = 3
+    assert doc == dict(baz=3)
