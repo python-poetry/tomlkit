@@ -491,10 +491,13 @@ class Float(float, Item):
         return float(self), self._trivia, self._raw
 
 
-class Bool(Item):
+class Bool(Item, long):
     """
     A boolean literal.
     """
+
+    def __new__(cls, t, trivia):  # type: (float, Trivia) -> long
+        return long.__new__(cls, bool(t))
 
     def __init__(self, t, trivia):  # type: (float, Trivia) -> None
         super(Bool, self).__init__(trivia)
