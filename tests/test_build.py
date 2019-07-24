@@ -138,7 +138,7 @@ def test_append_after_multiple_removes():
     # comment
     """
     doc = parse(content)
-    del doc['foo']
-    del doc['bar']
-    doc['baz'] = 3
+    del doc["foo"]
+    del doc["bar"]
+    doc["baz"] = 3
     assert doc == dict(baz=3)
