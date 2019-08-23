@@ -437,9 +437,9 @@ def test_inline_table_should_append_a_newline():
 
     doc = parse(content)
     insert = inline_table()
-    insert['z'] = 3
-    doc['foo']['added'] = insert
-    
+    insert["z"] = 3
+    doc["foo"]["added"] = insert
+
     result = dumps(doc)
 
     assert "}[" not in result
