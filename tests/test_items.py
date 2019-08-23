@@ -12,6 +12,7 @@ from datetime import timedelta
 
 from tomlkit import inline_table
 from tomlkit import parse
+from tomlkit import dumps
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import InlineTable
@@ -429,6 +430,19 @@ def test_trim_comments_when_building_inline_table():
     table.append("baz", value)
     assert "# Another comment" not in table.as_string()
     assert '{foo = "bar", baz = "foobaz"}' == table.as_string()
+
+
+def test_inline_table_should_append_a_newline():
+    content = "[foo]\nh = 1\n[bar]\nc = 2\n"
+
+    doc = parse(content)
+    insert = inline_table()
+    insert['z'] = 3
+    doc['foo']['added'] = insert
+    
+    result = dumps(doc)
+
+    assert "}[" not in result
 
 
 def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():

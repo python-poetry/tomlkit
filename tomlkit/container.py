@@ -19,6 +19,7 @@ from .items import Item
 from .items import Key
 from .items import Null
 from .items import Table
+from .items import InlineTable
 from .items import Whitespace
 from .items import item as _item
 
@@ -100,6 +101,9 @@ class Container(dict):
             and not item.trivia.indent
         ):
             item.trivia.indent = "\n"
+
+        if isinstance(item, InlineTable) and self._body and not self._parsed:
+            self.append(None, Whitespace("\n"))
 
         if isinstance(item, AoT) and self._body and not self._parsed:
             if item and "\n" not in item[0].trivia.indent:
