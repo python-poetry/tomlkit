@@ -14,6 +14,7 @@ from tomlkit import inline_table
 from tomlkit import parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.items import Bool
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
@@ -450,3 +451,22 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
     table["baz"] = "boom"
 
     assert '{baz = "boom"}' == table.as_string()
+
+
+def test_booleans_comparison():
+    boolean = Bool(True, Trivia())
+
+    assert boolean
+
+    boolean = Bool(False, Trivia())
+
+    assert not boolean
+
+    s = """[foo]
+value = false
+"""
+
+    content = parse(s)
+
+    assert {"foo": {"value": False}} == content
+    assert {"value": False} == content["foo"]

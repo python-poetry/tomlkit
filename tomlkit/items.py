@@ -496,7 +496,7 @@ class Bool(Item):
     A boolean literal.
     """
 
-    def __init__(self, t, trivia):  # type: (float, Trivia) -> None
+    def __init__(self, t, trivia):  # type: (int, Trivia) -> None
         super(Bool, self).__init__(trivia)
 
         self._value = bool(t)
@@ -514,6 +514,17 @@ class Bool(Item):
 
     def _getstate(self, protocol=3):
         return self._value, self._trivia
+
+    def __bool__(self):
+        return self._value
+
+    __nonzero__ = __bool__
+
+    def __eq__(self, other):
+        if not isinstance(other, bool):
+            return NotImplemented
+
+        return other == self._value
 
 
 class DateTime(Item, datetime):
