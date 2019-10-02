@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed appending inline tables to tables.
+
+
 ## [0.5.5] - 2019-07-01
 
 ### Fixed

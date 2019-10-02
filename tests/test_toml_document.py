@@ -422,6 +422,7 @@ def test_getting_inline_table_is_still_an_inline_table():
 name = "foo"
 
 [tool.poetry.dependencies]
+[tool.poetry.dev-dependencies]
 """
 
     doc = parse(content)
@@ -430,7 +431,10 @@ name = "foo"
     dependencies["foo"] = tomlkit.inline_table()
     dependencies["foo"]["version"] = "^2.0"
     dependencies["foo"]["source"] = "local"
-    doc["tool"]["poetry"] = poetry_section
+    dependencies["bar"] = tomlkit.inline_table()
+    dependencies["bar"]["version"] = "^3.0"
+    dependencies["bar"]["source"] = "remote"
+    # doc["tool"]["poetry"] = poetry_section
 
     assert (
         """\
@@ -439,6 +443,8 @@ name = "foo"
 
 [tool.poetry.dependencies]
 foo = {version = "^2.0", source = "local"}
+bar = {version = "^3.0", source = "remote"}
+[tool.poetry.dev-dependencies]
 """
         == doc.as_string()
     )
