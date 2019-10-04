@@ -422,6 +422,8 @@ def test_getting_inline_table_is_still_an_inline_table():
 name = "foo"
 
 [tool.poetry.dependencies]
+
+[tool.poetry.dev-dependencies]
 """
 
     doc = parse(content)
