@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.5.7] - 2019-10-04
+
+### Fixed
+
+- Fixed handling of inline tables.
+
+
 ## [0.5.6] - 2019-10-04
 
 ### Fixed
@@ -146,7 +153,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.6...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.7...master
+[0.5.7]: https://github.com/sdispater/tomlkit/releases/tag/0.5.7
 [0.5.6]: https://github.com/sdispater/tomlkit/releases/tag/0.5.6
 [0.5.5]: https://github.com/sdispater/tomlkit/releases/tag/0.5.5
 [0.5.4]: https://github.com/sdispater/tomlkit/releases/tag/0.5.4
