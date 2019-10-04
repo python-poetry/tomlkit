@@ -111,7 +111,7 @@ def table():  # type: () -> Table
 
 
 def inline_table():  # type: () -> InlineTable
-    return InlineTable(Container(), Trivia(trail=""), new=True)
+    return InlineTable(Container(), Trivia(), new=True)
 
 
 def aot():  # type: () -> AoT

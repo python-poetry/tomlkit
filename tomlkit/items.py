@@ -1000,9 +1000,6 @@ class Table(Item, dict):
         if key is not None:
             super(Table, self).__setitem__(key, value)
 
-        if self._value.last_item() is value and "\n" not in value.trivia.trail:
-            value.trivia.trail += "\n"
-
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
             return
