@@ -1,9 +1,10 @@
 # Change Log
 
-## [Unreleased]
+## [0.5.6] - 2019-10-04
 
 ### Fixed
 
+- Fixed boolean comparison.
 - Fixed appending inline tables to tables.
 
 
@@ -145,7 +146,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.5...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.6...master
+[0.5.6]: https://github.com/sdispater/tomlkit/releases/tag/0.5.6
 [0.5.5]: https://github.com/sdispater/tomlkit/releases/tag/0.5.5
 [0.5.4]: https://github.com/sdispater/tomlkit/releases/tag/0.5.4
 [0.5.3]: https://github.com/sdispater/tomlkit/releases/tag/0.5.3
