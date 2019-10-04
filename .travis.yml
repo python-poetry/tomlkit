@@ -40,3 +40,6 @@ jobs:
         - pre-commit install-hooks
       script:
         - pre-commit run --all-files
+
+  allow_failures:
+    - python: pypy3
