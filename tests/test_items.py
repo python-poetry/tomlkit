@@ -173,6 +173,29 @@ def test_array_behaves_like_a_list():
     )
 
 
+def test_array_multiline():
+    t = item([1, 2, 3, 4, 5, 6, 7, 8])
+    t.multiline(True)
+
+    expected = """\
+[
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+]"""
+
+    assert expected == t.as_string()
+
+    t = item([])
+
+    assert "[]" == t.as_string()
+
+
 def test_dicts_are_converted_to_tables():
     t = item({"foo": {"bar": "baz"}})
 

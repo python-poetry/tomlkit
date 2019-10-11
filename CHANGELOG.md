@@ -1,5 +1,12 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+- Added support for producing multiline arrays
+
+
 ## [0.5.7] - 2019-10-04
 
 ### Fixed

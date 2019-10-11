@@ -744,7 +744,7 @@ class Array(Item, list):
     An array literal
     """
 
-    def __init__(self, value, trivia):  # type: (list, Trivia) -> None
+    def __init__(self, value, trivia, multiline=False):  # type: (list, Trivia) -> None
         super(Array, self).__init__(trivia)
 
         list.__init__(
@@ -752,6 +752,7 @@ class Array(Item, list):
         )
 
         self._value = value
+        self._multiline = multiline
 
     @property
     def discriminant(self):  # type: () -> int
@@ -773,8 +774,23 @@ class Array(Item, list):
 
         return len(set(discriminants)) == 1
 
+    def multiline(self, multiline):  # type: (bool) -> self
+        self._multiline = multiline
+
+        return self
+
     def as_string(self):  # type: () -> str
-        return "[{}]".format("".join(v.as_string() for v in self._value))
+        if not self._multiline:
+            return "[{}]".format("".join(v.as_string() for v in self._value))
+
+        s = "[\n" + self.trivia.indent + " " * 4
+        s += (",\n" + self.trivia.indent + " " * 4).join(
+            v.as_string() for v in self._value if not isinstance(v, Whitespace)
+        )
+        s += ",\n"
+        s += "]"
+
+        return s
 
     def append(self, _item):  # type: () -> None
         if self._value:
