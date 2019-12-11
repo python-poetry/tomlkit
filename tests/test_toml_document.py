@@ -7,6 +7,7 @@ import pickle
 
 from datetime import datetime
 
+import pytest
 import tomlkit
 from tomlkit import parse
 from tomlkit._utils import _utc
@@ -253,6 +254,8 @@ name = "Test 1"
     item = doc.pop("blah")
     assert item.as_string() == 'name = "Blah"\n\n'
     assert "blah" not in doc
+    with pytest.raises(KeyError):
+        doc.pop("blah")
 
     assert (
         doc.as_string()
