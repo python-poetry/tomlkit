@@ -1,5 +1,11 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+
+- Added support for Container.pop()
+
 ## [0.5.8] - 2019-10-11
 
 ### Added

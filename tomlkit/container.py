@@ -509,6 +509,21 @@ class Container(dict):
 
         return self[key]
 
+    __marker = object()
+
+    def pop(
+        self, key, default=__marker
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        try:
+            value = self[key]
+        except KeyError:
+            if default is self.__marker:
+                raise
+            return default
+        else:
+            del self[key]
+            return value
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         if not isinstance(key, Key):
             key = Key(key)

@@ -237,6 +237,9 @@ def test_document_with_new_sub_table_after_other_table_delete():
     content = """[foo]
 name = "Bar"
 
+[[blah]]
+name = "Blah"
+
 [bar]
 name = "Baz"
 
@@ -247,6 +250,9 @@ name = "Test 1"
     doc = parse(content)
 
     del doc["foo"]
+    item = doc.pop("blah")
+    assert item.as_string() == 'name = "Blah"\n\n'
+    assert "blah" not in doc
 
     assert (
         doc.as_string()
