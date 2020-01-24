@@ -30,7 +30,7 @@ typing = { version = "^3.6", python = "~2.7 || ~3.4" }
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"
 pytest-cov = "^2.5"
-black = { version = "^19.3b0", python = "^3.6" }
+black = { version = "^19.3b0", markers = "python_version >= '3.6' and python_version < '4.0' and implementation_name != 'pypy'" }
 pre-commit = "^1.10"
 tox = "^3.1"
 codecov = "^2.0"
