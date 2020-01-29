@@ -7,9 +7,11 @@ import pickle
 
 from datetime import datetime
 
+import pytest
 import tomlkit
 from tomlkit import parse
 from tomlkit._utils import _utc
+from tomlkit.exceptions import NonExistentKey
 
 
 def test_document_is_a_dict(example):
@@ -473,3 +475,63 @@ score = 91
     doc = parse(content)
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc.get("students")
+
+
+def test_values_can_still_be_set_for_out_of_order_tables():
+    content = """
+[a.a]
+key = "value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    doc = parse(content)
+    doc["a"]["a"]["key"] = "new_value"
+
+    assert "new_value" == doc["a"]["a"]["key"]
+
+    expected = """
+[a.a]
+key = "new_value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    doc["a"]["a"]["bar"] = "baz"
+
+    expected = """
+[a.a]
+key = "new_value"
+bar = "baz"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    del doc["a"]["a"]["key"]
+
+    expected = """
+[a.a]
+bar = "baz"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    with pytest.raises(NonExistentKey):
+        doc["a"]["a"]["key"]
+
+    with pytest.raises(NonExistentKey):
+        del doc["a"]["a"]["key"]
