@@ -53,6 +53,7 @@ def json_serial(obj):
         "newline_in_strings",
         "preserve_quotes_in_string",
         "string_slash_whitespace_newline",
+        "table_names_with_string_delimiters",
     ],
 )
 def test_parse_can_parse_valid_toml_files(example, example_name):

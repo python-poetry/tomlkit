@@ -219,7 +219,12 @@ class Parser:
                 continue
             elif c in {"'", '"'}:
                 if in_name:
-                    if t == KeyType.Literal and c == '"':
+                    if (
+                        t == KeyType.Literal
+                        and c == '"'
+                        or t == KeyType.Basic
+                        and c == "'"
+                    ):
                         current += c
                         continue
 
