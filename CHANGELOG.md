@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.5.10] - 2020-02-28
+
+### Fixed
+
+- Fixed out of order tables not behaving properly ([#79](https://github.com/sdispater/tomlkit/pull/79))
+
+
 ## [0.5.9] - 2020-02-28
 
 ### Fixed
@@ -169,7 +176,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.9...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.10...master
+[0.5.10]: https://github.com/sdispater/tomlkit/releases/tag/0.5.10
 [0.5.9]: https://github.com/sdispater/tomlkit/releases/tag/0.5.9
 [0.5.8]: https://github.com/sdispater/tomlkit/releases/tag/0.5.8
 [0.5.7]: https://github.com/sdispater/tomlkit/releases/tag/0.5.7
