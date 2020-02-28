@@ -638,7 +638,7 @@ class Container(dict):
         return c
 
 
-class OutOfOrderTableProxy(object):
+class OutOfOrderTableProxy(dict):
     def __init__(self, container, indices):  # type: (Container, Tuple) -> None
         self._container = container
         self._internal_container = Container(self._container.parsing)
@@ -691,6 +691,15 @@ class OutOfOrderTableProxy(object):
             raise NonExistentKey(key)
 
         del self._internal_container[key]
+
+    def keys(self):
+        return self._internal_container.keys()
+
+    def values(self):
+        return self._internal_container.values()
+
+    def __contains__(self, key):
+        return key in self._internal_container
 
     def __str__(self):
         return str(self._internal_container)

@@ -535,3 +535,21 @@ bar = "baz"
 
     with pytest.raises(NonExistentKey):
         del doc["a"]["a"]["key"]
+
+
+def test_out_of_order_tables_are_still_dicts():
+    content = """
+[a.a]
+key = "value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    doc = parse(content)
+    assert isinstance(doc["a"], dict)
+    assert isinstance(doc["a"]["a"], dict)
+
+    assert "key" in doc["a"]["a"]
+    assert "c" in doc["a"]["a"]
