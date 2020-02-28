@@ -3,3 +3,12 @@ foo = "bar"
 
 ["BJ's Restaurant"]
 account = "dining"
+
+["]"]
+foo = 1
+
+[  "[bracket]"  ]
+bar = 2
+
+[  a . "b.c" . d  ]
+baz = 3

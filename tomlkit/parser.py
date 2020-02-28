@@ -201,7 +201,8 @@ class Parser:
         in_name = False
         current = ""
         t = KeyType.Bare
-        for c in name:
+        parts = 0
+        for c in name.strip():
             c = TOMLChar(c)
 
             if c == ".":
@@ -212,7 +213,8 @@ class Parser:
                 if not current:
                     raise self.parse_error()
 
-                yield Key(current, t=t, sep="")
+                yield Key(current.strip(), t=t, sep="")
+                parts += 1
 
                 current = ""
                 t = KeyType.Bare
@@ -233,17 +235,35 @@ class Parser:
 
                     in_name = False
                 else:
+                    if current and TOMLChar(current[-1]).is_spaces() and not parts:
+                        raise self.parse_error()
+
                     in_name = True
                     t = KeyType.Literal if c == "'" else KeyType.Basic
 
                 continue
             elif in_name or c.is_bare_key_char():
+                if (
+                    not in_name
+                    and current
+                    and TOMLChar(current[-1]).is_spaces()
+                    and not parts
+                ):
+                    raise self.parse_error()
+
                 current += c
+            elif c.is_spaces():
+                # A space is only valid at this point
+                # if it's in between parts.
+                # We store it for now and will check
+                # later if it's valid
+                current += c
+                continue
             else:
                 raise self.parse_error()
 
-        if current:
-            yield Key(current, t=t, sep="")
+        if current.strip():
+            yield Key(current.strip(), t=t, sep="")
 
     def _parse_item(self):  # type: () -> Optional[Tuple[Optional[Key], Item]]
         """
@@ -916,15 +936,46 @@ class Parser:
 
             is_aot = True
 
-        # Key
+        # Consume any whitespace
         self.mark()
-        while self._current != "]" and self.inc():
-            if self.end():
-                raise self.parse_error(UnexpectedEofError)
-
+        while self._current.is_spaces() and self.inc():
             pass
 
-        name = self.extract()
+        ws_prefix = self.extract()
+
+        # Key
+        if self._current in [StringType.SLL.value, StringType.SLB.value]:
+            delimiter = (
+                StringType.SLL
+                if self._current == StringType.SLL.value
+                else StringType.SLB
+            )
+            name = self._parse_string(delimiter)
+            name = "{delimiter}{name}{delimiter}".format(
+                delimiter=delimiter.value, name=name
+            )
+
+            self.mark()
+            while self._current != "]" and self.inc():
+                if self.end():
+                    raise self.parse_error(UnexpectedEofError)
+
+                pass
+
+            ws_suffix = self.extract()
+            name += ws_suffix
+        else:
+            self.mark()
+            while self._current != "]" and self.inc():
+                if self.end():
+                    raise self.parse_error(UnexpectedEofError)
+
+                pass
+
+            name = self.extract()
+
+        name = ws_prefix + name
+
         if not name.strip():
             raise self.parse_error(EmptyTableNameError)
 
