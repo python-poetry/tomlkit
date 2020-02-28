@@ -53,7 +53,7 @@ def json_serial(obj):
         "newline_in_strings",
         "preserve_quotes_in_string",
         "string_slash_whitespace_newline",
-        "table_names_with_string_delimiters",
+        "table_names",
     ],
 )
 def test_parse_can_parse_valid_toml_files(example, example_name):
@@ -61,7 +61,7 @@ def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(loads(example(example_name)), TOMLDocument)
 
 
-@pytest.mark.parametrize("example_name", ["0.5.0", "pyproject"])
+@pytest.mark.parametrize("example_name", ["0.5.0", "pyproject", "table_names"])
 def test_parsed_document_are_properly_json_representable(
     example, json_example, example_name
 ):
@@ -111,6 +111,7 @@ def test_parse_raises_errors_for_invalid_toml_files(
         "pyproject",
         "0.5.0",
         "test",
+        "table_names",
     ],
 )
 def test_original_string_and_dumped_string_are_equal(example, example_name):
