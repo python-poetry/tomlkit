@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomlkit"
-version = "0.5.10"
+version = "0.5.11"
 description = "Style preserving TOML library"
 authors = ["Sébastien Eustace <sebastien@eustace.io>"]
 license = "MIT"
