@@ -551,5 +551,21 @@ key = "value"
     assert isinstance(doc["a"], dict)
     assert isinstance(doc["a"]["a"], dict)
 
-    assert "key" in doc["a"]["a"]
-    assert "c" in doc["a"]["a"]
+    table = doc["a"]["a"]
+    assert "key" in table
+    assert "c" in table
+    assert "value" == table.get("key")
+    assert {} == table.get("c")
+    assert table.get("d") is None
+    assert "foo" == table.get("d", "foo")
+
+    assert "bar" == table.setdefault("d", "bar")
+    assert "bar" == table["d"]
+
+    assert "value" == table.pop("key")
+    assert "key" not in table
+
+    assert "baz" == table.pop("missing", default="baz")
+
+    with pytest.raises(KeyError):
+        table.pop("missing")

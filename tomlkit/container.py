@@ -23,6 +23,9 @@ from .items import Whitespace
 from .items import item as _item
 
 
+_NOT_SET = object()
+
+
 class Container(dict):
     """
     A container for items within a TOMLDocument.
@@ -501,6 +504,19 @@ class Container(dict):
 
         return self[key]
 
+    def pop(self, key, default=_NOT_SET):
+        try:
+            value = self[key]
+        except KeyError:
+            if default is _NOT_SET:
+                raise
+
+            return default
+
+        del self[key]
+
+        return value
+
     def setdefault(
         self, key, default=None
     ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
@@ -697,6 +713,23 @@ class OutOfOrderTableProxy(dict):
 
     def values(self):
         return self._internal_container.values()
+
+    def items(self):  # type: () -> Generator[Item]
+        return self._internal_container.items()
+
+    def update(self, other):  # type: (Dict) -> None
+        self._internal_container.update(other)
+
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        return self._internal_container.get(key, default=default)
+
+    def pop(self, key, default=_NOT_SET):
+        return self._internal_container.pop(key, default=default)
+
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        return self._internal_container.setdefault(key, default=default)
 
     def __contains__(self, key):
         return key in self._internal_container
