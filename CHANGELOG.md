@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.5.11] - 2010-02-29
+
+### Fixed
+
+- Fix containers and our of order tables dictionary behavior ([#82](https://github.com/sdispater/tomlkit/pull/82)))
+
+
 ## [0.5.10] - 2020-02-28
 
 ### Fixed
@@ -176,7 +183,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.10...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.11...master
+[0.5.11]: https://github.com/sdispater/tomlkit/releases/tag/0.5.11
 [0.5.10]: https://github.com/sdispater/tomlkit/releases/tag/0.5.10
 [0.5.9]: https://github.com/sdispater/tomlkit/releases/tag/0.5.9
 [0.5.8]: https://github.com/sdispater/tomlkit/releases/tag/0.5.8
