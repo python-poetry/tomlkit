@@ -235,6 +235,29 @@ name = "Test 1"
     assert doc.as_string() == content
 
 
+def test_document_with_new_sub_table_after_other_table_usign_get():
+    content = """[foo]
+name = "Bar"
+"""
+
+    doc = parse(content)
+    assert doc["foo"].get("name") == "Bar"
+
+    assert doc.as_string() == content
+
+
+def test_document_with_new_sub_table_after_other_table_usign_get_return_default_when_key_not_found():
+    content = """[foo]
+name = "Bar"
+"""
+
+    doc = parse(content)
+    assert doc["foo"].get("invalid") == None
+    assert doc["foo"].get("invalid", "default") == "default"
+
+    assert doc.as_string() == content
+
+
 def test_document_with_new_sub_table_after_other_table_delete():
     content = """[foo]
 name = "Bar"

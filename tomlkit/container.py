@@ -659,6 +659,12 @@ class OutOfOrderTableProxy(dict):
                 self._internal_container.append(key, item)
                 self._map[key] = i
 
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        try:
+            return self.__getitem__(key)
+        except NonExistentKey:
+            return default
+
     def __getitem__(self, key):  # type: (Union[Key, str]) -> Any
         if key not in self._internal_container:
             raise NonExistentKey(key)
