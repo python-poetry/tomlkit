@@ -118,7 +118,7 @@ class Source(unicode):
         """
         return self[self._marker : self._idx]
 
-    def inc(self, exception=None):  # type: (Optional[ParseError.__class__]) -> bool
+    def inc(self, exception=None):  # type: (Optional[Type[ParseError]]) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
