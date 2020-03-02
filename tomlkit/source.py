@@ -4,8 +4,10 @@ from __future__ import unicode_literals
 import itertools
 
 from copy import copy
+from typing import Any
 from typing import Optional
 from typing import Tuple
+from typing import Type
 
 from ._compat import PY2
 from ._compat import unicode
@@ -172,7 +174,7 @@ class Source(unicode):
 
     def parse_error(
         self, exception=ParseError, *args
-    ):  # type: (ParseError.__class__, ...) -> ParseError
+    ):  # type: (Type[ParseError], Any) -> ParseError
         """
         Creates a generic "parse error" at the current position.
         """
