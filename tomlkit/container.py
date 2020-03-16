@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import copy
+import re
 
 from typing import Any
 from typing import Dict
@@ -468,6 +469,35 @@ class Container(dict):
             item.trivia.trail,
         )
 
+    def split_key(self, dotted_key, result = None):
+        if result is None:
+            result = []
+        quote_pat = re.compile("""^[",']""")
+        period_pat = re.compile("""^[^.]*[.]?""")
+        start_quo = re.search(quote_pat, dotted_key)
+        if start_quo:
+            quo_type = start_quo.group()
+            cont_quot_pattern = f"^{quo_type}[^{quo_type}]*{quo_type}[.]?"
+            quot_key = re.search(cont_quot_pattern, dotted_key).group()
+            if not quot_key.endswith("."):
+                quot_key = quot_key.strip(quo_type)
+                result.append(quot_key)
+                return result
+            new_string = re.sub(cont_quot_pattern, "", dotted_key)
+            quot_key = quot_key.strip(".")
+            quot_key = quot_key.strip(quo_type)
+            result.append(quot_key)
+            return self.split_key(new_string, result)
+        else:
+            key = period_pat.search(dotted_key).group()
+            if not key.endswith("."):
+                result.append(key)
+                return result
+            new_string = re.sub(period_pat, "", dotted_key)
+            key = key.strip(".")
+            result.append(key)
+            return self.split_key(new_string, result)
+
     # Dictionary methods
 
     def keys(self):  # type: () -> Generator[str]
@@ -495,14 +525,21 @@ class Container(dict):
         for k, v in other.items():
             self[k] = v
 
-    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
-        if not isinstance(key, Key):
-            key = Key(key)
+    def get(self, dotted_key, default=None):
+        """Return value of specified key, or default if key DNE
 
-        if key not in self:
+        Retrieves value of specified key from this (and nested) TOML object(s).
+        If key does not exist at any point, retrieves default instead (None by
+        default). Intended as comparative to dict.get().
+        """
+        keys = self.split_key(dotted_key)
+        result = self
+        try:
+            for key in keys:
+                result = result[key]
+        except Exception:
             return default
-
-        return self[key]
+        return result
 
     def pop(self, key, default=_NOT_SET):
         try:
