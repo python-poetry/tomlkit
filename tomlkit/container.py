@@ -477,7 +477,7 @@ class Container(dict):
         start_quo = re.search(quote_pat, dotted_key)
         if start_quo:
             quo_type = start_quo.group()
-            cont_quot_pattern = f"^{quo_type}[^{quo_type}]*{quo_type}[.]?"
+            cont_quot_pattern =("^%(quo_type)s[^%(quo_type)s]*%(quo_type)s[.]?" % {"quo_type": quo_type})
             quot_key = re.search(cont_quot_pattern, dotted_key).group()
             if not quot_key.endswith("."):
                 quot_key = quot_key.strip(quo_type)
