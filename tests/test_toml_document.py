@@ -475,6 +475,7 @@ score = 91
     doc = parse(content)
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc.get("students")
+    assert {"students": {"tommy": 87, "mary": 66, "bob": {"score": 91}}, "subjects": {"maths": "maths", "english": "english"}} == doc
 
 
 def test_values_can_still_be_set_for_out_of_order_tables():
