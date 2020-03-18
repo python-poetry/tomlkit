@@ -8,12 +8,14 @@ from tomlkit import parse
 from tomlkit.toml_document import TOMLDocument
 from tomlkit._utils import _utc
 
+
 @pytest.fixture
 def example_doc(example):
     content = example("example")
 
     doc = parse(content)
     return doc
+
 
 def test_get_simple_key(example_doc):
     doc = example_doc
@@ -37,6 +39,7 @@ def test_get_simple_key(example_doc):
     beta = doc["servers"]["beta"]
     assert beta.get("country") == "中国"
 
+
 #     # Null quoted keys
 #     # tomlkit does not currently support this
 #     content = """
@@ -46,6 +49,7 @@ def test_get_simple_key(example_doc):
 #     doc = parse(content)
 #     assert doc.get("''") == "sqvalue"
 #     assert doc.get('""') == "dqvalue"
+
 
 def test_get_dotted_key(example_doc, example):
     doc = example_doc
@@ -87,6 +91,7 @@ def test_get_dotted_key(example_doc, example):
     assert doc2.get("a.b.d") == 2
     assert doc2.get("table.a.c") == 3
 
+
 def test_get_mixed_quote_key():
     content = """
 [foo]
@@ -109,10 +114,14 @@ def test_get_mixed_quote_key():
     assert doc.get("foo.'key.1'.'double.quote'") == 4
     assert doc.get("3.1415.dotted") is True
 
+
 def test_get_defaults(example_doc):
     doc = example_doc
 
-    assert doc.get("owner.notbio", "Requested key does not exist") == "Requested key does not exist"
+    assert (
+        doc.get("owner.notbio", "Requested key does not exist")
+        == "Requested key does not exist"
+    )
     assert doc.get("notowner.bio", "Default value") == "Default value"
     assert doc.get("owner.bio.notatable", "Default value") == "Default value"
 
