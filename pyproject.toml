@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tomlkit"
+name = "tomlkit_fluent"
 version = "0.5.11"
 description = "Style preserving TOML library"
 authors = ["Sébastien Eustace <sebastien@eustace.io>"]
@@ -11,7 +11,7 @@ homepage = "https://github.com/sdispater/tomlkit"
 repository = "https://github.com/sdispater/tomlkit"
 
 packages = [
-    {include = "tomlkit"},
+    {include = "tomlkit_fluent"},
     {include = "tests", format = "sdist"}
 ]
 
