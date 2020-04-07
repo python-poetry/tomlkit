@@ -42,6 +42,13 @@ def invalid_example():
 
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
+IGNORED_TESTS = {
+    "invalid": [
+        "array-mixed-types-strings-and-ints.toml",
+        "array-mixed-types-arrays-and-ints.toml",
+        "array-mixed-types-ints-and-floats.toml",
+    ]
+}
 
 
 def get_tomltest_cases():
@@ -52,8 +59,12 @@ def get_tomltest_cases():
     rv = {}
     for d in dirs:
         rv[d] = {}
+        ignored = IGNORED_TESTS.get(d, [])
         files = os.listdir(os.path.join(TEST_DIR, d))
         for f in files:
+            if f in ignored:
+                continue
+
             bn, ext = f.rsplit(".", 1)
             if bn not in rv[d]:
                 rv[d][bn] = {}

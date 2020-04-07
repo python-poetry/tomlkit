@@ -674,10 +674,7 @@ class Parser:
         except ValueError:
             pass
         else:
-            if res.is_homogeneous():
-                return res
-
-        raise self.parse_error(MixedArrayTypesError)
+            return res
 
     def _parse_inline_table(self):  # type: () -> InlineTable
         # consume opening bracket, EOF here is an issue (middle of array)
