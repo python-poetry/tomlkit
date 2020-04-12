@@ -762,18 +762,6 @@ class Array(Item, list):
     def value(self):  # type: () -> list
         return self
 
-    def is_homogeneous(self):  # type: () -> bool
-        if not self:
-            return True
-
-        discriminants = [
-            i.discriminant
-            for i in self._value
-            if not isinstance(i, (Whitespace, Comment))
-        ]
-
-        return len(set(discriminants)) == 1
-
     def multiline(self, multiline):  # type: (bool) -> self
         self._multiline = multiline
 
@@ -800,9 +788,6 @@ class Array(Item, list):
         super(Array, self).append(it.value)
 
         self._value.append(it)
-
-        if not self.is_homogeneous():
-            raise ValueError("Array has mixed types elements")
 
     if not PY2:
 
