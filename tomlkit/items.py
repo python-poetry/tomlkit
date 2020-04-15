@@ -947,8 +947,8 @@ class Table(Item, dict):
     def is_super_table(self):  # type: () -> bool
         return self._is_super_table
 
-    def as_string(self, prefix=None):  # type: () -> str
-        return self._value.as_string(prefix=prefix)
+    def as_string(self):  # type: () -> str
+        return self._value.as_string()
 
     # Helpers
 
@@ -1280,7 +1280,7 @@ class AoT(Item, list):
     def as_string(self):  # type: () -> str
         b = ""
         for table in self._body:
-            b += table.as_string(prefix=self.name)
+            b += table.as_string()
 
         return b
 
