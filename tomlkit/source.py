@@ -20,12 +20,12 @@ from .toml_char import TOMLChar
 class _State:
     def __init__(
         self, source, save_marker=False, restore=False
-    ):  # type: (_Source, Optional[bool], Optional[bool]) -> None
+    ):  # type: (Source, Optional[bool], Optional[bool]) -> None
         self._source = source
         self._save_marker = save_marker
         self.restore = restore
 
-    def __enter__(self):  # type: () -> None
+    def __enter__(self):  # type: () -> _State
         # Entering this context manager - save the state
         if PY2:
             # Python 2.7 does not allow to directly copy
@@ -135,7 +135,9 @@ class Source(unicode):
 
             return False
 
-    def inc_n(self, n, exception=None):  # type: (int, Exception) -> bool
+    def inc_n(
+        self, n, exception=None
+    ):  # type: (int, Optional[Type[ParseError]]) -> bool
         """
         Increments the parser by n characters
         if the end of the input has not been reached.

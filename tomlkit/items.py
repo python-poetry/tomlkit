@@ -1198,7 +1198,7 @@ class String(unicode, Item):
 
     def __init__(
         self, t, _, original, trivia
-    ):  # type: (StringType, str, original, Trivia) -> None
+    ):  # type: (StringType, str, str, Trivia) -> None
         super(String, self).__init__(trivia)
 
         self._t = t

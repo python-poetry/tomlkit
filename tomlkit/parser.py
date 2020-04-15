@@ -9,6 +9,7 @@ from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Type
 from typing import Union
 
 from ._compat import chr
@@ -88,14 +89,16 @@ class Parser:
         """
         return self._src.extract()
 
-    def inc(self, exception=None):  # type: (Optional[ParseError.__class__]) -> bool
+    def inc(self, exception=None):  # type: (Optional[Type[ParseError]]) -> bool
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n, exception=None):  # type: (int, Optional[ParseError]) -> bool
+    def inc_n(
+        self, n, exception=None
+    ):  # type: (int, Optional[Type[ParseError]]) -> bool
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
