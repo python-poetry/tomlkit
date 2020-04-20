@@ -201,7 +201,9 @@ class Key:
     A key value.
     """
 
-    def __init__(self, k, t=None, sep=None, dotted=False):  # type: (str) -> None
+    def __init__(
+        self, k, t=None, sep=None, dotted=False
+    ):  # type: (str, Optional[KeyType], Optional[str], bool) -> None
         if t is None:
             if any(
                 [c not in string.ascii_letters + string.digits + "-" + "_" for c in k]
@@ -545,7 +547,7 @@ class DateTime(Item, datetime):
         trivia,
         raw,
         **kwargs
-    ):  # type: (int, int, int, int, int, int, int, ..., Trivia, ...) -> datetime
+    ):  # type: (int, int, int, int, int, int, int, Optional[datetime.tzinfo], Trivia, str, Any) -> datetime
         return datetime.__new__(
             cls,
             year,
@@ -561,7 +563,7 @@ class DateTime(Item, datetime):
 
     def __init__(
         self, year, month, day, hour, minute, second, microsecond, tzinfo, trivia, raw
-    ):  # type: (int, int, int, int, int, int, int, ..., Trivia) -> None
+    ):  # type: (int, int, int, int, int, int, int, Optional[datetime.tzinfo], Trivia, str) -> None
         super(DateTime, self).__init__(trivia)
 
         self._raw = raw
@@ -650,7 +652,7 @@ class Date(Item, date):
     A date literal.
     """
 
-    def __new__(cls, year, month, day, *_):  # type: (int, int, int, ...) -> date
+    def __new__(cls, year, month, day, *_):  # type: (int, int, int, Any) -> date
         return date.__new__(cls, year, month, day)
 
     def __init__(
@@ -706,12 +708,12 @@ class Time(Item, time):
 
     def __new__(
         cls, hour, minute, second, microsecond, tzinfo, *_
-    ):  # type: (int, int, int, int, ...) -> time
+    ):  # type: (int, int, int, int, Optional[datetime.tzinfo], Any) -> time
         return time.__new__(cls, hour, minute, second, microsecond, tzinfo)
 
     def __init__(
         self, hour, minute, second, microsecond, tzinfo, trivia, raw
-    ):  # type: (int, int, int, int, Trivia, str) -> None
+    ):  # type: (int, int, int, int, Optional[datetime.tzinfo], Trivia, str) -> None
         super(Time, self).__init__(trivia)
 
         self._raw = raw
@@ -744,7 +746,9 @@ class Array(Item, list):
     An array literal
     """
 
-    def __init__(self, value, trivia, multiline=False):  # type: (list, Trivia) -> None
+    def __init__(
+        self, value, trivia, multiline=False
+    ):  # type: (list, Trivia, bool) -> None
         super(Array, self).__init__(trivia)
 
         list.__init__(
@@ -761,18 +765,6 @@ class Array(Item, list):
     @property
     def value(self):  # type: () -> list
         return self
-
-    def is_homogeneous(self):  # type: () -> bool
-        if not self:
-            return True
-
-        discriminants = [
-            i.discriminant
-            for i in self._value
-            if not isinstance(i, (Whitespace, Comment))
-        ]
-
-        return len(set(discriminants)) == 1
 
     def multiline(self, multiline):  # type: (bool) -> self
         self._multiline = multiline
@@ -792,7 +784,7 @@ class Array(Item, list):
 
         return s
 
-    def append(self, _item):  # type: () -> None
+    def append(self, _item):  # type: (Any) -> None
         if self._value:
             self._value.append(Whitespace(", "))
 
@@ -800,9 +792,6 @@ class Array(Item, list):
         super(Array, self).append(it.value)
 
         self._value.append(it)
-
-        if not self.is_homogeneous():
-            raise ValueError("Array has mixed types elements")
 
     if not PY2:
 
@@ -869,7 +858,7 @@ class Table(Item, dict):
         is_super_table=False,
         name=None,
         display_name=None,
-    ):  # type: (tomlkit.container.Container, Trivia, bool, ...) -> None
+    ):  # type: (tomlkit.container.Container, Trivia, bool, bool, Optional[str], Optional[str]) -> None
         super(Table, self).__init__(trivia)
 
         self.name = name
@@ -962,8 +951,8 @@ class Table(Item, dict):
     def is_super_table(self):  # type: () -> bool
         return self._is_super_table
 
-    def as_string(self, prefix=None):  # type: () -> str
-        return self._value.as_string(prefix=prefix)
+    def as_string(self):  # type: () -> str
+        return self._value.as_string()
 
     # Helpers
 
@@ -1250,7 +1239,7 @@ class AoT(Item, list):
 
     def __init__(
         self, body, name=None, parsed=False
-    ):  # type: (List[Table], Optional[str]) -> None
+    ):  # type: (List[Table], Optional[str], bool) -> None
         self.name = name
         self._body = []
         self._parsed = parsed
@@ -1295,7 +1284,7 @@ class AoT(Item, list):
     def as_string(self):  # type: () -> str
         b = ""
         for table in self._body:
-            b += table.as_string(prefix=self.name)
+            b += table.as_string()
 
         return b
 

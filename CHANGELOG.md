@@ -1,6 +1,13 @@
 # Change Log
 
-## [0.5.11] - 2010-02-29
+## [0.6.0] - 2020-04-15
+
+### Added
+
+- Added support for heterogeneous arrays ([#92](https://github.com/sdispater/tomlkit/pull/92)).
+
+
+## [0.5.11] - 2020-02-29
 
 ### Fixed
 
@@ -183,7 +190,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.11...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.6.0...master
+[0.6.0]: https://github.com/sdispater/tomlkit/releases/tag/0.6.0
 [0.5.11]: https://github.com/sdispater/tomlkit/releases/tag/0.5.11
 [0.5.10]: https://github.com/sdispater/tomlkit/releases/tag/0.5.10
 [0.5.9]: https://github.com/sdispater/tomlkit/releases/tag/0.5.9

@@ -4,6 +4,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from typing import Union
 
 
 from ._compat import decode
@@ -51,8 +52,6 @@ def parse_rfc3339(string):  # type: (str) -> Union[datetime, date, time]
 
         if m.group(7):
             microsecond = int(("{:<06s}".format(m.group(8)))[:6])
-
-        dt = datetime(year, month, day, hour, minute, second, microsecond)
 
         if m.group(9):
             # Timezone

@@ -336,7 +336,7 @@ class Container(dict):
         if self._body:
             return self._body[-1][1]
 
-    def as_string(self, prefix=None):  # type: () -> str
+    def as_string(self):  # type: () -> str
         s = ""
         for k, v in self._body:
             if k is not None:
