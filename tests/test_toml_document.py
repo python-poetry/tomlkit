@@ -569,3 +569,50 @@ key = "value"
 
     with pytest.raises(KeyError):
         table.pop("missing")
+
+
+def test_string_output_order_is_preserved_for_out_of_order_tables():
+    content = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = "^1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    doc = parse(content)
+    constraint = tomlkit.inline_table()
+    constraint["version"] = "^1.0"
+    doc["tool"]["poetry"]["dependencies"]["bar"] = constraint
+
+    assert "^1.0" == doc["tool"]["poetry"]["dependencies"]["bar"]["version"]
+
+    expected = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = {version = "^1.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    assert expected == doc.as_string()
