@@ -293,6 +293,9 @@ class Item(object):
     def is_inline_table(self):  # type: () -> bool
         return isinstance(self, InlineTable)
 
+    def is_aot(self):  # type: () -> bool
+        return isinstance(self, AoT)
+
     def _getstate(self, protocol=3):
         return (self._trivia,)
 

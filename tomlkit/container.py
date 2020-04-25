@@ -35,6 +35,7 @@ class Container(dict):
         self._map = {}  # type: Dict[Key, int]
         self._body = []  # type: List[Tuple[Optional[Key], Item]]
         self._parsed = parsed
+        self._table_keys = []
 
     @property
     def body(self):  # type: () -> List[Tuple[Optional[Key], Item]]
@@ -43,20 +44,13 @@ class Container(dict):
     @property
     def value(self):  # type: () -> Dict[Any, Any]
         d = {}
-        for k, v in self._body:
-            if k is None:
-                continue
+        for k in self.keys():
+            v = self[k]
 
-            k = k.key
-            v = v.value
-
-            if isinstance(v, Container):
+            if isinstance(v, (Container, OutOfOrderTableProxy)):
                 v = v.value
 
-            if k in d:
-                d[k].update(v)
-            else:
-                d[k] = v
+            d[k] = v
 
         return d
 
@@ -113,9 +107,10 @@ class Container(dict):
         if key is not None and key in self:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
-                current_idx = current_idx[0]
+                current_idx = current_idx[-1]
 
             current = self._body[current_idx][1]
+
             if isinstance(item, Table):
                 if not isinstance(current, (Table, AoT)):
                     raise KeyAlreadyPresent(key)
@@ -133,6 +128,17 @@ class Container(dict):
                     return self
                 elif current.is_super_table():
                     if item.is_super_table():
+                        if self._table_keys[-1] != self._body[current_idx][0]:
+
+                            if not isinstance(current_idx, tuple):
+                                current_idx = (current_idx,)
+
+                            self._map[key] = current_idx + (len(self._body),)
+                            self._body.append((key, item))
+                            self._table_keys.append(key)
+
+                            return self
+
                         for k, v in item.value.body:
                             current.append(k, v)
 
@@ -192,22 +198,23 @@ class Container(dict):
         if key in self._map:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
-                current_idx = current_idx[0]
+                current_idx = current_idx[-1]
 
             current = self._body[current_idx][1]
             if key is not None and not isinstance(current, Table):
                 raise KeyAlreadyPresent(key)
 
             # Adding sub tables to a currently existing table
-            idx = self._map[key]
-            if not isinstance(idx, tuple):
-                idx = (idx,)
+            if not isinstance(current_idx, tuple):
+                current_idx = (current_idx,)
 
-            self._map[key] = idx + (len(self._body),)
+            self._map[key] = current_idx + (len(self._body),)
         else:
             self._map[key] = len(self._body)
 
         self._body.append((key, item))
+        if item.is_table():
+            self._table_keys.append(key)
 
         if key is not None:
             super(Container, self).__setitem__(key.key, item.value)
@@ -471,18 +478,11 @@ class Container(dict):
     # Dictionary methods
 
     def keys(self):  # type: () -> Generator[str]
-        for k, _ in self._body:
-            if k is None:
-                continue
-
-            yield k.key
+        return super(Container, self).keys()
 
     def values(self):  # type: () -> Generator[Item]
-        for k, v in self._body:
-            if k is None:
-                continue
-
-            yield v.value
+        for k in self.keys():
+            yield self[k]
 
     def items(self):  # type: () -> Generator[Item]
         for k, v in self.value.items():
@@ -671,9 +671,17 @@ class OutOfOrderTableProxy(dict):
                 for k, v in item.value.body:
                     self._internal_container.append(k, v)
                     self._tables_map[k] = table_idx
+                    if k is not None:
+                        super(OutOfOrderTableProxy, self).__setitem__(k.key, v)
             else:
                 self._internal_container.append(key, item)
                 self._map[key] = i
+                if key is not None:
+                    super(OutOfOrderTableProxy, self).__setitem__(key.key, item)
+
+    @property
+    def value(self):
+        return self._internal_container.value
 
     def __getitem__(self, key):  # type: (Union[Key, str]) -> Any
         if key not in self._internal_container:
@@ -693,6 +701,9 @@ class OutOfOrderTableProxy(dict):
             table[key] = item
         else:
             self._container[key] = item
+
+        if key is not None:
+            super(OutOfOrderTableProxy, self).__setitem__(key, item)
 
     def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         if key in self._map:
