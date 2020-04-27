@@ -34,6 +34,7 @@ black = { version = "^19.3b0", markers = "python_version >= '3.6' and python_ver
 pre-commit = "^1.10"
 tox = "^3.1"
 codecov = "^2.0"
+pyyaml = "~5.1.1"
 
 [tool.black]
 line-length = 88

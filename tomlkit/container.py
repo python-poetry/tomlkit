@@ -107,9 +107,11 @@ class Container(dict):
         if key is not None and key in self:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
-                current_idx = current_idx[-1]
+                current_body_element = self._body[current_idx[-1]]
+            else:
+                current_body_element = self._body[current_idx]
 
-            current = self._body[current_idx][1]
+            current = current_body_element[1]
 
             if isinstance(item, Table):
                 if not isinstance(current, (Table, AoT)):
@@ -128,8 +130,10 @@ class Container(dict):
                     return self
                 elif current.is_super_table():
                     if item.is_super_table():
-                        if self._table_keys[-1] != self._body[current_idx][0]:
-
+                        if (
+                            self._table_keys[-1] != current_body_element[0]
+                            or key.is_dotted()
+                        ):
                             if not isinstance(current_idx, tuple):
                                 current_idx = (current_idx,)
 
@@ -335,6 +339,12 @@ class Container(dict):
         idx = self._map.get(key, None)
         if idx is None:
             raise NonExistentKey(key)
+
+        if isinstance(idx, tuple):
+            # The item we are getting is an out of order table
+            # so we need a proxy to retrieve the proper objects
+            # from the parent container
+            return OutOfOrderTableProxy(self, idx)
 
         return self._body[idx][1]
 
