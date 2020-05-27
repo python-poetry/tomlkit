@@ -2,18 +2,11 @@
 from __future__ import unicode_literals
 
 import itertools
-
 from copy import copy
-from typing import Any
-from typing import Optional
-from typing import Tuple
-from typing import Type
+from typing import Any, Optional, Tuple, Type
 
-from ._compat import PY2
-from ._compat import unicode
-from .exceptions import UnexpectedEofError
-from .exceptions import UnexpectedCharError
-from .exceptions import ParseError
+from ._compat import PY2, unicode
+from .exceptions import ParseError, UnexpectedCharError
 from .toml_char import TOMLChar
 
 

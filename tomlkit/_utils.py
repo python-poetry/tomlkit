@@ -1,14 +1,8 @@
 import re
-
-from datetime import date
-from datetime import datetime
-from datetime import time
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Union
 
-
-from ._compat import decode
-from ._compat import timezone
+from ._compat import decode, timezone
 
 RFC_3339_LOOSE = re.compile(
     "^"

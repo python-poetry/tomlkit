@@ -1,13 +1,12 @@
-import pytest
-
 from datetime import date
 from datetime import datetime as dt
 from datetime import time
 from datetime import timedelta as td
 
+import pytest
+
 from tomlkit._compat import timezone as tz
-from tomlkit._utils import _utc
-from tomlkit._utils import parse_rfc3339
+from tomlkit._utils import _utc, parse_rfc3339
 
 
 @pytest.mark.parametrize(

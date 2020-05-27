@@ -3,14 +3,7 @@ from __future__ import unicode_literals
 
 import datetime
 
-from tomlkit import aot
-from tomlkit import array
-from tomlkit import comment
-from tomlkit import document
-from tomlkit import item
-from tomlkit import nl
-from tomlkit import parse
-from tomlkit import table
+from tomlkit import aot, array, comment, document, item, nl, parse, table
 from tomlkit._utils import _utc
 
 

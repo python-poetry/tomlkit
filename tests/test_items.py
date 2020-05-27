@@ -3,27 +3,25 @@ from __future__ import unicode_literals
 
 import math
 import pickle
+from datetime import date, datetime, time, timedelta
+
 import pytest
 
-from datetime import date
-from datetime import datetime
-from datetime import time
-from datetime import timedelta
-
-from tomlkit import inline_table
-from tomlkit import parse
+from tomlkit import inline_table, parse
 from tomlkit._compat import PY2
 from tomlkit.exceptions import NonExistentKey
-from tomlkit.items import Bool
-from tomlkit.items import InlineTable
-from tomlkit.items import Integer
-from tomlkit.items import Key
-from tomlkit.items import KeyType
-from tomlkit.items import String
-from tomlkit.items import StringType
-from tomlkit.items import Table
-from tomlkit.items import Trivia
-from tomlkit.items import item
+from tomlkit.items import (
+    Bool,
+    InlineTable,
+    Integer,
+    Key,
+    KeyType,
+    String,
+    StringType,
+    Table,
+    Trivia,
+    item,
+)
 from tomlkit.parser import Parser
 
 

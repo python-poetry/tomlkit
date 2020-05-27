@@ -1,7 +1,6 @@
 import string
 
-from ._compat import PY2
-from ._compat import unicode
+from ._compat import PY2, unicode
 
 if PY2:
     from functools32 import lru_cache

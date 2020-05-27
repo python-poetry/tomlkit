@@ -1,9 +1,9 @@
 import json
+
 import pytest
 
 from tomlkit import parse
-from tomlkit._compat import decode
-from tomlkit._compat import unicode
+from tomlkit._compat import decode, unicode
 from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import TOMLKitError
 

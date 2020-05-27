@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 import copy
 import json
 import pickle
-
 from datetime import datetime
 
 import pytest
+
 import tomlkit
 from tomlkit import parse
 from tomlkit._utils import _utc

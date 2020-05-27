@@ -1,34 +1,32 @@
 import json
+from datetime import date, datetime, time
+
 import pytest
 
 import tomlkit
-
-from datetime import date
-from datetime import datetime
-from datetime import time
-
-from tomlkit import dumps
-from tomlkit import loads
-from tomlkit import parse
-from tomlkit.exceptions import EmptyKeyError
-from tomlkit.exceptions import InvalidCharInStringError
-from tomlkit.exceptions import InvalidDateError
-from tomlkit.exceptions import InvalidDateTimeError
-from tomlkit.exceptions import InvalidTimeError
-from tomlkit.exceptions import InvalidNumberError
-from tomlkit.exceptions import MixedArrayTypesError
-from tomlkit.exceptions import UnexpectedCharError
-from tomlkit.items import AoT
-from tomlkit.items import Array
-from tomlkit.items import Bool
-from tomlkit.items import Date
-from tomlkit.items import DateTime
-from tomlkit.items import Float
-from tomlkit.items import InlineTable
-from tomlkit.items import Integer
-from tomlkit.items import Key
-from tomlkit.items import Table
-from tomlkit.items import Time
+from tomlkit import dumps, loads, parse
+from tomlkit.exceptions import (
+    EmptyKeyError,
+    InvalidCharInStringError,
+    InvalidDateError,
+    InvalidDateTimeError,
+    InvalidNumberError,
+    InvalidTimeError,
+    UnexpectedCharError,
+)
+from tomlkit.items import (
+    AoT,
+    Array,
+    Bool,
+    Date,
+    DateTime,
+    Float,
+    InlineTable,
+    Integer,
+    Key,
+    Table,
+    Time,
+)
 from tomlkit.toml_document import TOMLDocument
 
 

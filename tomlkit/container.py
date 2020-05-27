@@ -1,27 +1,12 @@
 from __future__ import unicode_literals
 
 import copy
-
-from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from ._compat import decode
-from .exceptions import KeyAlreadyPresent
-from .exceptions import NonExistentKey
-from .items import AoT
-from .items import Comment
-from .items import Item
-from .items import Key
-from .items import Null
-from .items import Table
-from .items import Whitespace
+from .exceptions import KeyAlreadyPresent, NonExistentKey
+from .items import AoT, Comment, Item, Key, Null, Table, Whitespace
 from .items import item as _item
-
 
 _NOT_SET = object()
 
@@ -707,7 +692,6 @@ class OutOfOrderTableProxy(dict):
 
     def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         if key in self._map:
-            idx = self._map[key]
             del self._container[key]
             del self._map[key]
         elif key in self._tables_map:

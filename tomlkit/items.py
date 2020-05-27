@@ -2,24 +2,11 @@ from __future__ import unicode_literals
 
 import re
 import string
-
-from datetime import date
-from datetime import datetime
-from datetime import time
+from datetime import date, datetime, time
 from enum import Enum
-from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
-
-from ._compat import PY2
-from ._compat import PY38
-from ._compat import decode
-from ._compat import long
-from ._compat import unicode
+from ._compat import PY2, PY38, decode, long, unicode
 from ._utils import escape_string
 
 if PY2:
