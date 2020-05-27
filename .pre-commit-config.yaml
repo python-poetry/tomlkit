@@ -15,4 +15,5 @@ repos:
     rev: master  # Use the revision sha / tag you want to point at
     hooks:
     -   id: isort
+        args: ['-df']
         python_version: python3.6
