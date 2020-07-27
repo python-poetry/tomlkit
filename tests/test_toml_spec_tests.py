@@ -17,7 +17,7 @@ IGNORED_TESTS = []
 # The following tests trigger a RecursionError
 IGNORED_TESTS += ["qa-array-inline-nested-1000", "qa-table-inline-nested-1000"]
 # The following tests don't work due to time microseconds precision of the tests
-IGNORED_TESTS += ["spec-date-time-6", "spec-date-time-local-2"]
+IGNORED_TESTS += ["spec-date-time-6", "spec-date-time-local-2", "spec-time-2"]
 # The following tests don't work due to nan always comparing to False
 IGNORED_TESTS += ["spec-float-13", "spec-float-14", "spec-float-15"]
 # The following tests don't work due to issues with th epyyaml library
@@ -103,11 +103,6 @@ def test_valid_decode(test):
             yaml_val = untag(json.loads(f.read()))
 
     assert toml_val == yaml_val
-    print("1")
-    print(toml_val.as_string())
-    print(toml_val._body)
-    print("2")
-    print(toml_content)
     assert toml_val.as_string() == toml_content
 
 

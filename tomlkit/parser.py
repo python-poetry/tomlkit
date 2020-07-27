@@ -386,7 +386,9 @@ class Parser:
         if parse_comment:
             cws, comment, trail = self._parse_comment_trail()
             meta = val.trivia
-            meta.comment_ws = cws
+            if not meta.comment_ws:
+                meta.comment_ws = cws
+
             meta.comment = comment
             meta.trail = trail
         else:
@@ -468,11 +470,9 @@ class Parser:
         self, container, key, value
     ):  # type: (Union[Container, Table], Key, Any) -> None
         names = tuple(self._split_table_name(key.as_string()))
-        print("NAMES", names)
         name = names[0]
         name._dotted = True
         if name in container:
-            print("IN", name)
             table = container[name]
         else:
             table = Table(Container(True), Trivia(), False, is_super_table=True)
@@ -1007,7 +1007,6 @@ class Parser:
 
         key = Key(name, sep="")
         name_parts = tuple(self._split_table_name(name))
-        print("TABLE", name_parts)
         missing_table = False
         if parent_name:
             parent_name_parts = tuple(self._split_table_name(parent_name))
@@ -1018,7 +1017,6 @@ class Parser:
             missing_table = True
 
         name_parts = name_parts[len(parent_name_parts) :]
-        print(name_parts)
 
         values = Container(True)
 
@@ -1095,7 +1093,6 @@ class Parser:
             else:
                 if self._current == "[":
                     is_aot_next, name_next = self._peek_table()
-                    print(name, name_next, self._is_child(name, name_next))
 
                     if self._is_child(name, name_next):
                         key_next, table_next = self._parse_table(name, table)

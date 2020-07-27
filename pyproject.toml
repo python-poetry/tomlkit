@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "~2.7 || ^3.4"
+python = "~2.7 || ^3.5"
 
 # enum34 is needed for Python 2.7
 enum34 = { version = "^1.1", python = "~2.7" }
@@ -34,7 +34,7 @@ black = { version = "^19.3b0", markers = "python_version >= '3.6' and python_ver
 pre-commit = "^1.10"
 tox = "^3.1"
 codecov = "^2.0"
-pyyaml = "~5.1.1"
+pyyaml = "~5.3.1"
 isort = {version = "^5.2.0", python = "^3.6"}
 
 [tool.black]
