@@ -13,18 +13,18 @@ from typing import Union
 
 from ._compat import chr
 from ._compat import decode
-from ._utils import _escaped
 from ._utils import RFC_3339_LOOSE
+from ._utils import _escaped
 from ._utils import parse_rfc3339
 from .container import Container
 from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
 from .exceptions import InvalidCharInStringError
-from .exceptions import InvalidDateTimeError
 from .exceptions import InvalidDateError
-from .exceptions import InvalidTimeError
+from .exceptions import InvalidDateTimeError
 from .exceptions import InvalidNumberError
+from .exceptions import InvalidTimeError
 from .exceptions import InvalidUnicodeValueError
 from .exceptions import ParseError
 from .exceptions import UnexpectedCharError

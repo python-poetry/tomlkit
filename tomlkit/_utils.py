@@ -6,9 +6,9 @@ from datetime import time
 from datetime import timedelta
 from typing import Union
 
-
 from ._compat import decode
 from ._compat import timezone
+
 
 RFC_3339_LOOSE = re.compile(
     "^"

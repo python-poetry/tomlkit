@@ -3,12 +3,13 @@ from __future__ import unicode_literals
 
 import math
 import pickle
-import pytest
 
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+
+import pytest
 
 from tomlkit import inline_table
 from tomlkit import parse
