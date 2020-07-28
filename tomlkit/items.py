@@ -232,6 +232,9 @@ class Key:
     def is_dotted(self):  # type: () -> bool
         return self._dotted
 
+    def is_bare(self):  # type: () -> bool
+        return self.t == KeyType.Bare
+
     def as_string(self):  # type: () -> str
         return "{}{}{}".format(self.delimiter, self._original, self.delimiter)
 

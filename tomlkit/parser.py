@@ -21,6 +21,7 @@ from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
 from .exceptions import InvalidCharInStringError
+from .exceptions import InvalidControlChar
 from .exceptions import InvalidDateError
 from .exceptions import InvalidDateTimeError
 from .exceptions import InvalidNumberError
@@ -52,6 +53,13 @@ from .items import Whitespace
 from .source import Source
 from .toml_char import TOMLChar
 from .toml_document import TOMLDocument
+
+
+CTRL_I = 0x09  # Tab
+CTRL_J = 0x0A  # Line feed
+CTRL_M = 0x0D  # Carriage return
+CTRL_CHAR_LIMIT = 0x1F
+CHR_DEL = 0x7F
 
 
 class Parser:
@@ -322,8 +330,13 @@ class Parser:
                 self.inc()  # Skip #
 
                 # The comment itself
-                while not self.end() and not self._current.is_nl() and self.inc():
-                    pass
+                while not self.end() and not self._current.is_nl():
+                    code = ord(self._current)
+                    if code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I:
+                        raise self.parse_error(InvalidControlChar, code, "comments")
+
+                    if not self.inc():
+                        break
 
                 comment = self.extract()
                 self.mark()
@@ -456,6 +469,13 @@ class Parser:
 
         original = self.extract()
         key = original.strip()
+        if not key:
+            # Empty key
+            raise self.parse_error(ParseError, "Empty key found")
+
+        if " " in key:
+            # Bare key with spaces in it
+            raise self.parse_error(ParseError, 'Invalid key "{}"'.format(key))
 
         if self._current == ".":
             self.inc()
@@ -473,7 +493,33 @@ class Parser:
         name = names[0]
         name._dotted = True
         if name in container:
-            table = container[name]
+            if not isinstance(value, Table):
+                table = Table(Container(True), Trivia(), False, is_super_table=True)
+                _table = table
+                for i, _name in enumerate(names[1:]):
+                    if i == len(names) - 2:
+                        _name.sep = key.sep
+
+                        _table.append(_name, value)
+                    else:
+                        _name._dotted = True
+                        _table.append(
+                            _name,
+                            Table(
+                                Container(True),
+                                Trivia(),
+                                False,
+                                is_super_table=i < len(names) - 2,
+                            ),
+                        )
+
+                        _table = _table[_name]
+
+                value = table
+
+            container.append(name, value)
+
+            return
         else:
             table = Table(Container(True), Trivia(), False, is_super_table=True)
             if isinstance(container, Table):
@@ -489,7 +535,7 @@ class Parser:
             else:
                 _name._dotted = True
                 if _name in table.value:
-                    table = table.value.item(_name)
+                    table = table.value[_name]
                 else:
                     table.append(
                         _name,
@@ -718,11 +764,18 @@ class Parser:
                     # consume closing bracket, EOF here doesn't matter
                     self.inc()
                     break
-                if trailing_comma is False:
+
+                if (
+                    trailing_comma is False
+                    or trailing_comma is None
+                    and self._current == ","
+                ):
+                    # Either the previous key-value pair was not followed by a comma
+                    # or the table has an unexpected leading comma.
                     raise self.parse_error(UnexpectedCharError, self._current)
             else:
                 # True: previous key-value pair was followed by a comma
-                if self._current == "}":
+                if self._current == "}" or self._current == ",":
                     raise self.parse_error(UnexpectedCharError, self._current)
 
             key, val = self._parse_key_value(False)
@@ -879,9 +932,23 @@ class Parser:
 
         escaped = False  # whether the previous key was ESCAPE
         while True:
-            if delim.is_singleline() and self._current.is_nl():
-                # single line cannot have actual newline characters
-                raise self.parse_error(InvalidCharInStringError, self._current)
+            code = ord(self._current)
+            if (
+                delim.is_singleline()
+                and not escaped
+                and (code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I)
+            ):
+                raise self.parse_error(InvalidControlChar, code, "strings")
+            elif (
+                delim.is_multiline()
+                and not escaped
+                and (
+                    code == CHR_DEL
+                    or code <= CTRL_CHAR_LIMIT
+                    and code not in [CTRL_I, CTRL_J, CTRL_M]
+                )
+            ):
+                raise self.parse_error(InvalidControlChar, code, "strings")
             elif not escaped and self._current == delim.unit:
                 # try to process current as a closing delim
                 original = self.extract()
@@ -1007,6 +1074,9 @@ class Parser:
 
         key = Key(name, sep="")
         name_parts = tuple(self._split_table_name(name))
+        if any(" " in part.key.strip() and part.is_bare() for part in name_parts):
+            raise self.parse_error(ParseError, 'Invalid table name "{}"'.format(name))
+
         missing_table = False
         if parent_name:
             parent_name_parts = tuple(self._split_table_name(parent_name))
@@ -1043,16 +1113,13 @@ class Parser:
                 # without initializing [foo]
                 #
                 # So we have to create the parent tables
-                if parent and name_parts[0] in parent:
-                    table = parent[name_parts[0]]
-                else:
-                    table = Table(
-                        Container(True),
-                        Trivia(indent, cws, comment, trail),
-                        is_aot and name_parts[0].key in self._aot_stack,
-                        is_super_table=True,
-                        name=name_parts[0].key,
-                    )
+                table = Table(
+                    Container(True),
+                    Trivia(indent, cws, comment, trail),
+                    is_aot and name_parts[0].key in self._aot_stack,
+                    is_super_table=True,
+                    name=name_parts[0].key,
+                )
 
                 result = table
                 key = name_parts[0]
@@ -1226,7 +1293,7 @@ class Parser:
 
                 try:
                     value = chr(int(extracted, 16))
-                except ValueError:
+                except (ValueError, OverflowError):
                     value = None
 
             return value, extracted

@@ -13,6 +13,7 @@ from tomlkit import loads
 from tomlkit import parse
 from tomlkit.exceptions import EmptyKeyError
 from tomlkit.exceptions import InvalidCharInStringError
+from tomlkit.exceptions import InvalidControlChar
 from tomlkit.exceptions import InvalidDateError
 from tomlkit.exceptions import InvalidDateTimeError
 from tomlkit.exceptions import InvalidNumberError
@@ -83,7 +84,7 @@ def test_parsed_document_are_properly_json_representable(
         ("invalid_time", InvalidTimeError),
         ("invalid_datetime", InvalidDateTimeError),
         ("trailing_comma", UnexpectedCharError),
-        ("newline_in_singleline_string", InvalidCharInStringError),
+        ("newline_in_singleline_string", InvalidControlChar),
         ("string_slash_whitespace_char", InvalidCharInStringError),
         ("array_no_comma", UnexpectedCharError),
         ("array_duplicate_comma", UnexpectedCharError),
