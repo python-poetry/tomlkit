@@ -14,13 +14,13 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-
 from ._compat import PY2
 from ._compat import PY38
 from ._compat import decode
 from ._compat import long
 from ._compat import unicode
 from ._utils import escape_string
+
 
 if PY2:
     from functools32 import lru_cache
@@ -202,8 +202,8 @@ class Key:
     """
 
     def __init__(
-        self, k, t=None, sep=None, dotted=False
-    ):  # type: (str, Optional[KeyType], Optional[str], bool) -> None
+        self, k, t=None, sep=None, dotted=False, original=None
+    ):  # type: (str, Optional[KeyType], Optional[str], bool, Optional[str]) -> None
         if t is None:
             if any(
                 [c not in string.ascii_letters + string.digits + "-" + "_" for c in k]
@@ -218,6 +218,11 @@ class Key:
 
         self.sep = sep
         self.key = k
+        if original is None:
+            original = k
+
+        self._original = original
+
         self._dotted = dotted
 
     @property
@@ -227,8 +232,11 @@ class Key:
     def is_dotted(self):  # type: () -> bool
         return self._dotted
 
+    def is_bare(self):  # type: () -> bool
+        return self.t == KeyType.Bare
+
     def as_string(self):  # type: () -> str
-        return "{}{}{}".format(self.delimiter, self.key, self.delimiter)
+        return "{}{}{}".format(self.delimiter, self._original, self.delimiter)
 
     def __hash__(self):  # type: () -> int
         return hash(self.key)
@@ -530,6 +538,12 @@ class Bool(Item):
             return NotImplemented
 
         return other == self._value
+
+    def __hash__(self):
+        return hash(self._value)
+
+    def __repr__(self):
+        return repr(self._value)
 
 
 class DateTime(Item, datetime):
@@ -1116,7 +1130,7 @@ class InlineTable(Item, dict):
 
             buf += "{}{}{}{}{}{}".format(
                 v.trivia.indent,
-                k.as_string(),
+                k.as_string() + ("." if k.is_dotted() else ""),
                 k.sep,
                 v.as_string(),
                 v.trivia.comment,

@@ -1,21 +1,23 @@
 import json
-import pytest
-
-import tomlkit
 
 from datetime import date
 from datetime import datetime
 from datetime import time
+
+import pytest
+
+import tomlkit
 
 from tomlkit import dumps
 from tomlkit import loads
 from tomlkit import parse
 from tomlkit.exceptions import EmptyKeyError
 from tomlkit.exceptions import InvalidCharInStringError
+from tomlkit.exceptions import InvalidControlChar
 from tomlkit.exceptions import InvalidDateError
 from tomlkit.exceptions import InvalidDateTimeError
-from tomlkit.exceptions import InvalidTimeError
 from tomlkit.exceptions import InvalidNumberError
+from tomlkit.exceptions import InvalidTimeError
 from tomlkit.exceptions import MixedArrayTypesError
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import AoT
@@ -82,14 +84,14 @@ def test_parsed_document_are_properly_json_representable(
         ("invalid_time", InvalidTimeError),
         ("invalid_datetime", InvalidDateTimeError),
         ("trailing_comma", UnexpectedCharError),
-        ("newline_in_singleline_string", InvalidCharInStringError),
+        ("newline_in_singleline_string", InvalidControlChar),
         ("string_slash_whitespace_char", InvalidCharInStringError),
         ("array_no_comma", UnexpectedCharError),
         ("array_duplicate_comma", UnexpectedCharError),
         ("array_leading_comma", UnexpectedCharError),
         ("inline_table_no_comma", UnexpectedCharError),
-        ("inline_table_duplicate_comma", EmptyKeyError),
-        ("inline_table_leading_comma", EmptyKeyError),
+        ("inline_table_duplicate_comma", UnexpectedCharError),
+        ("inline_table_leading_comma", UnexpectedCharError),
         ("inline_table_trailing_comma", UnexpectedCharError),
     ],
 )
