@@ -14,6 +14,7 @@ import pytest
 from tomlkit import inline_table
 from tomlkit import parse
 from tomlkit._compat import PY2
+from tomlkit._compat import OrderedDict
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Bool
 from tomlkit.items import InlineTable
@@ -208,8 +209,56 @@ bar = "baz"
     )
 
 
-def test_dicts_are_converted_to_tables_and_sorted():
-    t = item({"foo": {"bar": "baz", "abc": 123, "baz": [{"c": 3, "b": 2, "a": 1}]}})
+def test_dicts_are_converted_to_tables_and_keep_order():
+    t = item(
+        OrderedDict(
+            [
+                (
+                    "foo",
+                    OrderedDict(
+                        [
+                            ("bar", "baz"),
+                            ("abc", 123),
+                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
+                        ]
+                    ),
+                )
+            ]
+        )
+    )
+
+    assert (
+        t.as_string()
+        == """[foo]
+bar = "baz"
+abc = 123
+
+[[foo.baz]]
+c = 3
+b = 2
+a = 1
+"""
+    )
+
+
+def test_dicts_are_converted_to_tables_and_are_sorted_if_requested():
+    t = item(
+        OrderedDict(
+            [
+                (
+                    "foo",
+                    OrderedDict(
+                        [
+                            ("bar", "baz"),
+                            ("abc", 123),
+                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
+                        ]
+                    ),
+                )
+            ]
+        ),
+        _sort_keys=True,
+    )
 
     assert (
         t.as_string()
@@ -226,7 +275,9 @@ c = 3
 
 
 def test_dicts_with_sub_dicts_are_properly_converted():
-    t = item({"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}})
+    t = item(
+        {"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}}, _sort_keys=True
+    )
 
     assert (
         t.as_string()

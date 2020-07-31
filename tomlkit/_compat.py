@@ -150,6 +150,12 @@ else:
     long = int
 
 
+if PY36:
+    OrderedDict = dict
+else:
+    from collections import OrderedDict
+
+
 def decode(string, encodings=None):
     if not PY2 and not isinstance(string, bytes):
         return string

@@ -34,12 +34,12 @@ def loads(string):  # type: (str) -> _TOMLDocument
     return parse(string)
 
 
-def dumps(data):  # type: (_TOMLDocument) -> str
+def dumps(data, sort_keys=False):  # type: (_TOMLDocument, bool) -> str
     """
     Dumps a TOMLDocument into a string.
     """
     if not isinstance(data, _TOMLDocument) and isinstance(data, dict):
-        data = item(data)
+        data = item(data, _sort_keys=sort_keys)
 
     return data.as_string()
 

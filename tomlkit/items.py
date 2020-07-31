@@ -28,7 +28,7 @@ else:
     from functools import lru_cache
 
 
-def item(value, _parent=None):
+def item(value, _parent=None, _sort_keys=False):
     from .container import Container
 
     if isinstance(value, Item):
@@ -42,8 +42,11 @@ def item(value, _parent=None):
         return Float(value, Trivia(), str(value))
     elif isinstance(value, dict):
         val = Table(Container(), Trivia(), False)
-        for k, v in sorted(value.items(), key=lambda i: (isinstance(i[1], dict), i[0])):
-            val[k] = item(v, _parent=val)
+        for k, v in sorted(
+            value.items(),
+            key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
+        ):
+            val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
 
         return val
     elif isinstance(value, list):
@@ -57,13 +60,14 @@ def item(value, _parent=None):
                 table = Table(Container(), Trivia(), True)
 
                 for k, _v in sorted(
-                    v.items(), key=lambda i: (isinstance(i[1], dict), i[0])
+                    v.items(),
+                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
                 ):
-                    i = item(_v)
+                    i = item(_v, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
 
-                    table[k] = item(i)
+                    table[k] = item(i, _sort_keys=_sort_keys)
 
                 v = table
 
