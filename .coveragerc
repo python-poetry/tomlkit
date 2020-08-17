@@ -1,3 +1,2 @@
 [run]
 omit = tomlkit/_compat.py,
-

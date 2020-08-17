@@ -11,8 +11,11 @@ from typing import Tuple
 from typing import Union
 
 from ._compat import decode
+from ._utils import merge_dicts
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
+from .exceptions import ParseError
+from .exceptions import TOMLKitError
 from .items import AoT
 from .items import Comment
 from .items import Item
@@ -21,6 +24,9 @@ from .items import Null
 from .items import Table
 from .items import Whitespace
 from .items import item as _item
+
+
+_NOT_SET = object()
 
 
 class Container(dict):
@@ -32,6 +38,7 @@ class Container(dict):
         self._map = {}  # type: Dict[Key, int]
         self._body = []  # type: List[Tuple[Optional[Key], Item]]
         self._parsed = parsed
+        self._table_keys = []
 
     @property
     def body(self):  # type: () -> List[Tuple[Optional[Key], Item]]
@@ -51,7 +58,7 @@ class Container(dict):
                 v = v.value
 
             if k in d:
-                d[k].update(v)
+                merge_dicts(d[k], v)
             else:
                 d[k] = v
 
@@ -110,9 +117,12 @@ class Container(dict):
         if key is not None and key in self:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
-                current_idx = current_idx[0]
+                current_body_element = self._body[current_idx[-1]]
+            else:
+                current_body_element = self._body[current_idx]
 
-            current = self._body[current_idx][1]
+            current = current_body_element[1]
+
             if isinstance(item, Table):
                 if not isinstance(current, (Table, AoT)):
                     raise KeyAlreadyPresent(key)
@@ -128,16 +138,45 @@ class Container(dict):
                         current.append(item)
 
                     return self
+                elif current.is_aot():
+                    if not item.is_aot_element():
+                        # Tried to define a table after an AoT with the same name.
+                        raise KeyAlreadyPresent(key)
+
+                    current.append(item)
+
+                    return self
                 elif current.is_super_table():
                     if item.is_super_table():
+                        # We need to merge both super tables
+                        if (
+                            self._table_keys[-1] != current_body_element[0]
+                            or key.is_dotted()
+                            or current_body_element[0].is_dotted()
+                        ):
+                            if not isinstance(current_idx, tuple):
+                                current_idx = (current_idx,)
+
+                            self._map[key] = current_idx + (len(self._body),)
+                            self._body.append((key, item))
+                            self._table_keys.append(key)
+
+                            # Building a temporary proxy to check for errors
+                            OutOfOrderTableProxy(self, self._map[key])
+
+                            return self
+
                         for k, v in item.value.body:
                             current.append(k, v)
 
                         return self
+                    elif current_body_element[0].is_dotted():
+                        raise TOMLKitError("Redefinition of an existing table")
                 elif not item.is_super_table():
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):
                 if not isinstance(current, AoT):
+                    # Tried to define an AoT after a table with the same name.
                     raise KeyAlreadyPresent(key)
 
                 for table in item.body:
@@ -188,22 +227,23 @@ class Container(dict):
         if key in self._map:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
-                current_idx = current_idx[0]
+                current_idx = current_idx[-1]
 
             current = self._body[current_idx][1]
             if key is not None and not isinstance(current, Table):
                 raise KeyAlreadyPresent(key)
 
             # Adding sub tables to a currently existing table
-            idx = self._map[key]
-            if not isinstance(idx, tuple):
-                idx = (idx,)
+            if not isinstance(current_idx, tuple):
+                current_idx = (current_idx,)
 
-            self._map[key] = idx + (len(self._body),)
+            self._map[key] = current_idx + (len(self._body),)
         else:
             self._map[key] = len(self._body)
 
         self._body.append((key, item))
+        if item.is_table():
+            self._table_keys.append(key)
 
         if key is not None:
             super(Container, self).__setitem__(key.key, item.value)
@@ -325,13 +365,19 @@ class Container(dict):
         if idx is None:
             raise NonExistentKey(key)
 
+        if isinstance(idx, tuple):
+            # The item we are getting is an out of order table
+            # so we need a proxy to retrieve the proper objects
+            # from the parent container
+            return OutOfOrderTableProxy(self, idx)
+
         return self._body[idx][1]
 
     def last_item(self):  # type: () -> Optional[Item]
         if self._body:
             return self._body[-1][1]
 
-    def as_string(self, prefix=None):  # type: () -> str
+    def as_string(self):  # type: () -> str
         s = ""
         for k, v in self._body:
             if k is not None:
@@ -467,18 +513,11 @@ class Container(dict):
     # Dictionary methods
 
     def keys(self):  # type: () -> Generator[str]
-        for k, _ in self._body:
-            if k is None:
-                continue
-
-            yield k.key
+        return super(Container, self).keys()
 
     def values(self):  # type: () -> Generator[Item]
-        for k, v in self._body:
-            if k is None:
-                continue
-
-            yield v.value
+        for k in self.keys():
+            yield self[k]
 
     def items(self):  # type: () -> Generator[Item]
         for k, v in self.value.items():
@@ -499,6 +538,19 @@ class Container(dict):
             return default
 
         return self[key]
+
+    def pop(self, key, default=_NOT_SET):
+        try:
+            value = self[key]
+        except KeyError:
+            if default is _NOT_SET:
+                raise
+
+            return default
+
+        del self[key]
+
+        return value
 
     def setdefault(
         self, key, default=None
@@ -523,21 +575,12 @@ class Container(dict):
             raise NonExistentKey(key)
 
         if isinstance(idx, tuple):
-            container = Container(True)
-
-            for i in idx:
-                item = self._body[i][1]
-
-                if isinstance(item, Table):
-                    for k, v in item.value.body:
-                        container.append(k, v)
-                else:
-                    container.append(key, item)
-
-            return container
+            # The item we are getting is an out of order table
+            # so we need a proxy to retrieve the proper objects
+            # from the parent container
+            return OutOfOrderTableProxy(self, idx)
 
         item = self._body[idx][1]
-
         if item.is_boolean():
             return item.value
 
@@ -570,6 +613,9 @@ class Container(dict):
     def _replace_at(
         self, idx, new_key, value
     ):  # type: (Union[int, Tuple[int]], Union[Key, str], Item) -> None
+        if not isinstance(new_key, Key):
+            new_key = Key(new_key)
+
         if isinstance(idx, tuple):
             for i in idx[1:]:
                 self._body[i] = (None, Null())
@@ -579,6 +625,8 @@ class Container(dict):
         k, v = self._body[idx]
 
         self._map[new_key] = self._map.pop(k)
+        if new_key != k:
+            super(Container, self).__delitem__(k)
 
         if isinstance(self._map[new_key], tuple):
             self._map[new_key] = self._map[new_key][0]
@@ -602,6 +650,9 @@ class Container(dict):
 
     def __str__(self):  # type: () -> str
         return str(self.value)
+
+    def __repr__(self):  # type: () -> str
+        return super(Container, self).__repr__()
 
     def __eq__(self, other):  # type: (Dict) -> bool
         if not isinstance(other, dict):
@@ -639,3 +690,110 @@ class Container(dict):
         c._map.update(self._map)
 
         return c
+
+
+class OutOfOrderTableProxy(dict):
+    def __init__(self, container, indices):  # type: (Container, Tuple) -> None
+        self._container = container
+        self._internal_container = Container(self._container.parsing)
+        self._tables = []
+        self._tables_map = {}
+        self._map = {}
+
+        for i in indices:
+            key, item = self._container._body[i]
+
+            if isinstance(item, Table):
+                self._tables.append(item)
+                table_idx = len(self._tables) - 1
+                for k, v in item.value.body:
+                    self._internal_container.append(k, v)
+                    self._tables_map[k] = table_idx
+                    if k is not None:
+                        super(OutOfOrderTableProxy, self).__setitem__(k.key, v)
+            else:
+                self._internal_container.append(key, item)
+                self._map[key] = i
+                if key is not None:
+                    super(OutOfOrderTableProxy, self).__setitem__(key.key, item)
+
+    @property
+    def value(self):
+        return self._internal_container.value
+
+    def __getitem__(self, key):  # type: (Union[Key, str]) -> Any
+        if key not in self._internal_container:
+            raise NonExistentKey(key)
+
+        return self._internal_container[key]
+
+    def __setitem__(self, key, item):  # type: (Union[Key, str], Any) -> None
+        if key in self._map:
+            idx = self._map[key]
+            self._container._replace_at(idx, key, item)
+        elif key in self._tables_map:
+            table = self._tables[self._tables_map[key]]
+            table[key] = item
+        elif self._tables:
+            table = self._tables[0]
+            table[key] = item
+        else:
+            self._container[key] = item
+
+        if key is not None:
+            super(OutOfOrderTableProxy, self).__setitem__(key, item)
+
+    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
+        if key in self._map:
+            idx = self._map[key]
+            del self._container[key]
+            del self._map[key]
+        elif key in self._tables_map:
+            table = self._tables[self._tables_map[key]]
+            del table[key]
+            del self._tables_map[key]
+        else:
+            raise NonExistentKey(key)
+
+        del self._internal_container[key]
+
+    def keys(self):
+        return self._internal_container.keys()
+
+    def values(self):
+        return self._internal_container.values()
+
+    def items(self):  # type: () -> Generator[Item]
+        return self._internal_container.items()
+
+    def update(self, other):  # type: (Dict) -> None
+        self._internal_container.update(other)
+
+    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
+        return self._internal_container.get(key, default=default)
+
+    def pop(self, key, default=_NOT_SET):
+        return self._internal_container.pop(key, default=default)
+
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        return self._internal_container.setdefault(key, default=default)
+
+    def __contains__(self, key):
+        return key in self._internal_container
+
+    def __str__(self):
+        return str(self._internal_container)
+
+    def __repr__(self):
+        return repr(self._internal_container)
+
+    def __eq__(self, other):  # type: (Dict) -> bool
+        if not isinstance(other, dict):
+            return NotImplemented
+
+        return self._internal_container == other
+
+    def __getattr__(self, attribute):
+        return getattr(self._internal_container, attribute)

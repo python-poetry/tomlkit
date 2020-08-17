@@ -1,5 +1,72 @@
 # Change Log
 
+## [0.7.0] - 2020-07-31
+
+### Added
+
+- Added support for sorting keys when dumping raw dictionaries by passing `sort_keys=True` to `dumps()` ([#103](https://github.com/sdispater/tomlkit/pull/103)).
+
+### Changed
+
+- Keys are not longer sorted by default when dumping a raw dictionary but the original order will be preserved ([#103](https://github.com/sdispater/tomlkit/pull/103)).
+
+### Fixed
+
+- Fixed compliance with the 1.0.0rc1 TOML specification ([#102](https://github.com/sdispater/tomlkit/pull/102)).
+
+
+## [0.6.0] - 2020-04-15
+
+### Added
+
+- Added support for heterogeneous arrays ([#92](https://github.com/sdispater/tomlkit/pull/92)).
+
+
+## [0.5.11] - 2020-02-29
+
+### Fixed
+
+- Fix containers and our of order tables dictionary behavior ([#82](https://github.com/sdispater/tomlkit/pull/82)))
+
+
+## [0.5.10] - 2020-02-28
+
+### Fixed
+
+- Fixed out of order tables not behaving properly ([#79](https://github.com/sdispater/tomlkit/pull/79))
+
+
+## [0.5.9] - 2020-02-28
+
+### Fixed
+
+- Fixed the behavior for out of order tables ([#68](https://github.com/sdispater/tomlkit/pull/68)).
+- Fixed parsing errors when single quotes are present in a table name ([#71](https://github.com/sdispater/tomlkit/pull/71)).
+- Fixed parsing errors when parsing some table names ([#76](https://github.com/sdispater/tomlkit/pull/76)).
+
+
+## [0.5.8] - 2019-10-11
+
+### Added
+
+- Added support for producing multiline arrays
+
+
+## [0.5.7] - 2019-10-04
+
+### Fixed
+
+- Fixed handling of inline tables.
+
+
+## [0.5.6] - 2019-10-04
+
+### Fixed
+
+- Fixed boolean comparison.
+- Fixed appending inline tables to tables.
+
+
 ## [0.5.5] - 2019-07-01
 
 ### Fixed
@@ -138,7 +205,15 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.5.5...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.0...master
+[0.7.0]: https://github.com/sdispater/tomlkit/releases/tag/0.7.0
+[0.6.0]: https://github.com/sdispater/tomlkit/releases/tag/0.6.0
+[0.5.11]: https://github.com/sdispater/tomlkit/releases/tag/0.5.11
+[0.5.10]: https://github.com/sdispater/tomlkit/releases/tag/0.5.10
+[0.5.9]: https://github.com/sdispater/tomlkit/releases/tag/0.5.9
+[0.5.8]: https://github.com/sdispater/tomlkit/releases/tag/0.5.8
+[0.5.7]: https://github.com/sdispater/tomlkit/releases/tag/0.5.7
+[0.5.6]: https://github.com/sdispater/tomlkit/releases/tag/0.5.6
 [0.5.5]: https://github.com/sdispater/tomlkit/releases/tag/0.5.5
 [0.5.4]: https://github.com/sdispater/tomlkit/releases/tag/0.5.4
 [0.5.3]: https://github.com/sdispater/tomlkit/releases/tag/0.5.3

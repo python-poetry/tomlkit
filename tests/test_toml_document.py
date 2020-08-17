@@ -7,9 +7,13 @@ import pickle
 
 from datetime import datetime
 
+import pytest
+
 import tomlkit
+
 from tomlkit import parse
 from tomlkit._utils import _utc
+from tomlkit.exceptions import NonExistentKey
 
 
 def test_document_is_a_dict(example):
@@ -422,6 +426,8 @@ def test_getting_inline_table_is_still_an_inline_table():
 name = "foo"
 
 [tool.poetry.dependencies]
+
+[tool.poetry.dev-dependencies]
 """
 
     doc = parse(content)
@@ -430,7 +436,13 @@ name = "foo"
     dependencies["foo"] = tomlkit.inline_table()
     dependencies["foo"]["version"] = "^2.0"
     dependencies["foo"]["source"] = "local"
-    doc["tool"]["poetry"] = poetry_section
+    dependencies["bar"] = tomlkit.inline_table()
+    dependencies["bar"]["version"] = "^3.0"
+    dependencies["bar"]["source"] = "remote"
+    dev_dependencies = poetry_section["dev-dependencies"]
+    dev_dependencies["baz"] = tomlkit.inline_table()
+    dev_dependencies["baz"]["version"] = "^4.0"
+    dev_dependencies["baz"]["source"] = "other"
 
     assert (
         """\
@@ -439,6 +451,10 @@ name = "foo"
 
 [tool.poetry.dependencies]
 foo = {version = "^2.0", source = "local"}
+bar = {version = "^3.0", source = "remote"}
+
+[tool.poetry.dev-dependencies]
+baz = {version = "^4.0", source = "other"}
 """
         == doc.as_string()
     )
@@ -461,3 +477,144 @@ score = 91
     doc = parse(content)
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc.get("students")
+
+
+def test_values_can_still_be_set_for_out_of_order_tables():
+    content = """
+[a.a]
+key = "value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    doc = parse(content)
+    doc["a"]["a"]["key"] = "new_value"
+
+    assert "new_value" == doc["a"]["a"]["key"]
+
+    expected = """
+[a.a]
+key = "new_value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    doc["a"]["a"]["bar"] = "baz"
+
+    expected = """
+[a.a]
+key = "new_value"
+bar = "baz"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    del doc["a"]["a"]["key"]
+
+    expected = """
+[a.a]
+bar = "baz"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    assert expected == doc.as_string()
+
+    with pytest.raises(NonExistentKey):
+        doc["a"]["a"]["key"]
+
+    with pytest.raises(NonExistentKey):
+        del doc["a"]["a"]["key"]
+
+
+def test_out_of_order_tables_are_still_dicts():
+    content = """
+[a.a]
+key = "value"
+
+[a.b]
+
+[a.a.c]
+"""
+
+    doc = parse(content)
+    assert isinstance(doc["a"], dict)
+    assert isinstance(doc["a"]["a"], dict)
+
+    table = doc["a"]["a"]
+    assert "key" in table
+    assert "c" in table
+    assert "value" == table.get("key")
+    assert {} == table.get("c")
+    assert table.get("d") is None
+    assert "foo" == table.get("d", "foo")
+
+    assert "bar" == table.setdefault("d", "bar")
+    assert "bar" == table["d"]
+
+    assert "value" == table.pop("key")
+    assert "key" not in table
+
+    assert "baz" == table.pop("missing", default="baz")
+
+    with pytest.raises(KeyError):
+        table.pop("missing")
+
+
+def test_string_output_order_is_preserved_for_out_of_order_tables():
+    content = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = "^1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    doc = parse(content)
+    constraint = tomlkit.inline_table()
+    constraint["version"] = "^1.0"
+    doc["tool"]["poetry"]["dependencies"]["bar"] = constraint
+
+    assert "^1.0" == doc["tool"]["poetry"]["dependencies"]["bar"]["version"]
+
+    expected = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = {version = "^1.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    assert expected == doc.as_string()

@@ -97,5 +97,11 @@
                 "foo": "bar"
             }
         ]
+    },
+    "build-system": {
+        "requires": [
+            "poetry-core>=1.0.0a3"
+        ],
+        "build-backend": "poetry.core.masonry.api"
     }
 }

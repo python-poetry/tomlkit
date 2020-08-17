@@ -3,17 +3,20 @@ from __future__ import unicode_literals
 
 import math
 import pickle
-import pytest
 
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
 
+import pytest
+
 from tomlkit import inline_table
 from tomlkit import parse
 from tomlkit._compat import PY2
+from tomlkit._compat import OrderedDict
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.items import Bool
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
@@ -172,6 +175,29 @@ def test_array_behaves_like_a_list():
     )
 
 
+def test_array_multiline():
+    t = item([1, 2, 3, 4, 5, 6, 7, 8])
+    t.multiline(True)
+
+    expected = """\
+[
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+]"""
+
+    assert expected == t.as_string()
+
+    t = item([])
+
+    assert "[]" == t.as_string()
+
+
 def test_dicts_are_converted_to_tables():
     t = item({"foo": {"bar": "baz"}})
 
@@ -183,8 +209,56 @@ bar = "baz"
     )
 
 
-def test_dicts_are_converted_to_tables_and_sorted():
-    t = item({"foo": {"bar": "baz", "abc": 123, "baz": [{"c": 3, "b": 2, "a": 1}]}})
+def test_dicts_are_converted_to_tables_and_keep_order():
+    t = item(
+        OrderedDict(
+            [
+                (
+                    "foo",
+                    OrderedDict(
+                        [
+                            ("bar", "baz"),
+                            ("abc", 123),
+                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
+                        ]
+                    ),
+                )
+            ]
+        )
+    )
+
+    assert (
+        t.as_string()
+        == """[foo]
+bar = "baz"
+abc = 123
+
+[[foo.baz]]
+c = 3
+b = 2
+a = 1
+"""
+    )
+
+
+def test_dicts_are_converted_to_tables_and_are_sorted_if_requested():
+    t = item(
+        OrderedDict(
+            [
+                (
+                    "foo",
+                    OrderedDict(
+                        [
+                            ("bar", "baz"),
+                            ("abc", 123),
+                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
+                        ]
+                    ),
+                )
+            ]
+        ),
+        _sort_keys=True,
+    )
 
     assert (
         t.as_string()
@@ -201,7 +275,9 @@ c = 3
 
 
 def test_dicts_with_sub_dicts_are_properly_converted():
-    t = item({"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}})
+    t = item(
+        {"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}}, _sort_keys=True
+    )
 
     assert (
         t.as_string()
@@ -450,3 +526,22 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
     table["baz"] = "boom"
 
     assert '{baz = "boom"}' == table.as_string()
+
+
+def test_booleans_comparison():
+    boolean = Bool(True, Trivia())
+
+    assert boolean
+
+    boolean = Bool(False, Trivia())
+
+    assert not boolean
+
+    s = """[foo]
+value = false
+"""
+
+    content = parse(s)
+
+    assert {"foo": {"value": False}} == content
+    assert {"value": False} == content["foo"]
