@@ -4,9 +4,10 @@ from __future__ import unicode_literals
 from datetime import datetime
 
 import pytest
+
 from tomlkit import parse
-from tomlkit.toml_document import TOMLDocument
 from tomlkit._utils import _utc
+from tomlkit.toml_document import TOMLDocument
 
 
 @pytest.fixture
