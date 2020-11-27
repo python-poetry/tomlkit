@@ -11,9 +11,9 @@ from typing import Type
 
 from ._compat import PY2
 from ._compat import unicode
-from .exceptions import UnexpectedEofError
-from .exceptions import UnexpectedCharError
 from .exceptions import ParseError
+from .exceptions import UnexpectedCharError
+from .exceptions import UnexpectedEofError
 from .toml_char import TOMLChar
 
 

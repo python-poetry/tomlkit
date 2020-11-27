@@ -3,6 +3,7 @@ import string
 from ._compat import PY2
 from ._compat import unicode
 
+
 if PY2:
     from functools32 import lru_cache
 else:

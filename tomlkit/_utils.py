@@ -6,9 +6,15 @@ from datetime import time
 from datetime import timedelta
 from typing import Union
 
-
 from ._compat import decode
 from ._compat import timezone
+
+
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
 
 RFC_3339_LOOSE = re.compile(
     "^"
@@ -128,3 +134,11 @@ def escape_string(s):
     flush()
 
     return "".join(res)
+
+
+def merge_dicts(d1, d2):
+    for k, v in d2.items():
+        if k in d1 and isinstance(d1[k], dict) and isinstance(d2[k], Mapping):
+            merge_dicts(d1[k], d2[k])
+        else:
+            d1[k] = d2[k]

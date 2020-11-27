@@ -14,7 +14,6 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-
 from ._compat import PY2
 from ._compat import PY38
 from ._compat import decode
@@ -22,13 +21,14 @@ from ._compat import long
 from ._compat import unicode
 from ._utils import escape_string
 
+
 if PY2:
     from functools32 import lru_cache
 else:
     from functools import lru_cache
 
 
-def item(value, _parent=None):
+def item(value, _parent=None, _sort_keys=False):
     from .container import Container
 
     if isinstance(value, Item):
@@ -42,8 +42,11 @@ def item(value, _parent=None):
         return Float(value, Trivia(), str(value))
     elif isinstance(value, dict):
         val = Table(Container(), Trivia(), False)
-        for k, v in sorted(value.items(), key=lambda i: (isinstance(i[1], dict), i[0])):
-            val[k] = item(v, _parent=val)
+        for k, v in sorted(
+            value.items(),
+            key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
+        ):
+            val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
 
         return val
     elif isinstance(value, list):
@@ -57,13 +60,14 @@ def item(value, _parent=None):
                 table = Table(Container(), Trivia(), True)
 
                 for k, _v in sorted(
-                    v.items(), key=lambda i: (isinstance(i[1], dict), i[0])
+                    v.items(),
+                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
                 ):
-                    i = item(_v)
+                    i = item(_v, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
 
-                    table[k] = item(i)
+                    table[k] = item(i, _sort_keys=_sort_keys)
 
                 v = table
 
@@ -202,8 +206,8 @@ class Key:
     """
 
     def __init__(
-        self, k, t=None, sep=None, dotted=False
-    ):  # type: (str, Optional[KeyType], Optional[str], bool) -> None
+        self, k, t=None, sep=None, dotted=False, original=None
+    ):  # type: (str, Optional[KeyType], Optional[str], bool, Optional[str]) -> None
         if t is None:
             if any(
                 [c not in string.ascii_letters + string.digits + "-" + "_" for c in k]
@@ -218,6 +222,11 @@ class Key:
 
         self.sep = sep
         self.key = k
+        if original is None:
+            original = k
+
+        self._original = original
+
         self._dotted = dotted
 
     @property
@@ -227,8 +236,11 @@ class Key:
     def is_dotted(self):  # type: () -> bool
         return self._dotted
 
+    def is_bare(self):  # type: () -> bool
+        return self.t == KeyType.Bare
+
     def as_string(self):  # type: () -> str
-        return "{}{}{}".format(self.delimiter, self.key, self.delimiter)
+        return "{}{}{}".format(self.delimiter, self._original, self.delimiter)
 
     def __hash__(self):  # type: () -> int
         return hash(self.key)
@@ -292,6 +304,9 @@ class Item(object):
 
     def is_inline_table(self):  # type: () -> bool
         return isinstance(self, InlineTable)
+
+    def is_aot(self):  # type: () -> bool
+        return isinstance(self, AoT)
 
     def _getstate(self, protocol=3):
         return (self._trivia,)
@@ -527,6 +542,12 @@ class Bool(Item):
             return NotImplemented
 
         return other == self._value
+
+    def __hash__(self):
+        return hash(self._value)
+
+    def __repr__(self):
+        return repr(self._value)
 
 
 class DateTime(Item, datetime):
@@ -1113,7 +1134,7 @@ class InlineTable(Item, dict):
 
             buf += "{}{}{}{}{}{}".format(
                 v.trivia.indent,
-                k.as_string(),
+                k.as_string() + ("." if k.is_dotted() else ""),
                 k.sep,
                 v.as_string(),
                 v.trivia.comment,
