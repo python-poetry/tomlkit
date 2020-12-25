@@ -211,7 +211,7 @@ class InvalidControlChar(ParseError):
         if char < 16:
             display_code += "0"
 
-        display_code += str(char)
+        display_code += hex(char)[2:]
 
         message = (
             "Control characters (codes less than 0x1f and 0x7f) are not allowed in {}, "
