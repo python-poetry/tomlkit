@@ -127,6 +127,34 @@ thud = "waldo"
 """
     )
 
+    content = """[table]
+foo = "bar"
+bar = "boom"
+"""
+
+    doc = parse(content)
+
+    assert doc["table"].setdefault("bar", "waldo") == "boom"
+
+    assert (
+        doc.as_string()
+        == """[table]
+foo = "bar"
+bar = "boom"
+"""
+    )
+
+    assert doc["table"].setdefault("thud", "waldo") == "waldo"
+
+    assert (
+        doc.as_string()
+        == """[table]
+foo = "bar"
+bar = "boom"
+thud = "waldo"
+"""
+    )
+
 
 def test_toml_document_without_super_tables():
     content = """[tool.poetry]
