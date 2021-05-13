@@ -1011,6 +1011,11 @@ class Table(Item, dict):
     def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
         return self._value.get(key, default)
 
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, tomlkit.container.Container]
+        return self._value.setdefault(key, default)
+
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
 
