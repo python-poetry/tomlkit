@@ -79,6 +79,7 @@ def test_build_example(example):
 
     doc.add(nl())
     doc.add(comment("Products"))
+    doc.add(nl())
 
     products = aot()
     doc["products"] = products
@@ -128,3 +129,20 @@ def test_append_table_after_multiple_indices():
     """
     doc = parse(content)
     doc.append("foobar", {"name": "John"})
+
+
+def test_top_level_keys_are_put_at_the_root_of_the_document():
+    doc = document()
+    doc.add(comment("Comment"))
+    doc["foo"] = {"name": "test"}
+    doc["bar"] = 1
+
+    expected = """\
+# Comment
+bar = 1
+
+[foo]
+name = "test"
+"""
+
+    assert doc.as_string()

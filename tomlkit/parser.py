@@ -1138,9 +1138,11 @@ class Parser:
                         )
 
                     if is_aot and i == len(name_parts[1:]) - 1:
-                        table.append(_name, AoT([child], name=table.name, parsed=True))
+                        table.raw_append(
+                            _name, AoT([child], name=table.name, parsed=True)
+                        )
                     else:
-                        table.append(_name, child)
+                        table.raw_append(_name, child)
 
                     table = child
                     values = table.value
@@ -1201,6 +1203,7 @@ class Parser:
         as well as whether it is part of an AoT.
         """
         # we always want to restore after exiting this scope
+        table_name = ""
         with self._state(save_marker=True, restore=True):
             if self._current != "[":
                 raise self.parse_error(
