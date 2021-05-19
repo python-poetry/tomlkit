@@ -16,6 +16,7 @@ from typing import Union
 
 from ._compat import PY2
 from ._compat import PY38
+from ._compat import MutableMapping
 from ._compat import decode
 from ._compat import long
 from ._compat import unicode
@@ -866,7 +867,7 @@ class Array(Item, list):
         return self._value, self._trivia
 
 
-class Table(Item, dict):
+class Table(Item, MutableMapping, dict):
     """
     A table literal.
     """
@@ -890,7 +891,7 @@ class Table(Item, dict):
 
         for k, v in self._value.body:
             if k is not None:
-                super(Table, self).__setitem__(k.key, v)
+                dict.__setitem__(self, k.key, v)
 
     @property
     def value(self):  # type: () -> tomlkit.container.Container
@@ -924,7 +925,7 @@ class Table(Item, dict):
             key = key.key
 
         if key is not None:
-            super(Table, self).__setitem__(key, _item)
+            dict.__setitem__(self, key, _item)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
@@ -951,7 +952,7 @@ class Table(Item, dict):
             key = key.key
 
         if key is not None:
-            super(Table, self).__setitem__(key, _item)
+            dict.__setitem__(self, key, _item)
 
         return self
 
@@ -962,7 +963,7 @@ class Table(Item, dict):
             key = key.key
 
         if key is not None:
-            super(Table, self).__delitem__(key)
+            dict.__delitem__(self, key)
 
         return self
 
@@ -992,27 +993,15 @@ class Table(Item, dict):
 
         return self
 
-    def keys(self):  # type: () -> Generator[str]
-        for k in self._value.keys():
-            yield k
-
-    def values(self):  # type: () -> Generator[Item]
-        for v in self._value.values():
-            yield v
-
-    def items(self):  # type: () -> Generator[Item]
-        for k, v in self._value.items():
-            yield k, v
-
-    def update(self, other):  # type: (Dict) -> None
-        for k, v in other.items():
-            self[k] = v
-
     def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
         return self._value.get(key, default)
 
-    def __contains__(self, key):  # type: (Union[Key, str]) -> bool
-        return key in self._value
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        super(Table, self).setdefault(key, default=default)
+
+        return self[key]
 
     def __getitem__(self, key):  # type: (Union[Key, str]) -> Item
         return self._value[key]
@@ -1026,7 +1015,7 @@ class Table(Item, dict):
         self._value[key] = value
 
         if key is not None:
-            super(Table, self).__setitem__(key, value)
+            dict.__setitem__(self, key, value)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m or not fix_indent:
@@ -1044,11 +1033,14 @@ class Table(Item, dict):
     def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         self.remove(key)
 
-    def __repr__(self):
-        return super(Table, self).__repr__()
+    def __len__(self):  # type: () -> int
+        return len(self._value)
 
-    def __str__(self):
-        return str(self.value)
+    def __iter__(self):  # type: () -> Iterator[str]
+        return iter(self._value)
+
+    def __repr__(self):  # type: () -> str
+        return repr(self._value)
 
     def _getstate(self, protocol=3):
         return (
@@ -1061,7 +1053,7 @@ class Table(Item, dict):
         )
 
 
-class InlineTable(Item, dict):
+class InlineTable(Item, MutableMapping, dict):
     """
     An inline table literal.
     """
@@ -1076,7 +1068,7 @@ class InlineTable(Item, dict):
 
         for k, v in self._value.body:
             if k is not None:
-                super(InlineTable, self).__setitem__(k.key, v)
+                dict.__setitem__(self, k.key, v)
 
     @property
     def discriminant(self):  # type: () -> int
@@ -1105,7 +1097,7 @@ class InlineTable(Item, dict):
             key = key.key
 
         if key is not None:
-            super(InlineTable, self).__setitem__(key, _item)
+            dict.__setitem__(self, key, _item)
 
         return self
 
@@ -1116,7 +1108,7 @@ class InlineTable(Item, dict):
             key = key.key
 
         if key is not None:
-            super(InlineTable, self).__delitem__(key)
+            dict.__delitem__(self, key)
 
         return self
 
@@ -1152,24 +1144,15 @@ class InlineTable(Item, dict):
 
         return buf
 
-    def keys(self):  # type: () -> Generator[str]
-        for k in self._value.keys():
-            yield k
-
-    def values(self):  # type: () -> Generator[Item]
-        for v in self._value.values():
-            yield v
-
-    def items(self):  # type: () -> Generator[Item]
-        for k, v in self._value.items():
-            yield k, v
-
-    def update(self, other):  # type: (Dict) -> None
-        for k, v in other.items():
-            self[k] = v
-
     def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
         return self._value.get(key, default)
+
+    def setdefault(
+        self, key, default=None
+    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
+        super(InlineTable, self).setdefault(key, default=default)
+
+        return self[key]
 
     def __contains__(self, key):  # type: (Union[Key, str]) -> bool
         return key in self._value
@@ -1184,7 +1167,8 @@ class InlineTable(Item, dict):
         self._value[key] = value
 
         if key is not None:
-            super(InlineTable, self).__setitem__(key, value)
+            dict.__setitem__(self, key, value)
+
         if value.trivia.comment:
             value.trivia.comment = ""
 
@@ -1204,8 +1188,14 @@ class InlineTable(Item, dict):
     def __delitem__(self, key):  # type: (Union[Key, str]) -> None
         self.remove(key)
 
+    def __len__(self):  # type: () -> int
+        return len(self._value)
+
+    def __iter__(self):  # type: () -> Iterator[str]
+        return iter(self._value)
+
     def __repr__(self):
-        return super(InlineTable, self).__repr__()
+        return repr(self._value)
 
     def _getstate(self, protocol=3):
         return (self._value, self._trivia)

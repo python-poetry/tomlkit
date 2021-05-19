@@ -12,6 +12,7 @@ import pytest
 import tomlkit
 
 from tomlkit import parse
+from tomlkit._compat import PY36
 from tomlkit._utils import _utc
 from tomlkit.exceptions import NonExistentKey
 
@@ -639,3 +640,27 @@ def test_updating_nested_value_keeps_correct_indent():
 """
 
     assert doc.as_string() == expected
+
+
+@pytest.mark.skipif(not PY36, reason="Dict order is not deterministic on Python < 3.6")
+def test_repr():
+    content = """
+[tool.poetry.foo]
+option = "test"
+
+[tool.poetry.bar]
+option = "test"
+inline = {"foo" = "bar", "bar" = "baz"}
+"""
+
+    doc = parse(content)
+
+    assert (
+        repr(doc)
+        == "{'tool': {'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}}"
+    )
+
+    assert (
+        repr(doc["tool"])
+        == "{'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}"
+    )
