@@ -112,8 +112,6 @@ class Container(MutableMapping, dict):
         if isinstance(item, AoT) and self._body and not self._parsed:
             if item and "\n" not in item[0].trivia.indent:
                 item[0].trivia.indent = "\n" + item[0].trivia.indent
-            else:
-                self.append(None, Whitespace("\n"))
 
         if key is not None and key in self:
             current_idx = self._map[key]
@@ -211,7 +209,7 @@ class Container(MutableMapping, dict):
 
             if key_after is not None:
                 if isinstance(key_after, int):
-                    if key_after + 1 < len(self._body) - 1:
+                    if key_after + 1 < len(self._body):
                         return self._insert_at(key_after + 1, key, item)
                     else:
                         previous_item = self._body[-1][1]
