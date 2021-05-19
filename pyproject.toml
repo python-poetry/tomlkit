@@ -14,6 +14,7 @@ packages = [
     {include = "tomlkit"},
     {include = "tests", format = "sdist"}
 ]
+include = ["tomlkit/py.typed"]
 
 [tool.poetry.dependencies]
 python = "~2.7 || ^3.5"
