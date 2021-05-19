@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.7.1] - 2021-05-19
+
+### Fixed
+
+- Fixed an error with indent for nested table elements when updating. ([#122](https://github.com/sdispater/tomlkit/pull/122))
+- Fixed various issues with dict behavior compliance for containers. ([#122](https://github.com/sdispater/tomlkit/pull/122))
+- Fixed an internal error when empty tables were present after existing ones. ([#122](https://github.com/sdispater/tomlkit/pull/122))
+- Fixed table representation for dotted keys. ([#122](https://github.com/sdispater/tomlkit/pull/122))
+- Fixed an error in top level keys handling when building documents programmatically. ([#122](https://github.com/sdispater/tomlkit/pull/122))
+- Fixed compliance with mypy by adding a `py.typed` file. ([#109](https://github.com/sdispater/tomlkit/pull/109))
+
+
 ## [0.7.0] - 2020-07-31
 
 ### Added
@@ -205,7 +217,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.0...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.1...master
+[0.7.1]: https://github.com/sdispater/tomlkit/releases/tag/0.7.1
 [0.7.0]: https://github.com/sdispater/tomlkit/releases/tag/0.7.0
 [0.6.0]: https://github.com/sdispater/tomlkit/releases/tag/0.6.0
 [0.5.11]: https://github.com/sdispater/tomlkit/releases/tag/0.5.11
