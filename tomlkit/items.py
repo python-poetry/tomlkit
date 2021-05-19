@@ -1018,6 +1018,8 @@ class Table(Item, dict):
         return self._value[key]
 
     def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
+        fix_indent = key not in self
+
         if not isinstance(value, Item):
             value = item(value)
 
@@ -1027,7 +1029,7 @@ class Table(Item, dict):
             super(Table, self).__setitem__(key, value)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
-        if not m:
+        if not m or not fix_indent:
             return
 
         indent = m.group(1)

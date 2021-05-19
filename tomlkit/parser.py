@@ -1138,9 +1138,11 @@ class Parser:
                         )
 
                     if is_aot and i == len(name_parts[1:]) - 1:
-                        table.append(_name, AoT([child], name=table.name, parsed=True))
+                        table.raw_append(
+                            _name, AoT([child], name=table.name, parsed=True)
+                        )
                     else:
-                        table.append(_name, child)
+                        table.raw_append(_name, child)
 
                     table = child
                     values = table.value
