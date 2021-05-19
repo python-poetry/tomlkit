@@ -638,7 +638,7 @@ class Container(MutableMapping, dict):
         return str(self.value)
 
     def __repr__(self):  # type: () -> str
-        return super(Container, self).__repr__()
+        return repr(self.value)
 
     def __eq__(self, other):  # type: (Dict) -> bool
         if not isinstance(other, dict):

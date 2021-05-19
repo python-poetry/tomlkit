@@ -645,6 +645,9 @@ def test_updating_nested_value_keeps_correct_indent():
 @pytest.mark.skipif(not PY36, reason="Dict order is not deterministic on Python < 3.6")
 def test_repr():
     content = """
+namespace.key1 = "value1"
+namespace.key2 = "value2"
+
 [tool.poetry.foo]
 option = "test"
 
@@ -657,10 +660,12 @@ inline = {"foo" = "bar", "bar" = "baz"}
 
     assert (
         repr(doc)
-        == "{'tool': {'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}}"
+        == "{'namespace': {'key1': 'value1', 'key2': 'value2'}, 'tool': {'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}}"
     )
 
     assert (
         repr(doc["tool"])
         == "{'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}"
     )
+
+    assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
