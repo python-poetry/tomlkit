@@ -10,11 +10,10 @@ readme = "README.md"
 homepage = "https://github.com/sdispater/tomlkit"
 repository = "https://github.com/sdispater/tomlkit"
 
-packages = [
-    {include = "tomlkit"},
-    {include = "tests", format = "sdist"}
+include = [
+  { path = "tomlkit/py.typed" },
+  { path = "tests", format = "sdist" }
 ]
-include = ["tomlkit/py.typed"]
 
 [tool.poetry.dependencies]
 python = "~2.7 || ^3.5"
