@@ -654,13 +654,18 @@ class Container(MutableMapping, dict):
         return (
             self.__class__,
             self._getstate(protocol),
-            (self._map, self._body, self._parsed),
+            (self._map, self._body, self._parsed, self._table_keys),
         )
 
     def __setstate__(self, state):
         self._map = state[0]
         self._body = state[1]
         self._parsed = state[2]
+        self._table_keys = state[3]
+        
+        for key, item in self._body:
+            if key is not None:
+                dict.__setitem__(self, key.key, item.value)
 
     def copy(self):  # type: () -> Container
         return copy.copy(self)
