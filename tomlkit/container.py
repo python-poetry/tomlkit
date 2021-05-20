@@ -662,7 +662,7 @@ class Container(MutableMapping, dict):
         self._body = state[1]
         self._parsed = state[2]
         self._table_keys = state[3]
-        
+
         for key, item in self._body:
             if key is not None:
                 dict.__setitem__(self, key.key, item.value)

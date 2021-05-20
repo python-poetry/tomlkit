@@ -669,3 +669,16 @@ inline = {"foo" = "bar", "bar" = "baz"}
     )
 
     assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
+
+
+def test_deepcopy():
+    content = """
+[tool]
+name = "foo"
+[tool.project.section]
+option = "test"
+"""
+    doc = parse(content)
+    copied = copy.deepcopy(doc)
+    assert copied == doc
+    assert copied.as_string() == content
