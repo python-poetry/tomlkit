@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.7.2] - 2021-05-20
+
+### Fixed
+
+- Fixed an error where container's data were lost when copying. ([#126](https://github.com/sdispater/tomlkit/pull/126))
+- Fixed missing tests in the source distribution of the package. ([#127](https://github.com/sdispater/tomlkit/pull/127))
+
+
 ## [0.7.1] - 2021-05-19
 
 ### Fixed
@@ -217,7 +225,8 @@
 - Fixed raw strings escaping.
 
 
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.1...master
+[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.2...master
+[0.7.2]: https://github.com/sdispater/tomlkit/releases/tag/0.7.2
 [0.7.1]: https://github.com/sdispater/tomlkit/releases/tag/0.7.1
 [0.7.0]: https://github.com/sdispater/tomlkit/releases/tag/0.7.0
 [0.6.0]: https://github.com/sdispater/tomlkit/releases/tag/0.6.0
