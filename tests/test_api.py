@@ -128,6 +128,15 @@ def test_a_raw_dict_can_be_dumped():
     assert s == 'foo = "bar"\n'
 
 
+def test_mapping_types_can_be_dumped():
+    try:
+        from types import MappingProxyType
+        x = MappingProxyType({"foo": "bar"})
+        assert dumps(x) == 'foo = "bar"\n'
+    except ImportError:
+        pytest.skip("requires Python > 3.3")
+
+
 def test_integer():
     i = tomlkit.integer("34")
 

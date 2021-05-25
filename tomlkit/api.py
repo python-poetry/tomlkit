@@ -2,6 +2,7 @@ import datetime as _datetime
 
 from typing import Tuple
 
+from ._compat import Mapping
 from ._utils import parse_rfc3339
 from .container import Container
 from .items import AoT
@@ -22,10 +23,10 @@ from .items import Trivia
 from .items import Whitespace
 from .items import item
 from .parser import Parser
-from .toml_document import TOMLDocument as _TOMLDocument
+from .toml_document import TOMLDocument
 
 
-def loads(string):  # type: (str) -> _TOMLDocument
+def loads(string):  # type: (str) -> TOMLDocument
     """
     Parses a string into a TOMLDocument.
 
@@ -34,28 +35,28 @@ def loads(string):  # type: (str) -> _TOMLDocument
     return parse(string)
 
 
-def dumps(data, sort_keys=False):  # type: (_TOMLDocument, bool) -> str
+def dumps(data, sort_keys=False):  # type: (Mapping, bool) -> str
     """
     Dumps a TOMLDocument into a string.
     """
-    if not isinstance(data, _TOMLDocument) and isinstance(data, dict):
-        data = item(data, _sort_keys=sort_keys)
+    if not isinstance(data, Container) and isinstance(data, Mapping):
+        data = item(dict(data), _sort_keys=sort_keys)
 
     return data.as_string()
 
 
-def parse(string):  # type: (str) -> _TOMLDocument
+def parse(string):  # type: (str) -> TOMLDocument
     """
     Parses a string into a TOMLDocument.
     """
     return Parser(string).parse()
 
 
-def document():  # type: () -> _TOMLDocument
+def document():  # type: () -> TOMLDocument
     """
     Returns a new TOMLDocument instance.
     """
-    return _TOMLDocument()
+    return TOMLDocument()
 
 
 # Items

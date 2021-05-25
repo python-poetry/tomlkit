@@ -156,9 +156,9 @@ else:
     from collections import OrderedDict
 
 try:
-    from collections.abc import MutableMapping
+    from collections.abc import Mapping, MutableMapping
 except ImportError:
-    from collections import MutableMapping
+    from collections import Mapping, MutableMapping
 
 
 def decode(string, encodings=None):

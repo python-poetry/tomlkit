@@ -20,6 +20,7 @@ from .api import table
 from .api import time
 from .api import value
 from .api import ws
+from .api import TOMLDocument
 
 
 __version__ = "0.7.2"
