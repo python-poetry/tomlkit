@@ -167,3 +167,10 @@ If not, you can use `pip`:
 ```bash
 pip install tomlkit
 ```
+## Running tests
+
+Please clone the repo with submodules with the following command
+`git clone --recurse-submodules https://github.com/sdispater/tomlkit.git`.
+We need the submodule - `toml-test` for running the tests.
+
+You can run the tests with `poetry run pytest -q tests`
