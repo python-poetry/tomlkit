@@ -194,6 +194,7 @@ def test_array_multiline():
     assert expected == t.as_string()
 
     t = item([])
+    t.multiline(True)
 
     assert "[]" == t.as_string()
 

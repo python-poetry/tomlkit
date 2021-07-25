@@ -794,7 +794,7 @@ class Array(Item, list):
         return self
 
     def as_string(self):  # type: () -> str
-        if not self._multiline:
+        if not self._multiline or not self._value:
             return "[{}]".format("".join(v.as_string() for v in self._value))
 
         s = "[\n" + self.trivia.indent + " " * 4
