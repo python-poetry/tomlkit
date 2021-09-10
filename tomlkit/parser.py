@@ -387,6 +387,10 @@ class Parser:
                 else:
                     found_equals = True
             pass
+        
+        # If we didn't find an "=", it's not valid TOML.
+        if not found_equals:
+            raise self.parse_error(UnexpectedCharError, self._current)
 
         if not key.sep:
             key.sep = self.extract()

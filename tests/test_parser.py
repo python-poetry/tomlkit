@@ -2,6 +2,7 @@ import pytest
 
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
 
@@ -30,3 +31,17 @@ def test_parser_should_raise_an_error_for_empty_tables():
 
     assert e.value.line == 4
     assert e.value.col == 1
+
+def test_parser_should_raise_an_error_for_missing_eq_before_inline_table():
+    content = """
+[a]
+b {c = "d"}
+"""
+
+    parser = Parser(content)
+
+    with pytest.raises(UnexpectedCharError) as e:
+        parser.parse()
+
+    assert e.value.line == 3
+    assert e.value.col == 2
