@@ -16,9 +16,9 @@ class TOMLFile(object):
         self._path = path
 
     def read(self):  # type: () -> TOMLDocument
-        with io.open(self._path, encoding="utf-8") as f:
+        with io.open(self._path, encoding="utf-8", newline="") as f:
             return loads(f.read())
 
     def write(self, data):  # type: (TOMLDocument) -> None
-        with io.open(self._path, "w", encoding="utf-8") as f:
+        with io.open(self._path, "w", encoding="utf-8", newline="") as f:
             f.write(data.as_string())
