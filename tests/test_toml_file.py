@@ -23,3 +23,43 @@ def test_toml_file(example):
     finally:
         with io.open(toml_file, "w", encoding="utf-8", newline="") as f:
             assert f.write(original_content)
+
+
+def test_keep_old_eol(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    with io.open(toml_path, "wb+") as f:
+        f.write(b"a = 1\r\nb = 2\r\n")
+
+    f = TOMLFile(toml_path)
+    content = f.read()
+    content["b"] = 3
+    f.write(content)
+
+    with io.open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1\r\nb = 3\r\n"
+
+
+def test_keep_old_eol_2(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    with io.open(toml_path, "wb+") as f:
+        f.write(b"a = 1\nb = 2\n")
+
+    f = TOMLFile(toml_path)
+    content = f.read()
+    content["b"] = 3
+    f.write(content)
+
+    with io.open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1\nb = 3\n"
+
+
+def test_mixed_eol(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    with io.open(toml_path, "wb+") as f:
+        f.write(b"a = 1\r\nrb = 2\n")
+
+    f = TOMLFile(toml_path)
+    f.write(f.read())
+
+    with io.open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1\r\nrb = 2\n"
