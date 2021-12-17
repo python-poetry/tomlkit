@@ -4,7 +4,6 @@ import pytest
 
 from tomlkit import parse
 from tomlkit._compat import decode
-from tomlkit._compat import unicode
 from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import TOMLKitError
 
@@ -16,7 +15,7 @@ def to_bool(s):
 
 
 stypes = {
-    "string": unicode,
+    "string": str,
     "bool": to_bool,
     "integer": int,
     "float": float,

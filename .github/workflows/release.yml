@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '*.*.*'
+      - "*.*.*"
 
 jobs:
   Release:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
 
       - name: Get tag
         id: tag
@@ -26,7 +26,7 @@ jobs:
 
       - name: Install and set up Poetry
         run: |
-          curl -fsS -o install-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/install-poetry.py
+          curl -fsSL -o install-poetry.py https://install.python-poetry.org
           python install-poetry.py -y
 
       - name: Update PATH

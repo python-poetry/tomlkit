@@ -16,26 +16,13 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "~2.7 || ^3.5"
-
-# enum34 is needed for Python 2.7
-enum34 = { version = "^1.1", python = "~2.7" }
-
-# functools32 is needed for Python 2.7
-functools32 = { version = "^3.2.3", python = "~2.7" }
-
-# The typing module is not in the stdlib in Python 2.7 and 3.4
-typing = { version = "^3.6", python = "~2.7 || ~3.4" }
+python = "^3.6"
 
 [tool.poetry.dev-dependencies]
-pytest = "^4.6"
-pytest-cov = "^2.5"
-black = { version = "^19.3b0", markers = "python_version >= '3.6' and python_version < '4.0' and implementation_name != 'pypy'" }
-pre-commit = "^1.10"
-tox = "^3.1"
-codecov = "^2.0"
-pyyaml = "~5.3.1"
-isort = {version = "^5.2.0", python = "^3.6"}
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+PyYAML = "^6.0"
+pre-commit = {version = "^2.1.0", python = "^3.6.1"}
 
 [tool.black]
 line-length = 88

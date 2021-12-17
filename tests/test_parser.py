@@ -2,6 +2,7 @@ import pytest
 
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
 
@@ -19,7 +20,6 @@ def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string()
 def test_parser_should_raise_an_error_for_empty_tables():
     content = """
 [one]
-
 []
 """
 
@@ -28,5 +28,14 @@ def test_parser_should_raise_an_error_for_empty_tables():
     with pytest.raises(EmptyTableNameError) as e:
         parser.parse()
 
-    assert e.value.line == 4
+    assert e.value.line == 3
     assert e.value.col == 1
+
+
+def test_parser_should_raise_an_error_if_equal_not_found():
+    content = """[foo]
+a {c = 1, d = 2}
+"""
+    parser = Parser(content)
+    with pytest.raises(UnexpectedCharError):
+        parser.parse()

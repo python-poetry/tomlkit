@@ -7,7 +7,7 @@ on:
       - develop
   pull_request:
     branches:
-      - '**'
+      - "**"
 
 jobs:
   Linting:
@@ -15,14 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.8
-      - name: Linting
-        run: |
-          pip install pre-commit
-          pre-commit run --all-files
+      - uses: actions/setup-python@v2
+      - uses: pre-commit/action@v2.0.3
   Tests:
     needs: Linting
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
@@ -30,15 +24,15 @@ jobs:
     strategy:
       matrix:
         os: [Ubuntu, MacOS, Windows]
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -51,11 +45,16 @@ jobs:
       - name: Install Poetry
         shell: bash
         run: |
-          curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
-          python get-poetry.py --preview -y
-          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-          echo "%USERPROFILE%/.poetry/bin" >> $GITHUB_PATH
-      - name: Setup Poetry
+          curl -fsSL https://install.python-poetry.org | python - -y
+      - name: Update PATH
+        if: ${{ matrix.os != 'Windows' }}
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Update Path for Windows
+        if: ${{ matrix.os == 'Windows' }}
+        shell: bash
+        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+      - name: Configure Poetry
         shell: bash
         run: |
           poetry config virtualenvs.in-project true

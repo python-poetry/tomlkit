@@ -1,12 +1,27 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+- Drop support for Python<3.6. ([#151](https://github.com/sdispater/tomlkit/pull/151))
+
+### Fixed
+
+- Fix the invalid dumping output of multiline array when it is empty. ([#139](https://github.com/sdispater/tomlkit/issues/#139))
+- Fix a bug that tomlkit accepts an invalid table with missing `=`. ([#141](https://github.com/sdispater/tomlkit/issues/141))
+- Fix the invalid dumping output when the key is empty. ([#143](https://github.com/sdispater/tomlkit/issues/143))
+- Fix incorrect string returned by dumps when moving/renaming table. ([#144](https://github.com/sdispater/tomlkit/issues/144))
+- Fix inconsistent dumps when replacing existing item with nested table. ([#145](https://github.com/sdispater/tomlkit/issues/145))
+- Fix invalid dumps output when appending to a multiline array. ([#146](https://github.com/sdispater/tomlkit/issues/146))
+- Fix the `KeyAlreadyExistError` when the table is separated into multiple parts. ([#148](https://github.com/sdispater/tomlkit/issues/148))
+
 ## [0.7.2] - 2021-05-20
 
 ### Fixed
 
 - Fixed an error where container's data were lost when copying. ([#126](https://github.com/sdispater/tomlkit/pull/126))
 - Fixed missing tests in the source distribution of the package. ([#127](https://github.com/sdispater/tomlkit/pull/127))
-
 
 ## [0.7.1] - 2021-05-19
 
@@ -18,7 +33,6 @@
 - Fixed table representation for dotted keys. ([#122](https://github.com/sdispater/tomlkit/pull/122))
 - Fixed an error in top level keys handling when building documents programmatically. ([#122](https://github.com/sdispater/tomlkit/pull/122))
 - Fixed compliance with mypy by adding a `py.typed` file. ([#109](https://github.com/sdispater/tomlkit/pull/109))
-
 
 ## [0.7.0] - 2020-07-31
 
@@ -34,13 +48,11 @@
 
 - Fixed compliance with the 1.0.0rc1 TOML specification ([#102](https://github.com/sdispater/tomlkit/pull/102)).
 
-
 ## [0.6.0] - 2020-04-15
 
 ### Added
 
 - Added support for heterogeneous arrays ([#92](https://github.com/sdispater/tomlkit/pull/92)).
-
 
 ## [0.5.11] - 2020-02-29
 
@@ -48,13 +60,11 @@
 
 - Fix containers and our of order tables dictionary behavior ([#82](https://github.com/sdispater/tomlkit/pull/82)))
 
-
 ## [0.5.10] - 2020-02-28
 
 ### Fixed
 
 - Fixed out of order tables not behaving properly ([#79](https://github.com/sdispater/tomlkit/pull/79))
-
 
 ## [0.5.9] - 2020-02-28
 
@@ -64,20 +74,17 @@
 - Fixed parsing errors when single quotes are present in a table name ([#71](https://github.com/sdispater/tomlkit/pull/71)).
 - Fixed parsing errors when parsing some table names ([#76](https://github.com/sdispater/tomlkit/pull/76)).
 
-
 ## [0.5.8] - 2019-10-11
 
 ### Added
 
 - Added support for producing multiline arrays
 
-
 ## [0.5.7] - 2019-10-04
 
 ### Fixed
 
 - Fixed handling of inline tables.
-
 
 ## [0.5.6] - 2019-10-04
 
@@ -86,13 +93,11 @@
 - Fixed boolean comparison.
 - Fixed appending inline tables to tables.
 
-
 ## [0.5.5] - 2019-07-01
 
 ### Fixed
 
 - Fixed display of inline tables after element deletion.
-
 
 ## [0.5.4] - 2019-06-30
 
@@ -104,14 +109,12 @@
 - Fixed behavior of `setdefault()` on containers (Thanks to [@AndyKluger](https://github.com/AndyKluger)).
 - Fixed tables string representation.
 
-
 ## [0.5.3] - 2018-11-19
 
 ### Fixed
 
 - Fixed copy of TOML documents.
 - Fixed behavior on PyPy3.
-
 
 ## [0.5.2] - 2018-11-09
 
@@ -121,13 +124,11 @@
 - Fixed comments being displayed in inline tables.
 - Fixed string with non-scalar unicode code points not raising an error.
 
-
 ## [0.5.1] - 2018-11-08
 
 ### Fixed
 
 - Fixed deletion and replacement of sub tables declared after other tables.
-
 
 ## [0.5.0] - 2018-11-06
 
@@ -141,13 +142,11 @@
 - Fixed comma handling when parsing inline tables. (Thanks to [@njalerikson](https://github.com/njalerikson))
 - Fixed a `KeyAlreadyPresent` error when declaring a sub table after other tables.
 
-
 ## [0.4.6] - 2018-10-16
 
 ### Fixed
 
 - Fixed string parsing behavior.
-
 
 ## [0.4.5] - 2018-10-12
 
@@ -157,13 +156,11 @@
 - Fixed key comparison.
 - Fixed an error when using pickle on TOML documents.
 
-
 ## [0.4.4] - 2018-09-01
 
 ### Fixed
 
 - Fixed performances issues while parsing on Python 2.7.
-
 
 ## [0.4.3] - 2018-08-28
 
@@ -173,13 +170,11 @@
 - Fixed missing newline after table header.
 - Fixed dict-like behavior for tables and documents.
 
-
 ## [0.4.2] - 2018-08-06
 
 ### Fixed
 
 - Fixed insertion of an element after deletion.
-
 
 ## [0.4.1] - 2018-08-06
 
@@ -188,7 +183,6 @@
 - Fixed adding an element after another element without a new line.
 - Fixed parsing of dotted keys inside tables.
 - Fixed parsing of array of tables with same prefix.
-
 
 ## [0.4.0] - 2018-07-23
 
@@ -204,7 +198,6 @@
 ### Fixed
 
 - Fixed potential new lines inside an inline table.
-
 
 ## [0.3.0] - 2018-07-20
 
@@ -224,8 +217,7 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-
-[Unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.2...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.7.2...master
 [0.7.2]: https://github.com/sdispater/tomlkit/releases/tag/0.7.2
 [0.7.1]: https://github.com/sdispater/tomlkit/releases/tag/0.7.1
 [0.7.0]: https://github.com/sdispater/tomlkit/releases/tag/0.7.0
