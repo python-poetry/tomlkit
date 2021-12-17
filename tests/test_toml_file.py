@@ -60,5 +60,5 @@ def test_mixed_eol(tmpdir):
     f = TOMLFile(toml_path)
     f.write(f.read())
 
-    with io.open(toml_path, "rb") as f:
+    with open(toml_path, "rb") as f:
         assert f.read() == b"a = 1\r\nrb = 2\n"
