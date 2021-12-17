@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomlkit"
-version = "0.6.0"
+version = "0.7.2"
 description = "Style preserving TOML library"
 authors = ["Sébastien Eustace <sebastien@eustace.io>"]
 license = "MIT"
@@ -10,30 +10,19 @@ readme = "README.md"
 homepage = "https://github.com/sdispater/tomlkit"
 repository = "https://github.com/sdispater/tomlkit"
 
-packages = [
-    {include = "tomlkit"},
-    {include = "tests", format = "sdist"}
+include = [
+  { path = "tomlkit/py.typed" },
+  { path = "tests", format = "sdist" }
 ]
 
 [tool.poetry.dependencies]
-python = "~2.7 || ^3.4"
-
-# enum34 is needed for Python 2.7
-enum34 = { version = "^1.1", python = "~2.7" }
-
-# functools32 is needed for Python 2.7
-functools32 = { version = "^3.2.3", python = "~2.7" }
-
-# The typing module is not in the stdlib in Python 2.7 and 3.4
-typing = { version = "^3.6", python = "~2.7 || ~3.4" }
+python = "^3.6"
 
 [tool.poetry.dev-dependencies]
-pytest = "^4.6"
-pytest-cov = "^2.5"
-black = { version = "^19.3b0", markers = "python_version >= '3.6' and python_version < '4.0' and implementation_name != 'pypy'" }
-pre-commit = "^1.10"
-tox = "^3.1"
-codecov = "^2.0"
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+PyYAML = "^6.0"
+pre-commit = {version = "^2.1.0", python = "^3.6.1"}
 
 [tool.black]
 line-length = 88
@@ -52,6 +41,16 @@ exclude = '''
 )/
 '''
 
+[tool.isort]
+profile = "black"
+force_single_line = true
+atomic = true
+lines_after_imports = 2
+lines_between_types = 1
+
+known_first_party = ["tomlkit"]
+known_third_party = ["pytest"]
+
 [build-system]
-requires = ["poetry>=0.12a3"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0a9"]
+build-backend = "poetry.core.masonry.api"

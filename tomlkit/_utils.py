@@ -1,14 +1,15 @@
 import re
 
+from collections.abc import Mapping
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from datetime import timezone
 from typing import Union
 
-
 from ._compat import decode
-from ._compat import timezone
+
 
 RFC_3339_LOOSE = re.compile(
     "^"
@@ -39,7 +40,7 @@ RFC_3339_TIME = re.compile(
 _utc = timezone(timedelta(), "UTC")
 
 
-def parse_rfc3339(string):  # type: (str) -> Union[datetime, date, time]
+def parse_rfc3339(string: str) -> Union[datetime, date, time]:
     m = RFC_3339_DATETIME.match(string)
     if m:
         year = int(m.group(1))
@@ -51,7 +52,7 @@ def parse_rfc3339(string):  # type: (str) -> Union[datetime, date, time]
         microsecond = 0
 
         if m.group(7):
-            microsecond = int(("{:<06s}".format(m.group(8)))[:6])
+            microsecond = int((f"{m.group(8):<06s}")[:6])
 
         if m.group(9):
             # Timezone
@@ -65,9 +66,7 @@ def parse_rfc3339(string):  # type: (str) -> Union[datetime, date, time]
                 if sign == "-":
                     offset = -offset
 
-                tzinfo = timezone(
-                    offset, "{}{}:{}".format(sign, m.group(12), m.group(13))
-                )
+                tzinfo = timezone(offset, f"{sign}{m.group(12)}:{m.group(13)}")
 
             return datetime(
                 year, month, day, hour, minute, second, microsecond, tzinfo=tzinfo
@@ -91,7 +90,7 @@ def parse_rfc3339(string):  # type: (str) -> Union[datetime, date, time]
         microsecond = 0
 
         if m.group(4):
-            microsecond = int(("{:<06s}".format(m.group(5)))[:6])
+            microsecond = int((f"{m.group(5):<06s}")[:6])
 
         return time(hour, minute, second, microsecond)
 
@@ -102,7 +101,7 @@ _escaped = {"b": "\b", "t": "\t", "n": "\n", "f": "\f", "r": "\r", '"': '"', "\\
 _escapes = {v: k for k, v in _escaped.items()}
 
 
-def escape_string(s):
+def escape_string(s: str) -> str:
     s = decode(s)
 
     res = []
@@ -128,3 +127,25 @@ def escape_string(s):
     flush()
 
     return "".join(res)
+
+
+def merge_dicts(d1: dict, d2: dict) -> dict:
+    for k, v in d2.items():
+        if k in d1 and isinstance(d1[k], dict) and isinstance(v, Mapping):
+            merge_dicts(d1[k], v)
+        else:
+            d1[k] = d2[k]
+
+
+def escape_quotes(s: str, quote: str) -> str:
+    escaped = False
+    result = ""
+    for c in s:
+        if escaped:
+            escaped = False
+        elif c == "\\":
+            escaped = True
+        elif c == quote:
+            result += "\\"
+        result += c
+    return result

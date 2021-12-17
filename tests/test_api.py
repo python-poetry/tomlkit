@@ -1,22 +1,27 @@
+import io
 import json
-import pytest
-
-import tomlkit
+import os
 
 from datetime import date
 from datetime import datetime
 from datetime import time
+from types import MappingProxyType
 
+import pytest
+
+import tomlkit
+
+from tomlkit import dump
 from tomlkit import dumps
+from tomlkit import load
 from tomlkit import loads
 from tomlkit import parse
-from tomlkit.exceptions import EmptyKeyError
 from tomlkit.exceptions import InvalidCharInStringError
+from tomlkit.exceptions import InvalidControlChar
 from tomlkit.exceptions import InvalidDateError
 from tomlkit.exceptions import InvalidDateTimeError
-from tomlkit.exceptions import InvalidTimeError
 from tomlkit.exceptions import InvalidNumberError
-from tomlkit.exceptions import MixedArrayTypesError
+from tomlkit.exceptions import InvalidTimeError
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import AoT
 from tomlkit.items import Array
@@ -37,7 +42,7 @@ def json_serial(obj):
     if isinstance(obj, (datetime, date, time)):
         return obj.isoformat()
 
-    raise TypeError("Type {} not serializable".format(type(obj)))
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 
 @pytest.mark.parametrize(
@@ -61,6 +66,30 @@ def test_parse_can_parse_valid_toml_files(example, example_name):
     assert isinstance(loads(example(example_name)), TOMLDocument)
 
 
+@pytest.mark.parametrize(
+    "example_name",
+    [
+        "example",
+        "fruit",
+        "hard",
+        "sections_with_same_start",
+        "pyproject",
+        "0.5.0",
+        "test",
+        "newline_in_strings",
+        "preserve_quotes_in_string",
+        "string_slash_whitespace_newline",
+        "table_names",
+    ],
+)
+def test_load_from_file_object(example_name):
+    with open(
+        os.path.join(os.path.dirname(__file__), "examples", example_name + ".toml"),
+        encoding="utf-8",
+    ) as fp:
+        assert isinstance(load(fp), TOMLDocument)
+
+
 @pytest.mark.parametrize("example_name", ["0.5.0", "pyproject", "table_names"])
 def test_parsed_document_are_properly_json_representable(
     example, json_example, example_name
@@ -82,14 +111,14 @@ def test_parsed_document_are_properly_json_representable(
         ("invalid_time", InvalidTimeError),
         ("invalid_datetime", InvalidDateTimeError),
         ("trailing_comma", UnexpectedCharError),
-        ("newline_in_singleline_string", InvalidCharInStringError),
+        ("newline_in_singleline_string", InvalidControlChar),
         ("string_slash_whitespace_char", InvalidCharInStringError),
         ("array_no_comma", UnexpectedCharError),
         ("array_duplicate_comma", UnexpectedCharError),
         ("array_leading_comma", UnexpectedCharError),
         ("inline_table_no_comma", UnexpectedCharError),
-        ("inline_table_duplicate_comma", EmptyKeyError),
-        ("inline_table_leading_comma", EmptyKeyError),
+        ("inline_table_duplicate_comma", UnexpectedCharError),
+        ("inline_table_leading_comma", UnexpectedCharError),
         ("inline_table_trailing_comma", UnexpectedCharError),
     ],
 )
@@ -124,6 +153,23 @@ def test_a_raw_dict_can_be_dumped():
     s = dumps({"foo": "bar"})
 
     assert s == 'foo = "bar"\n'
+
+
+def test_mapping_types_can_be_dumped():
+    x = MappingProxyType({"foo": "bar"})
+    assert dumps(x) == 'foo = "bar"\n'
+
+
+def test_dumps_weird_object():
+    with pytest.raises(TypeError):
+        dumps(object())
+
+
+def test_dump_to_file_object():
+    doc = {"foo": "bar"}
+    fp = io.StringIO()
+    dump(doc, fp)
+    assert fp.getvalue() == 'foo = "bar"\n'
 
 
 def test_integer():
@@ -229,3 +275,11 @@ def test_item_dict_to_table():
 bar = "baz"
 """
     )
+
+
+def test_item_mixed_aray():
+    example = [{"a": 3}, "b", 42]
+    expected = '[{a = 3}, "b", 42]'
+    t = tomlkit.item(example)
+    assert t.as_string().strip() == expected
+    assert dumps({"x": {"y": example}}).strip() == "[x]\ny = " + expected

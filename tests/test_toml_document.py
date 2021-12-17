@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import copy
 import json
 import pickle
 
 from datetime import datetime
+from textwrap import dedent
 
 import pytest
+
 import tomlkit
+
 from tomlkit import parse
+from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.exceptions import NonExistentKey
 
@@ -537,6 +538,22 @@ bar = "baz"
         del doc["a"]["a"]["key"]
 
 
+def test_out_of_order_table_can_add_multiple_tables():
+    content = """\
+[a.a.b]
+x = 1
+[foo]
+bar = 1
+[a.a.c]
+y = 1
+[a.a.d]
+z = 1
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+    assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}
+
+
 def test_out_of_order_tables_are_still_dicts():
     content = """
 [a.a]
@@ -569,3 +586,306 @@ key = "value"
 
     with pytest.raises(KeyError):
         table.pop("missing")
+
+
+def test_string_output_order_is_preserved_for_out_of_order_tables():
+    content = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = "^1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    doc = parse(content)
+    constraint = tomlkit.inline_table()
+    constraint["version"] = "^1.0"
+    doc["tool"]["poetry"]["dependencies"]["bar"] = constraint
+
+    assert "^1.0" == doc["tool"]["poetry"]["dependencies"]["bar"]["version"]
+
+    expected = """
+[tool.poetry]
+name = "foo"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+bar = {version = "^1.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+backend = "poetry.core.masonry.api"
+
+
+[tool.other]
+a = "b"
+"""
+
+    assert expected == doc.as_string()
+
+
+def test_updating_nested_value_keeps_correct_indent():
+    content = """
+[Key1]
+      [key1.Key2]
+      Value1 = 10
+      Value2 = 30
+"""
+
+    doc = parse(content)
+    doc["key1"]["Key2"]["Value1"] = 20
+
+    expected = """
+[Key1]
+      [key1.Key2]
+      Value1 = 20
+      Value2 = 30
+"""
+
+    assert doc.as_string() == expected
+
+
+def test_repr():
+    content = """
+namespace.key1 = "value1"
+namespace.key2 = "value2"
+[tool.poetry.foo]
+option = "test"
+[tool.poetry.bar]
+option = "test"
+inline = {"foo" = "bar", "bar" = "baz"}
+"""
+
+    doc = parse(content)
+
+    assert (
+        repr(doc)
+        == "{'namespace': {'key1': 'value1', 'key2': 'value2'}, 'tool': {'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}}"
+    )
+
+    assert (
+        repr(doc["tool"])
+        == "{'poetry': {'foo': {'option': 'test'}, 'bar': {'option': 'test', 'inline': {'foo': 'bar', 'bar': 'baz'}}}}"
+    )
+
+    assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
+
+
+def test_deepcopy():
+    content = """
+[tool]
+name = "foo"
+[tool.project.section]
+option = "test"
+"""
+    doc = parse(content)
+    copied = copy.deepcopy(doc)
+    assert copied == doc
+    assert copied.as_string() == content
+
+
+def test_move_table():
+    content = """a = 1
+[x]
+a = 1
+
+[y]
+b = 1
+"""
+    doc = parse(content)
+    doc["a"] = doc.pop("x")
+    doc["z"] = doc.pop("y")
+    assert (
+        doc.as_string()
+        == """[a]
+a = 1
+
+[z]
+b = 1
+"""
+    )
+
+
+def test_replace_with_table():
+    content = """a = 1
+b = 2
+c = 3
+"""
+    doc = parse(content)
+    doc["b"] = {"foo": "bar"}
+    assert (
+        doc.as_string()
+        == """a = 1
+c = 3
+
+[b]
+foo = "bar"
+"""
+    )
+
+
+def test_replace_with_table_of_nested():
+    example = """\
+    [a]
+    x = 1
+
+    [a.b]
+    y = 2
+    """
+    doc = parse(dedent(example))
+    doc["c"] = doc.pop("a")
+    expected = """\
+    [c]
+    x = 1
+
+    [c.b]
+    y = 2
+    """
+    assert doc.as_string().strip() == dedent(expected).strip()
+
+
+def test_replace_with_aot_of_nested():
+    example = """\
+    [a]
+    x = 1
+
+    [[a.b]]
+    y = 2
+
+    [[a.b]]
+
+    [a.b.c]
+    z = 2
+
+    [[a.b.c.d]]
+    w = 2
+    """
+    doc = parse(dedent(example))
+    doc["f"] = doc.pop("a")
+    expected = """\
+    [f]
+    x = 1
+
+    [[f.b]]
+    y = 2
+
+    [[f.b]]
+
+    [f.b.c]
+    z = 2
+
+    [[f.b.c.d]]
+    w = 2
+    """
+    assert doc.as_string().strip() == dedent(expected).strip()
+
+
+def test_replace_with_comment():
+    content = 'a = "1"'
+    doc = parse(content)
+    a = tomlkit.item(int(doc["a"]))
+    a.comment("`a` should be an int")
+    doc["a"] = a
+    expected = "a = 1 # `a` should be an int"
+    assert doc.as_string() == expected
+
+    content = 'a = "1, 2, 3"'
+    doc = parse(content)
+    a = tomlkit.array()
+    a.comment("`a` should be an array")
+    for x in doc["a"].split(","):
+        a.append(int(x.strip()))
+    doc["a"] = a
+    expected = "a = [1, 2, 3] # `a` should be an array"
+    assert doc.as_string() == expected
+
+    doc = parse(content)
+    a = tomlkit.inline_table()
+    a.comment("`a` should be an inline-table")
+    for x in doc["a"].split(","):
+        i = int(x.strip())
+        a.append(chr(ord("a") + i - 1), i)
+    doc["a"] = a
+    expected = "a = {a = 1, b = 2, c = 3} # `a` should be an inline-table"
+    assert doc.as_string() == expected
+
+
+def test_no_spurious_whitespaces():
+    content = """\
+    [x]
+    a = 1
+
+    [y]
+    b = 2
+    """
+    doc = parse(dedent(content))
+    doc["z"] = doc.pop("y")
+    expected = """\
+    [x]
+    a = 1
+
+    [z]
+    b = 2
+    """
+    assert doc.as_string() == dedent(expected)
+    doc["w"] = {"c": 3}
+    expected = """\
+    [x]
+    a = 1
+
+    [z]
+    b = 2
+
+    [w]
+    c = 3
+    """
+    assert doc.as_string() == dedent(expected)
+
+    doc = parse(dedent(content))
+    del doc["x"]
+    doc["z"] = {"c": 3}
+    expected = """\
+    [y]
+    b = 2
+
+    [z]
+    c = 3
+    """
+    assert doc.as_string() == dedent(expected)
+
+
+def test_pop_add_whitespace_and_insert_table_work_togheter():
+    content = """\
+    a = 1
+    b = 2
+    c = 3
+    d = 4
+    """
+    doc = parse(dedent(content))
+    doc.pop("a")
+    doc.pop("b")
+    doc.add(ws("\n"))
+    doc["e"] = {"foo": "bar"}
+    expected = """\
+    c = 3
+    d = 4
+
+    [e]
+    foo = "bar"
+    """
+    text = doc.as_string()
+    out = parse(text)
+    assert out["d"] == 4
+    assert "d" not in out["e"]
+    assert text == dedent(expected)

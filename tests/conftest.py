@@ -1,12 +1,12 @@
-import io
 import os
+
 import pytest
 
 
 @pytest.fixture
 def example():
     def _example(name):
-        with io.open(
+        with open(
             os.path.join(os.path.dirname(__file__), "examples", name + ".toml"),
             encoding="utf-8",
         ) as f:
@@ -18,7 +18,7 @@ def example():
 @pytest.fixture
 def json_example():
     def _example(name):
-        with io.open(
+        with open(
             os.path.join(os.path.dirname(__file__), "examples", "json", name + ".json"),
             encoding="utf-8",
         ) as f:
@@ -30,7 +30,7 @@ def json_example():
 @pytest.fixture
 def invalid_example():
     def _example(name):
-        with io.open(
+        with open(
             os.path.join(
                 os.path.dirname(__file__), "examples", "invalid", name + ".toml"
             ),
@@ -68,7 +68,7 @@ def get_tomltest_cases():
             bn, ext = f.rsplit(".", 1)
             if bn not in rv[d]:
                 rv[d][bn] = {}
-            with io.open(os.path.join(TEST_DIR, d, f), encoding="utf-8") as inp:
+            with open(os.path.join(TEST_DIR, d, f), encoding="utf-8") as inp:
                 rv[d][bn][ext] = inp.read()
     return rv
 
