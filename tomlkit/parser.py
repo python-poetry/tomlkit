@@ -98,7 +98,7 @@ class Parser:
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n: int, exception: Optional[ParseError] = None) -> bool:
+    def inc_n(self, n: int, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.

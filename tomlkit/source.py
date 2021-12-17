@@ -13,14 +13,14 @@ class _State:
     def __init__(
         self,
         source: "Source",
-        save_marker: Optional[str] = False,
-        restore: Optional[str] = False,
+        save_marker: Optional[bool] = False,
+        restore: Optional[bool] = False,
     ) -> None:
         self._source = source
         self._save_marker = save_marker
         self.restore = restore
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> "_State":
         # Entering this context manager - save the state
         self._chars = copy(self._source._chars)
         self._idx = self._source._idx
@@ -124,7 +124,7 @@ class Source(str):
 
             return False
 
-    def inc_n(self, n: int, exception: Exception = None) -> bool:
+    def inc_n(self, n: int, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
