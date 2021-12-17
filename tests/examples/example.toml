@@ -36,7 +36,6 @@ hosts = [
 ]
 
 # Products
-
   [[products]]
   name = "Hammer"
   sku = 738594937
