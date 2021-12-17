@@ -42,34 +42,35 @@ def invalid_example():
 
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
-IGNORED_TESTS = {
-    "invalid": [
-        "array-mixed-types-strings-and-ints.toml",
-        "array-mixed-types-arrays-and-ints.toml",
-        "array-mixed-types-ints-and-floats.toml",
-    ]
-}
+IGNORED_TESTS = {}
 
 
 def get_tomltest_cases():
     dirs = sorted(
         f for f in os.listdir(TEST_DIR) if os.path.isdir(os.path.join(TEST_DIR, f))
     )
-    assert dirs == ["invalid", "invalid-encoder", "valid"]
-    rv = {}
+    assert dirs == ["invalid", "valid"]
+    rv = {"invalid_encode": {}}
     for d in dirs:
         rv[d] = {}
         ignored = IGNORED_TESTS.get(d, [])
-        files = os.listdir(os.path.join(TEST_DIR, d))
-        for f in files:
-            if f in ignored:
-                continue
 
-            bn, ext = f.rsplit(".", 1)
-            if bn not in rv[d]:
-                rv[d][bn] = {}
-            with open(os.path.join(TEST_DIR, d, f), encoding="utf-8") as inp:
-                rv[d][bn][ext] = inp.read()
+        for root, _, files in os.walk(os.path.join(TEST_DIR, d)):
+            relpath = os.path.relpath(root, os.path.join(TEST_DIR, d))
+            if relpath == ".":
+                relpath = ""
+            for f in files:
+                bn, ext = f.rsplit(".", 1)
+                key = os.path.join(relpath, bn)
+                if key in ignored:
+                    continue
+                if d == "invalid" and relpath == "encoding":
+                    rv["invalid_encode"][bn] = os.path.join(root, f)
+                    continue
+                if key not in rv[d]:
+                    rv[d][key] = {}
+                with open(os.path.join(root, f), encoding="utf-8") as inp:
+                    rv[d][key][ext] = inp.read()
     return rv
 
 
@@ -90,6 +91,6 @@ def pytest_generate_tests(metafunc):
     elif "invalid_encode_case" in metafunc.fixturenames:
         metafunc.parametrize(
             "invalid_encode_case",
-            test_list["invalid-encoder"].values(),
-            ids=list(test_list["invalid-encoder"].keys()),
+            test_list["invalid_encode"].values(),
+            ids=list(test_list["invalid_encode"].keys()),
         )

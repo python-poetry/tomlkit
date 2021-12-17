@@ -433,14 +433,12 @@ class Parser:
             pass
 
         key = self.extract()
-
+        self.inc()
         if self._current == ".":
             self.inc()
             dotted = True
             key += "." + self._parse_key().as_string()
             key_type = KeyType.Bare
-        else:
-            self.inc()
 
         return Key(key, key_type, "", dotted)
 

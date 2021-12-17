@@ -15,9 +15,9 @@ RFC_3339_LOOSE = re.compile(
     "^"
     r"(([0-9]+)-(\d{2})-(\d{2}))?"  # Date
     "("
-    "([T ])?"  # Separator
+    "([Tt ])?"  # Separator
     r"(\d{2}):(\d{2}):(\d{2})(\.([0-9]+))?"  # Time
-    r"((Z)|([\+|\-]([01][0-9]|2[0-3]):([0-5][0-9])))?"  # Timezone
+    r"(([Zz])|([\+|\-]([01][0-9]|2[0-3]):([0-5][0-9])))?"  # Timezone
     ")?"
     "$"
 )
@@ -25,9 +25,9 @@ RFC_3339_LOOSE = re.compile(
 RFC_3339_DATETIME = re.compile(
     "^"
     "([0-9]+)-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])"  # Date
-    "[T ]"  # Separator
+    "[Tt ]"  # Separator
     r"([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\.([0-9]+))?"  # Time
-    r"((Z)|([\+|\-]([01][0-9]|2[0-3]):([0-5][0-9])))?"  # Timezone
+    r"(([Zz])|([\+|\-]([01][0-9]|2[0-3]):([0-5][0-9])))?"  # Timezone
     "$"
 )
 
@@ -57,7 +57,7 @@ def parse_rfc3339(string: str) -> Union[datetime, date, time]:
         if m.group(9):
             # Timezone
             tz = m.group(9)
-            if tz == "Z":
+            if tz.upper() == "Z":
                 tzinfo = _utc
             else:
                 sign = m.group(11)[0]
