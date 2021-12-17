@@ -2,6 +2,7 @@
 [pypi_version]: https://img.shields.io/pypi/v/tomlkit.svg?logo=python&logoColor=white
 [python_versions]: https://img.shields.io/pypi/pyversions/tomlkit.svg?logo=python&logoColor=white
 [github_license]: https://img.shields.io/github/license/sdispater/tomlkit.svg?logo=github&logoColor=white
+[github_action]: https://github.com/sdispater/tomlkit/actions/workflows/tests.yml/badge.svg
 
 <!--Codecov logo not offered by shields.io or simpleicons.org, this is Codecov's SVG image modified to be white-->
 
@@ -11,8 +12,9 @@
 [![PyPI Version][pypi_version]](https://pypi.python.org/pypi/tomlkit/)
 [![Python Versions][python_versions]](https://pypi.python.org/pypi/tomlkit/)
 [![License][github_license]](https://github.com/sdispater/tomlkit/blob/master/LICENSE)
-[![Codecov][codecov]](https://codecov.io/gh/sdispater/tomlkit)
 <br>
+[![Codecov][codecov]](https://codecov.io/gh/sdispater/tomlkit)
+[![Tests][github_action]](https://github.com/sdispater/tomlkit/actions/workflows/tests.yml)
 
 # TOML Kit - Style-preserving TOML library for Python
 
