@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Fix the invalid dumping output of multiline array when it is empty. ([#139](https://github.com/sdispater/tomlkit/issues/#139))
 - Fix a bug that tomlkit accepts an invalid table with missing `=`. ([#141](https://github.com/sdispater/tomlkit/issues/141))
 - Fix the invalid dumping output when the key is empty. ([#143](https://github.com/sdispater/tomlkit/issues/143))
 - Fix incorrect string returned by dumps when moving/renaming table. ([#144](https://github.com/sdispater/tomlkit/issues/144))
