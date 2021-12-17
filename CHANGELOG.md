@@ -14,7 +14,8 @@
 - Fix incorrect string returned by dumps when moving/renaming table. ([#144](https://github.com/sdispater/tomlkit/issues/144))
 - Fix inconsistent dumps when replacing existing item with nested table. ([#145](https://github.com/sdispater/tomlkit/issues/145))
 - Fix invalid dumps output when appending to a multiline array. ([#146](https://github.com/sdispater/tomlkit/issues/146))
-- Fix the `KeyAlreadyExistError` when the table is separated into multiple parts. ([#148](https://github.com/sdispater/tomlkit/issues/148))
+- Fix the `KeyAlreadyPresent` when the table is separated into multiple parts. ([#148](https://github.com/sdispater/tomlkit/issues/148))
+- Preserve the line endings in `TOMLFile`. ([#149](https://github.com/sdispater/tomlkit/issues/149))
 
 ## [0.7.2] - 2021-05-20
 
