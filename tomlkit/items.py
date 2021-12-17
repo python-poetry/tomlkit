@@ -849,7 +849,7 @@ class Array(Item, _CustomList):
 
         return self
 
-    def as_string(self):  # type: () -> str
+    def as_string(self) -> str:
         if not self._multiline or not self._value:
             return "[{}]".format("".join(v.as_string() for v in self._value))
 
