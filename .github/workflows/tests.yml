@@ -45,11 +45,16 @@ jobs:
       - name: Install Poetry
         shell: bash
         run: |
-          curl -fsSL -o install-poetry.py https://install.python-poetry.org
-          python install-poetry.py -y
-          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-          echo "%USERPROFILE%/.poetry/bin" >> $GITHUB_PATH
-      - name: Setup Poetry
+          curl -fsSL https://install.python-poetry.org | python - -y
+      - name: Update PATH
+        if: ${{ matrix.os != 'Windows' }}
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Update Path for Windows
+        if: ${{ matrix.os == 'Windows' }}
+        shell: bash
+        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+      - name: Configure Poetry
         shell: bash
         run: |
           poetry config virtualenvs.in-project true
