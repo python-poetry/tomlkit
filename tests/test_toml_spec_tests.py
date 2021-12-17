@@ -1,4 +1,3 @@
-import io
 import json
 import os
 import re
@@ -8,7 +7,6 @@ import yaml
 
 from tomlkit import parse
 from tomlkit._compat import decode
-from tomlkit._compat import unicode
 from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import TOMLKitError
 
@@ -42,7 +40,7 @@ def to_bool(s):
 
 
 stypes = {
-    "string": unicode,
+    "string": str,
     "bool": to_bool,
     "integer": int,
     "float": float,
@@ -54,9 +52,9 @@ stypes = {
 
 loader = yaml.SafeLoader
 loader.add_implicit_resolver(
-    u"tag:yaml.org,2002:float",
+    "tag:yaml.org,2002:float",
     re.compile(
-        u"""^(?:
+        """^(?:
      [-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
     |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
     |\\.[0-9_]+(?:[eE][-+][0-9]+)?
@@ -65,7 +63,7 @@ loader.add_implicit_resolver(
     |\\.(?:nan|NaN|NAN))$""",
         re.X,
     ),
-    list(u"-+0123456789."),
+    list("-+0123456789."),
 )
 
 
@@ -89,15 +87,15 @@ def untag(value):
 def test_valid_decode(test):
     toml_file = os.path.join(SPEC_TEST_DIR, "values", test + ".toml")
     yaml_file = os.path.join(SPEC_TEST_DIR, "values", test + ".yaml")
-    with io.open(toml_file, encoding="utf-8") as f:
+    with open(toml_file, encoding="utf-8") as f:
         toml_content = f.read()
         toml_val = parse(toml_content)
 
     if os.path.exists(yaml_file):
-        with io.open(yaml_file, encoding="utf-8") as f:
+        with open(yaml_file, encoding="utf-8") as f:
             yaml_val = yaml.load(f.read(), Loader=loader)
     else:
-        with io.open(
+        with open(
             os.path.join(SPEC_TEST_DIR, "values", test + ".json"), encoding="utf-8"
         ) as f:
             yaml_val = untag(json.loads(f.read()))
@@ -110,5 +108,5 @@ def test_valid_decode(test):
 def test_invalid_decode(test):
     toml_file = os.path.join(SPEC_TEST_DIR, "errors", test + ".toml")
     with pytest.raises(TOMLKitError):
-        with io.open(toml_file, encoding="utf-8") as f:
+        with open(toml_file, encoding="utf-8") as f:
             parse(f.read())

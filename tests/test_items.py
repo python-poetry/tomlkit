@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import math
 import pickle
 
@@ -13,10 +10,11 @@ import pytest
 
 from tomlkit import inline_table
 from tomlkit import parse
-from tomlkit._compat import PY2
-from tomlkit._compat import OrderedDict
+from tomlkit.api import array
+from tomlkit.api import ws
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Bool
+from tomlkit.items import Comment
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Key
@@ -133,6 +131,9 @@ def test_key_automatically_sets_proper_string_type_if_not_bare():
 
     assert key.t == KeyType.Basic
 
+    key = Key("")
+    assert key.t == KeyType.Basic
+
 
 def test_array_behaves_like_a_list():
     a = item([1, 2])
@@ -148,20 +149,24 @@ def test_array_behaves_like_a_list():
     assert a == [1, 2, 4]
     assert a.as_string() == "[1, 2, 4]"
 
-    del a[-1]
+    assert a.pop() == 4
     assert a == [1, 2]
     assert a.as_string() == "[1, 2]"
+
+    a[0] = 4
+    assert a == [4, 2]
+    a[-2] = 0
+    assert a == [0, 2]
 
     del a[-2]
     assert a == [2]
     assert a.as_string() == "[2]"
 
-    if not PY2:
-        a.clear()
-        assert a == []
-        assert a.as_string() == "[]"
+    a.clear()
+    assert a == []
+    assert a.as_string() == "[]"
 
-    content = """a = [1, 2] # Comment
+    content = """a = [1, 2,] # Comment
 """
     doc = parse(content)
 
@@ -198,6 +203,86 @@ def test_array_multiline():
     assert "[]" == t.as_string()
 
 
+def test_array_multiline_modify():
+    doc = parse(
+        """\
+a = [
+    "abc"
+]"""
+    )
+    doc["a"].append("def")
+    expected = """\
+a = [
+    "abc",
+    "def"
+]"""
+    assert expected == doc.as_string()
+    doc["a"].insert(1, "ghi")
+    expected = """\
+a = [
+    "abc",
+    "ghi",
+    "def"
+]"""
+    assert expected == doc.as_string()
+
+
+def test_append_to_empty_array():
+    doc = parse("x = [ ]")
+    doc["x"].append("a")
+    assert doc.as_string() == 'x = [ "a" ]'
+    doc = parse("x = [\n]")
+    doc["x"].append("a")
+    assert doc.as_string() == 'x = [\n    "a"\n]'
+
+
+def test_modify_array_with_comment():
+    doc = parse("x = [ # comment\n]")
+    doc["x"].append("a")
+    assert doc.as_string() == 'x = [ # comment\n    "a"\n]'
+    doc = parse(
+        """\
+x = [
+    "a",
+    # comment
+    "b"
+]"""
+    )
+    doc["x"].insert(1, "c")
+    expected = """\
+x = [
+    "a",
+    # comment
+    "c",
+    "b"
+]"""
+    assert doc.as_string() == expected
+    doc = parse(
+        """\
+x = [
+    1  # comment
+]"""
+    )
+    doc["x"].append(2)
+    assert (
+        doc.as_string()
+        == """\
+x = [
+    1,  # comment
+    2
+]"""
+    )
+
+
+def test_append_dict_to_array():
+    doc = parse("x = [ ]")
+    doc["x"].append({"name": "John Doe", "email": "john@doe.com"})
+    expected = 'x = [ {name = "John Doe",email = "john@doe.com"} ]'
+    assert doc.as_string() == expected
+    # Make sure the produced string is valid
+    assert parse(doc.as_string()) == doc
+
+
 def test_dicts_are_converted_to_tables():
     t = item({"foo": {"bar": "baz"}})
 
@@ -209,22 +294,42 @@ bar = "baz"
     )
 
 
+def test_array_add_line():
+    t = array()
+    t.add_line(1, 2, 3, comment="Line 1")
+    t.add_line(4, 5, 6, comment="Line 2")
+    t.add_line(7, ws(","), ws(" "), 8, add_comma=False)
+    t.add_line(indent="")
+    assert len(t) == 8
+    assert list(t) == [1, 2, 3, 4, 5, 6, 7, 8]
+    assert (
+        t.as_string()
+        == """[
+    1, 2, 3, # Line 1
+    4, 5, 6, # Line 2
+    7, 8
+]"""
+    )
+
+
+def test_array_add_line_invalid_value():
+    t = array()
+    with pytest.raises(ValueError, match="is not allowed"):
+        t.add_line(1, ws(" "))
+    with pytest.raises(ValueError, match="is not allowed"):
+        t.add_line(Comment(Trivia("  ", comment="test")))
+    assert len(t) == 0
+
+
 def test_dicts_are_converted_to_tables_and_keep_order():
     t = item(
-        OrderedDict(
-            [
-                (
-                    "foo",
-                    OrderedDict(
-                        [
-                            ("bar", "baz"),
-                            ("abc", 123),
-                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
-                        ]
-                    ),
-                )
-            ]
-        )
+        {
+            "foo": {
+                "bar": "baz",
+                "abc": 123,
+                "baz": [{"c": 3, "b": 2, "a": 1}],
+            },
+        }
     )
 
     assert (
@@ -243,20 +348,13 @@ a = 1
 
 def test_dicts_are_converted_to_tables_and_are_sorted_if_requested():
     t = item(
-        OrderedDict(
-            [
-                (
-                    "foo",
-                    OrderedDict(
-                        [
-                            ("bar", "baz"),
-                            ("abc", 123),
-                            ("baz", [OrderedDict([("c", 3), ("b", 2), ("a", 1)])]),
-                        ]
-                    ),
-                )
-            ]
-        ),
+        {
+            "foo": {
+                "bar": "baz",
+                "abc": 123,
+                "baz": [{"c": 3, "b": 2, "a": 1}],
+            },
+        },
         _sort_keys=True,
     )
 
@@ -433,6 +531,16 @@ bar = "baz"
         t.as_string()
         == """foo = "bar"
 bar = "boom"
+"""
+    )
+
+    assert t.get("bar") == "boom"
+    assert t.setdefault("foobar", "fuzz") == "fuzz"
+    assert (
+        t.as_string()
+        == """foo = "bar"
+bar = "boom"
+foobar = "fuzz"
 """
     )
 

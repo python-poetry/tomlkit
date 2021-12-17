@@ -1,19 +1,18 @@
 repos:
   - repo: https://github.com/ambv/black
-    rev: stable
+    rev: 21.12b0
     hooks:
-    - id: black
-      python_version: python3.6
+      - id: black
 
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.1.4
+    rev: 5.10.1
     hooks:
       - id: isort
         additional_dependencies: [toml]
         exclude: ^.*/?setup\.py$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.1.0
+    rev: v4.0.1
     hooks:
       - id: trailing-whitespace
         exclude: ^tests/(toml-test|toml-spec-tests)/.*
