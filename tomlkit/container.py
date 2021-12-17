@@ -1,21 +1,17 @@
-from __future__ import unicode_literals
-
 import copy
 
 from typing import Any
 from typing import Dict
-from typing import Generator
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from ._compat import MutableMapping
 from ._compat import decode
 from ._utils import merge_dicts
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
-from .exceptions import ParseError
 from .exceptions import TOMLKitError
 from .items import AoT
 from .items import Comment
@@ -24,29 +20,30 @@ from .items import Key
 from .items import Null
 from .items import Table
 from .items import Whitespace
+from .items import _CustomDict
 from .items import item as _item
 
 
 _NOT_SET = object()
 
 
-class Container(MutableMapping, dict):
+class Container(_CustomDict):
     """
     A container for items within a TOMLDocument.
     """
 
-    def __init__(self, parsed=False):  # type: (bool) -> None
-        self._map = {}  # type: Dict[Key, int]
-        self._body = []  # type: List[Tuple[Optional[Key], Item]]
+    def __init__(self, parsed: bool = False) -> None:
+        self._map: Dict[Key, int] = {}
+        self._body: List[Tuple[Optional[Key], Item]] = []
         self._parsed = parsed
         self._table_keys = []
 
     @property
-    def body(self):  # type: () -> List[Tuple[Optional[Key], Item]]
+    def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
 
     @property
-    def value(self):  # type: () -> Dict[Any, Any]
+    def value(self) -> Dict[Any, Any]:
         d = {}
         for k, v in self._body:
             if k is None:
@@ -65,10 +62,10 @@ class Container(MutableMapping, dict):
 
         return d
 
-    def parsing(self, parsing):  # type: (bool) -> None
+    def parsing(self, parsing: bool) -> None:
         self._parsed = parsing
 
-        for k, v in self._body:
+        for _, v in self._body:
             if isinstance(v, Table):
                 v.value.parsing(parsing)
             elif isinstance(v, AoT):
@@ -76,8 +73,8 @@ class Container(MutableMapping, dict):
                     t.value.parsing(parsing)
 
     def add(
-        self, key, item=None
-    ):  # type: (Union[Key, Item, str], Optional[Item]) -> Container
+        self, key: Union[Key, Item, str], item: Optional[Item] = None
+    ) -> "Container":
         """
         Adds an item to the current Container.
         """
@@ -91,7 +88,7 @@ class Container(MutableMapping, dict):
 
         return self.append(key, item)
 
-    def append(self, key, item):  # type: (Union[Key, str, None], Item) -> Container
+    def append(self, key: Union[Key, str, None], item: Item) -> "Container":
         if not isinstance(key, Key) and key is not None:
             key = Key(key)
 
@@ -101,16 +98,17 @@ class Container(MutableMapping, dict):
         if isinstance(item, (AoT, Table)) and item.name is None:
             item.name = key.key
 
-        if (
-            isinstance(item, Table)
-            and self._body
-            and not self._parsed
-            and not item.trivia.indent
-        ):
-            item.trivia.indent = "\n"
+        prev = self._previous_item()
+        prev_ws = isinstance(prev, Whitespace) or ends_with_withespace(prev)
+        if isinstance(item, Table):
+            if item.name != key.key:
+                item.invalidate_display_name()
+            if self._body and not (self._parsed or item.trivia.indent or prev_ws):
+                item.trivia.indent = "\n"
 
         if isinstance(item, AoT) and self._body and not self._parsed:
-            if item and "\n" not in item[0].trivia.indent:
+            item.invalidate_display_name()
+            if item and not ("\n" in item[0].trivia.indent or prev_ws):
                 item[0].trivia.indent = "\n" + item[0].trivia.indent
 
         if key is not None and key in self:
@@ -165,8 +163,15 @@ class Container(MutableMapping, dict):
 
                             return self
 
+                        # Create a new element to replace the old one
+                        current = copy.deepcopy(current)
                         for k, v in item.value.body:
                             current.append(k, v)
+                        self._body[
+                            current_idx[-1]
+                            if isinstance(current_idx, tuple)
+                            else current_idx
+                        ] = (current_body_element[0], current)
 
                         return self
                     elif current_body_element[0].is_dotted():
@@ -192,11 +197,9 @@ class Container(MutableMapping, dict):
             # item that is not a table and insert after it
             # If no such item exists, insert at the top of the table
             key_after = None
-            idx = 0
-            for k, v in self._body:
+            for i, (k, v) in enumerate(self._body):
                 if isinstance(v, Null):
-                    # This happens only after deletion
-                    continue
+                    continue  # Null elements are inserted after deletion
 
                 if isinstance(v, Whitespace) and not v.is_fixed():
                     continue
@@ -204,8 +207,7 @@ class Container(MutableMapping, dict):
                 if not is_table and isinstance(v, (Table, AoT)):
                     break
 
-                key_after = k or idx
-                idx += 1
+                key_after = k or i  # last scalar, Array or InlineTable value
 
             if key_after is not None:
                 if isinstance(key_after, int):
@@ -213,10 +215,11 @@ class Container(MutableMapping, dict):
                         return self._insert_at(key_after + 1, key, item)
                     else:
                         previous_item = self._body[-1][1]
-                        if (
-                            not isinstance(previous_item, Whitespace)
-                            and not is_table
-                            and "\n" not in previous_item.trivia.trail
+                        if not (
+                            isinstance(previous_item, Whitespace)
+                            or ends_with_withespace(previous_item)
+                            or is_table
+                            or "\n" in previous_item.trivia.trail
                         ):
                             previous_item.trivia.trail += "\n"
                 else:
@@ -250,7 +253,7 @@ class Container(MutableMapping, dict):
 
         return self
 
-    def remove(self, key):  # type: (Union[Key, str]) -> Container
+    def remove(self, key: Union[Key, str]) -> "Container":
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -269,8 +272,8 @@ class Container(MutableMapping, dict):
         return self
 
     def _insert_after(
-        self, key, other_key, item
-    ):  # type: (Union[str, Key], Union[str, Key], Union[Item, Any]) -> Container
+        self, key: Union[Key, str], other_key: Union[Key, str], item: Any
+    ) -> "Container":
         if key is None:
             raise ValueError("Key cannot be null in insert_after()")
 
@@ -315,11 +318,9 @@ class Container(MutableMapping, dict):
 
         return self
 
-    def _insert_at(
-        self, idx, key, item
-    ):  # type: (int, Union[str, Key], Union[Item, Any]) -> Container
+    def _insert_at(self, idx: int, key: Union[Key, str], item: Any) -> "Container":
         if idx > len(self._body) - 1:
-            raise ValueError("Unable to insert at position {}".format(idx))
+            raise ValueError(f"Unable to insert at position {idx}")
 
         if not isinstance(key, Key):
             key = Key(key)
@@ -328,10 +329,11 @@ class Container(MutableMapping, dict):
 
         if idx > 0:
             previous_item = self._body[idx - 1][1]
-            if (
-                not isinstance(previous_item, Whitespace)
-                and not isinstance(item, (AoT, Table))
-                and "\n" not in previous_item.trivia.trail
+            if not (
+                isinstance(previous_item, Whitespace)
+                or ends_with_withespace(previous_item)
+                or isinstance(item, (AoT, Table))
+                or "\n" in previous_item.trivia.trail
             ):
                 previous_item.trivia.trail += "\n"
 
@@ -357,7 +359,7 @@ class Container(MutableMapping, dict):
 
         return self
 
-    def item(self, key):  # type: (Union[Key, str]) -> Item
+    def item(self, key: Union[Key, str]) -> Item:
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -373,11 +375,11 @@ class Container(MutableMapping, dict):
 
         return self._body[idx][1]
 
-    def last_item(self):  # type: () -> Optional[Item]
+    def last_item(self) -> Optional[Item]:
         if self._body:
             return self._body[-1][1]
 
-    def as_string(self):  # type: () -> str
+    def as_string(self) -> str:
         s = ""
         for k, v in self._body:
             if k is not None:
@@ -393,8 +395,8 @@ class Container(MutableMapping, dict):
         return s
 
     def _render_table(
-        self, key, table, prefix=None
-    ):  # (Key, Table, Optional[str]) -> str
+        self, key: Key, table: Table, prefix: Optional[str] = None
+    ) -> str:
         cur = ""
 
         if table.display_name is not None:
@@ -457,7 +459,7 @@ class Container(MutableMapping, dict):
 
         return cur
 
-    def _render_aot_table(self, table, prefix=None):  # (Table, Optional[str]) -> str
+    def _render_aot_table(self, table: Table, prefix: Optional[str] = None) -> str:
         cur = ""
 
         _key = prefix or ""
@@ -510,41 +512,14 @@ class Container(MutableMapping, dict):
             item.trivia.trail,
         )
 
+    def __len__(self) -> int:
+        return dict.__len__(self)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(dict.keys(self))
+
     # Dictionary methods
-
-    def pop(self, key, default=_NOT_SET):
-        try:
-            value = self[key]
-        except KeyError:
-            if default is _NOT_SET:
-                raise
-
-            return default
-
-        del self[key]
-
-        return value
-
-    def setdefault(
-        self, key, default=None
-    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
-        super(Container, self).setdefault(key, default=default)
-
-        return self[key]
-
-    def __contains__(self, key):  # type: (Union[Key, str]) -> bool
-        if not isinstance(key, Key):
-            key = Key(key)
-
-        return key in self._map
-
-    def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
-        if key is not None and key in self:
-            self._replace(key, key, value)
-        else:
-            self.append(key, value)
-
-    def __getitem__(self, key):  # type: (Union[Key, str]) -> Union[Item, Container]
+    def __getitem__(self, key: Union[Key, str]) -> Union[Item, "Container"]:
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -564,24 +539,22 @@ class Container(MutableMapping, dict):
 
         return item
 
-    def __setitem__(self, key, value):  # type: (Union[Key, str], Any) -> None
+    def __setitem__(self, key: Union[Key, str], value: Any) -> None:
         if key is not None and key in self:
             self._replace(key, key, value)
         else:
             self.append(key, value)
 
-    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
+    def __delitem__(self, key: Union[Key, str]) -> None:
         self.remove(key)
 
-    def __len__(self):  # type: () -> int
-        return dict.__len__(self)
-
-    def __iter__(self):  # type: () -> Iterator[str]
-        return iter(dict.keys(self))
+    def setdefault(self, key: Union[Key, str], default: Any) -> Any:
+        super().setdefault(key, default=default)
+        return self[key]
 
     def _replace(
-        self, key, new_key, value
-    ):  # type: (Union[Key, str], Union[Key, str], Item) -> None
+        self, key: Union[Key, str], new_key: Union[Key, str], value: Item
+    ) -> None:
         if not isinstance(key, Key):
             key = Key(key)
 
@@ -595,8 +568,8 @@ class Container(MutableMapping, dict):
         self._replace_at(idx, new_key, value)
 
     def _replace_at(
-        self, idx, new_key, value
-    ):  # type: (Union[int, Tuple[int]], Union[Key, str], Item) -> None
+        self, idx: Union[int, Tuple[int]], new_key: Union[Key, str], value: Item
+    ) -> None:
         if not isinstance(new_key, Key):
             new_key = Key(new_key)
 
@@ -617,28 +590,49 @@ class Container(MutableMapping, dict):
 
         value = _item(value)
 
-        # Copying trivia
-        if not isinstance(value, (Whitespace, AoT)):
-            value.trivia.indent = v.trivia.indent
-            value.trivia.comment_ws = v.trivia.comment_ws
-            value.trivia.comment = v.trivia.comment
-            value.trivia.trail = v.trivia.trail
+        if isinstance(value, (AoT, Table)) and not isinstance(v, (AoT, Table)):
+            # new tables should appear after all non-table values
+            self.remove(k)
+            for i in range(idx, len(self._body)):
+                if isinstance(self._body[i][1], (AoT, Table)):
+                    self._insert_at(i, new_key, value)
+                    idx = i
+                    break
+            else:
+                idx = -1
+                self.append(new_key, value)
+        else:
+            # Copying trivia
+            if not isinstance(value, (Whitespace, AoT)):
+                value.trivia.indent = v.trivia.indent
+                value.trivia.comment_ws = value.trivia.comment_ws or v.trivia.comment_ws
+                value.trivia.comment = value.trivia.comment or v.trivia.comment
+                value.trivia.trail = v.trivia.trail
+            self._body[idx] = (new_key, value)
+
+        if hasattr(value, "invalidate_display_name"):
+            value.invalidate_display_name()  # type: ignore[attr-defined]
 
         if isinstance(value, Table):
-            # Insert a cosmetic new line for tables
-            value.append(None, Whitespace("\n"))
+            # Insert a cosmetic new line for tables if:
+            # - it does not have it yet OR is not followed by one
+            # - it is not the last item
+            last, _ = self._previous_item_with_index()
+            idx = last if idx < 0 else idx
+            has_ws = ends_with_withespace(value)
+            next_ws = idx < last and isinstance(self._body[idx + 1][1], Whitespace)
+            if idx < last and not (next_ws or has_ws):
+                value.append(None, Whitespace("\n"))
 
-        self._body[idx] = (new_key, value)
+            dict.__setitem__(self, new_key.key, value.value)
 
-        dict.__setitem__(self, new_key.key, value.value)
-
-    def __str__(self):  # type: () -> str
+    def __str__(self) -> str:
         return str(self.value)
 
-    def __repr__(self):  # type: () -> str
+    def __repr__(self) -> str:
         return repr(self.value)
 
-    def __eq__(self, other):  # type: (Dict) -> bool
+    def __eq__(self, other: dict) -> bool:
         if not isinstance(other, dict):
             return NotImplemented
 
@@ -667,10 +661,10 @@ class Container(MutableMapping, dict):
             if key is not None:
                 dict.__setitem__(self, key.key, item.value)
 
-    def copy(self):  # type: () -> Container
+    def copy(self) -> "Container":
         return copy.copy(self)
 
-    def __copy__(self):  # type: () -> Container
+    def __copy__(self) -> "Container":
         c = self.__class__(self._parsed)
         for k, v in dict.items(self):
             dict.__setitem__(c, k, v)
@@ -680,14 +674,34 @@ class Container(MutableMapping, dict):
 
         return c
 
+    def _previous_item_with_index(
+        self, idx: Optional[int] = None, ignore=(Null,)
+    ) -> Optional[Tuple[int, Item]]:
+        """Find the immediate previous item before index ``idx``"""
+        if idx is None or idx > len(self._body):
+            idx = len(self._body)
+        for i in range(idx - 1, -1, -1):
+            v = self._body[i][-1]
+            if not isinstance(v, ignore):
+                return i, v
+        return None
 
-class OutOfOrderTableProxy(MutableMapping, dict):
-    def __init__(self, container, indices):  # type: (Container, Tuple) -> None
+    def _previous_item(
+        self, idx: Optional[int] = None, ignore=(Null,)
+    ) -> Optional[Item]:
+        """Find the immediate previous item before index ``idx``.
+        If ``idx`` is not given, the last item is returned.
+        """
+        prev = self._previous_item_with_index(idx, ignore)
+        return prev[-1] if prev else None
+
+
+class OutOfOrderTableProxy(_CustomDict):
+    def __init__(self, container: Container, indices: Tuple[int]) -> None:
         self._container = container
-        self._internal_container = Container(self._container.parsing)
+        self._internal_container = Container(True)
         self._tables = []
         self._tables_map = {}
-        self._map = {}
 
         for i in indices:
             key, item = self._container._body[i]
@@ -700,27 +714,19 @@ class OutOfOrderTableProxy(MutableMapping, dict):
                     self._tables_map[k] = table_idx
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
-            else:
-                self._internal_container.append(key, item)
-                self._map[key] = i
-                if key is not None:
-                    dict.__setitem__(self, key.key, item)
 
     @property
     def value(self):
         return self._internal_container.value
 
-    def __getitem__(self, key):  # type: (Union[Key, str]) -> Any
+    def __getitem__(self, key: Union[Key, str]) -> Any:
         if key not in self._internal_container:
             raise NonExistentKey(key)
 
         return self._internal_container[key]
 
-    def __setitem__(self, key, item):  # type: (Union[Key, str], Any) -> None
-        if key in self._map:
-            idx = self._map[key]
-            self._container._replace_at(idx, key, item)
-        elif key in self._tables_map:
+    def __setitem__(self, key: Union[Key, str], item: Any) -> None:
+        if key in self._tables_map:
             table = self._tables[self._tables_map[key]]
             table[key] = item
         elif self._tables:
@@ -729,15 +735,12 @@ class OutOfOrderTableProxy(MutableMapping, dict):
         else:
             self._container[key] = item
 
+        self._internal_container[key] = item
         if key is not None:
             dict.__setitem__(self, key, item)
 
-    def __delitem__(self, key):  # type: (Union[Key, str]) -> None
-        if key in self._map:
-            idx = self._map[key]
-            del self._container[key]
-            del self._map[key]
-        elif key in self._tables_map:
+    def __delitem__(self, key: Union[Key, str]) -> None:
+        if key in self._tables_map:
             table = self._tables[self._tables_map[key]]
             del table[key]
             del self._tables_map[key]
@@ -745,47 +748,27 @@ class OutOfOrderTableProxy(MutableMapping, dict):
             raise NonExistentKey(key)
 
         del self._internal_container[key]
+        if key is not None:
+            dict.__delitem__(self, key)
 
-    def keys(self):
-        return self._internal_container.keys()
+    def __iter__(self) -> Iterator[str]:
+        return iter(dict.keys(self))
 
-    def values(self):
-        return self._internal_container.values()
-
-    def items(self):  # type: () -> Generator[Item]
-        return self._internal_container.items()
-
-    def update(self, other):  # type: (Dict) -> None
-        self._internal_container.update(other)
-
-    def get(self, key, default=None):  # type: (Any, Optional[Any]) -> Any
-        return self._internal_container.get(key, default=default)
-
-    def pop(self, key, default=_NOT_SET):
-        return self._internal_container.pop(key, default=default)
-
-    def setdefault(
-        self, key, default=None
-    ):  # type: (Union[Key, str], Any) -> Union[Item, Container]
-        return self._internal_container.setdefault(key, default=default)
-
-    def __contains__(self, key):
-        return key in self._internal_container
-
-    def __iter__(self):  # type: () -> Iterator[str]
-        return iter(self._internal_container)
-
-    def __str__(self):
-        return str(self._internal_container)
-
-    def __repr__(self):
-        return repr(self._internal_container)
-
-    def __eq__(self, other):  # type: (Dict) -> bool
-        if not isinstance(other, dict):
-            return NotImplemented
-
-        return self._internal_container == other
+    def __len__(self) -> int:
+        return dict.__len__(self)
 
     def __getattr__(self, attribute):
         return getattr(self._internal_container, attribute)
+
+    def setdefault(self, key: Union[Key, str], default: Any) -> Any:
+        super().setdefault(key, default=default)
+        return self[key]
+
+
+def ends_with_withespace(it: Any) -> bool:
+    """Returns ``True`` if the given item ``it`` is a ``Table`` or ``AoT`` object
+    ending with a ``Whitespace``.
+    """
+    return (
+        isinstance(it, Table) and isinstance(it.value._previous_item(), Whitespace)
+    ) or (isinstance(it, AoT) and len(it) > 0 and isinstance(it[-1], Whitespace))

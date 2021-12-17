@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import datetime
 
 from tomlkit import aot
@@ -79,7 +76,6 @@ def test_build_example(example):
 
     doc.add(nl())
     doc.add(comment("Products"))
-    doc.add(nl())
 
     products = aot()
     doc["products"] = products
@@ -145,4 +141,4 @@ bar = 1
 name = "test"
 """
 
-    assert doc.as_string()
+    assert doc.as_string() == expected

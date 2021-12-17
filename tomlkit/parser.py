@@ -1,23 +1,19 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import re
 import string
 
 from typing import Any
-from typing import Generator
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Type
 from typing import Union
 
-from ._compat import chr
 from ._compat import decode
 from ._utils import RFC_3339_LOOSE
 from ._utils import _escaped
 from ._utils import parse_rfc3339
 from .container import Container
-from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
 from .exceptions import InvalidCharInStringError
@@ -67,7 +63,7 @@ class Parser:
     Parser for TOML documents.
     """
 
-    def __init__(self, string):  # type: (str) -> None
+    def __init__(self, string: str) -> None:
         # Input to parse
         self._src = Source(decode(string))
 
@@ -89,20 +85,20 @@ class Parser:
     def _marker(self):
         return self._src.marker
 
-    def extract(self):  # type: () -> str
+    def extract(self) -> str:
         """
         Extracts the value between marker and index
         """
         return self._src.extract()
 
-    def inc(self, exception=None):  # type: (Optional[ParseError.__class__]) -> bool
+    def inc(self, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n, exception=None):  # type: (int, Optional[ParseError]) -> bool
+    def inc_n(self, n: int, exception: Optional[ParseError] = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -115,13 +111,13 @@ class Parser:
         """
         return self._src.consume(chars=chars, min=min, max=max)
 
-    def end(self):  # type: () -> bool
+    def end(self) -> bool:
         """
         Returns True if the parser has reached the end of the input.
         """
         return self._src.end()
 
-    def mark(self):  # type: () -> None
+    def mark(self) -> None:
         """
         Sets the marker to the index's current position
         """
@@ -133,7 +129,7 @@ class Parser:
         """
         return self._src.parse_error(exception, *args)
 
-    def parse(self):  # type: () -> TOMLDocument
+    def parse(self) -> TOMLDocument:
         body = TOMLDocument(True)
 
         # Take all keyvals outside of tables/AoT's.
@@ -169,7 +165,7 @@ class Parser:
 
         return body
 
-    def _merge_ws(self, item, container):  # type: (Item, Container) -> bool
+    def _merge_ws(self, item: Item, container: Container) -> bool:
         """
         Merges the given Item with the last one currently in the given Container if
         both are whitespace items.
@@ -191,7 +187,7 @@ class Parser:
 
         return True
 
-    def _is_child(self, parent, child):  # type: (str, str) -> bool
+    def _is_child(self, parent: str, child: str) -> bool:
         """
         Returns whether a key is strictly a child of another key.
         AoT siblings are not considered children of one another.
@@ -204,9 +200,10 @@ class Parser:
 
         return parent_parts == child_parts[: len(parent_parts)]
 
-    def _split_table_name(self, name):  # type: (str) -> Generator[Key]
+    def _split_table_name(self, name: str) -> Iterator[Key]:
         in_name = False
         current = ""
+        original = ""
         t = KeyType.Bare
         parts = 0
         for c in name:
@@ -215,33 +212,24 @@ class Parser:
             if c == ".":
                 if in_name:
                     current += c
+                    original += c
                     continue
 
                 if not current:
                     raise self.parse_error()
 
-                yield Key(current.strip(), t=t, sep="", original=current)
+                yield Key(current.strip(), t=t, sep="", original=original)
 
                 parts += 1
 
-                current = ""
+                current = original = ""
                 t = KeyType.Bare
-                continue
             elif c in {"'", '"'}:
                 if in_name:
-                    if (
-                        t == KeyType.Literal
-                        and c == '"'
-                        or t == KeyType.Basic
-                        and c == "'"
-                    ):
+                    if c == t.value:
+                        in_name = False
+                    else:
                         current += c
-                        continue
-
-                    if c != t.value:
-                        raise self.parse_error()
-
-                    in_name = False
                 else:
                     if (
                         current.strip()
@@ -252,24 +240,24 @@ class Parser:
 
                     in_name = True
                     t = KeyType.Literal if c == "'" else KeyType.Basic
-
-                continue
+                original += c
             elif in_name or c.is_bare_key_char():
                 current += c
+                original += c
             elif c.is_spaces():
                 # A space is only valid at this point
                 # if it's in between parts.
                 # We store it for now and will check
                 # later if it's valid
                 current += c
-                continue
+                original += c
             else:
                 raise self.parse_error()
 
         if current.strip():
-            yield Key(current.strip(), t=t, sep="", original=current)
+            yield Key(current.strip(), t=t, sep="", original=original)
 
-    def _parse_item(self):  # type: () -> Optional[Tuple[Optional[Key], Item]]
+    def _parse_item(self) -> Optional[Tuple[Optional[Key], Item]]:
         """
         Attempts to parse the next item and returns it, along with its key
         if the item is value-like.
@@ -305,7 +293,7 @@ class Parser:
 
         return self._parse_key_value(True)
 
-    def _parse_comment_trail(self):  # type: () -> Tuple[str, str, str]
+    def _parse_comment_trail(self, parse_trail: bool = True) -> Tuple[str, str, str]:
         """
         Returns (comment_ws, comment, trail)
         If there is no comment, comment_ws and comment will
@@ -350,22 +338,23 @@ class Parser:
             if self.end():
                 break
 
-        while self._current.is_spaces() and self.inc():
-            pass
-
-        if self._current == "\r":
-            self.inc()
-
-        if self._current == "\n":
-            self.inc()
-
         trail = ""
-        if self._idx != self._marker or self._current.is_ws():
-            trail = self.extract()
+        if parse_trail:
+            while self._current.is_spaces() and self.inc():
+                pass
+
+            if self._current == "\r":
+                self.inc()
+
+            if self._current == "\n":
+                self.inc()
+
+            if self._idx != self._marker or self._current.is_ws():
+                trail = self.extract()
 
         return comment_ws, comment, trail
 
-    def _parse_key_value(self, parse_comment=False):  # type: (bool) -> (Key, Item)
+    def _parse_key_value(self, parse_comment: bool = False) -> Tuple[Key, Item]:
         # Leading indent
         self.mark()
 
@@ -386,7 +375,8 @@ class Parser:
                     raise self.parse_error(UnexpectedCharError, "=")
                 else:
                     found_equals = True
-            pass
+        if not found_equals:
+            raise self.parse_error(UnexpectedCharError, self._current)
 
         if not key.sep:
             key.sep = self.extract()
@@ -411,7 +401,7 @@ class Parser:
 
         return key, val
 
-    def _parse_key(self):  # type: () -> Key
+    def _parse_key(self) -> Key:
         """
         Parses a Key at the current position;
         WS before the key must be exhausted first at the callsite.
@@ -421,7 +411,7 @@ class Parser:
         else:
             return self._parse_bare_key()
 
-    def _parse_quoted_key(self):  # type: () -> Key
+    def _parse_quoted_key(self) -> Key:
         """
         Parses a key enclosed in either single or double quotes.
         """
@@ -454,7 +444,7 @@ class Parser:
 
         return Key(key, key_type, "", dotted)
 
-    def _parse_bare_key(self):  # type: () -> Key
+    def _parse_bare_key(self) -> Key:
         """
         Parses a bare key.
         """
@@ -475,7 +465,7 @@ class Parser:
 
         if " " in key:
             # Bare key with spaces in it
-            raise self.parse_error(ParseError, 'Invalid key "{}"'.format(key))
+            raise self.parse_error(ParseError, f'Invalid key "{key}"')
 
         if self._current == ".":
             self.inc()
@@ -487,8 +477,8 @@ class Parser:
         return Key(key, key_type, "", dotted, original=original)
 
     def _handle_dotted_key(
-        self, container, key, value
-    ):  # type: (Union[Container, Table], Key, Any) -> None
+        self, container: Union[Container, Table], key: Key, value: Any
+    ) -> None:
         names = tuple(self._split_table_name(key.as_string()))
         name = names[0]
         name._dotted = True
@@ -549,7 +539,7 @@ class Parser:
 
                     table = table[_name]
 
-    def _parse_value(self):  # type: () -> Item
+    def _parse_value(self) -> Item:
         """
         Attempts to parse a value at the current position.
         """
@@ -674,7 +664,7 @@ class Parser:
     def _parse_false(self):
         return self._parse_bool(BoolType.FALSE)
 
-    def _parse_bool(self, style):  # type: (BoolType) -> Bool
+    def _parse_bool(self, style: BoolType) -> Bool:
         with self._state:
             style = BoolType(style)
 
@@ -685,25 +675,25 @@ class Parser:
 
             return Bool(style, Trivia())
 
-    def _parse_array(self):  # type: () -> Array
+    def _parse_array(self) -> Array:
         # Consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
 
-        elems = []  # type: List[Item]
+        elems: List[Item] = []
         prev_value = None
         while True:
             # consume whitespace
             mark = self._idx
-            self.consume(TOMLChar.SPACES)
-            newline = self.consume(TOMLChar.NL)
+            self.consume(TOMLChar.SPACES + TOMLChar.NL)
             indent = self._src[mark : self._idx]
+            newline = set(TOMLChar.NL) & set(indent)
             if newline:
                 elems.append(Whitespace(indent))
                 continue
 
             # consume comment
             if self._current == "#":
-                cws, comment, trail = self._parse_comment_trail()
+                cws, comment, trail = self._parse_comment_trail(parse_trail=False)
                 elems.append(Comment(Trivia(indent, cws, comment, trail)))
                 continue
 
@@ -743,7 +733,7 @@ class Parser:
         else:
             return res
 
-    def _parse_inline_table(self):  # type: () -> InlineTable
+    def _parse_inline_table(self) -> InlineTable:
         # consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
 
@@ -799,7 +789,7 @@ class Parser:
 
         return InlineTable(elems, Trivia())
 
-    def _parse_number(self, raw, trivia):  # type: (str, Trivia) -> Optional[Item]
+    def _parse_number(self, raw: str, trivia: Trivia) -> Optional[Item]:
         # Leading zeros are not allowed
         sign = ""
         if raw.startswith(("+", "-")):
@@ -829,7 +819,7 @@ class Parser:
             base = 16
 
         # Underscores should be surrounded by digits
-        clean = re.sub("(?i)(?<={})_(?={})".format(digits, digits), "", raw)
+        clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw)
 
         if "_" in clean:
             return
@@ -845,11 +835,11 @@ class Parser:
             except ValueError:
                 return
 
-    def _parse_literal_string(self):  # type: () -> String
+    def _parse_literal_string(self) -> String:
         with self._state:
             return self._parse_string(StringType.SLL)
 
-    def _parse_basic_string(self):  # type: () -> String
+    def _parse_basic_string(self) -> String:
         with self._state:
             return self._parse_string(StringType.SLB)
 
@@ -898,12 +888,12 @@ class Parser:
 
         raise self.parse_error(InvalidCharInStringError, self._current)
 
-    def _parse_string(self, delim):  # type: (StringType) -> String
+    def _parse_string(self, delim: StringType) -> String:
         # only keep parsing for string if the current character matches the delim
         if self._current != delim.unit:
             raise self.parse_error(
                 InternalParserError,
-                "Invalid character for string type {}".format(delim),
+                f"Invalid character for string type {delim}",
             )
 
         # consume the opening/first delim, EOF here is an issue
@@ -1006,8 +996,8 @@ class Parser:
                 self.inc(exception=UnexpectedEofError)
 
     def _parse_table(
-        self, parent_name=None, parent=None
-    ):  # type: (Optional[str], Optional[Table]) -> Tuple[Key, Union[Table, AoT]]
+        self, parent_name: Optional[str] = None, parent: Optional[Table] = None
+    ) -> Tuple[Key, Union[Table, AoT]]:
         """
         Parses a table element.
         """
@@ -1075,7 +1065,7 @@ class Parser:
         key = Key(name, sep="")
         name_parts = tuple(self._split_table_name(name))
         if any(" " in part.key.strip() and part.is_bare() for part in name_parts):
-            raise self.parse_error(ParseError, 'Invalid table name "{}"'.format(name))
+            raise self.parse_error(ParseError, f'Invalid table name "{name}"')
 
         missing_table = False
         if parent_name:
@@ -1102,7 +1092,7 @@ class Parser:
             values,
             Trivia(indent, cws, comment, trail),
             is_aot,
-            name=name,
+            name=name_parts[0].key if name_parts else key.key,
             display_name=name,
         )
 
@@ -1131,13 +1121,13 @@ class Parser:
                         child = Table(
                             Container(True),
                             Trivia(indent, cws, comment, trail),
-                            is_aot and i == len(name_parts[1:]) - 1,
-                            is_super_table=i < len(name_parts[1:]) - 1,
+                            is_aot and i == len(name_parts) - 2,
+                            is_super_table=i < len(name_parts) - 2,
                             name=_name.key,
-                            display_name=name if i == len(name_parts[1:]) - 1 else None,
+                            display_name=name if i == len(name_parts) - 2 else None,
                         )
 
-                    if is_aot and i == len(name_parts[1:]) - 1:
+                    if is_aot and i == len(name_parts) - 2:
                         table.raw_append(
                             _name, AoT([child], name=table.name, parsed=True)
                         )
@@ -1194,7 +1184,7 @@ class Parser:
 
         return key, result
 
-    def _peek_table(self):  # type: () -> Tuple[bool, str]
+    def _peek_table(self) -> Tuple[bool, str]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
@@ -1203,7 +1193,6 @@ class Parser:
         as well as whether it is part of an AoT.
         """
         # we always want to restore after exiting this scope
-        table_name = ""
         with self._state(save_marker=True, restore=True):
             if self._current != "[":
                 raise self.parse_error(
@@ -1220,12 +1209,13 @@ class Parser:
 
             self.mark()
 
+            table_name = ""
             while self._current != "]" and self.inc():
                 table_name = self.extract()
 
             return is_aot, table_name
 
-    def _parse_aot(self, first, name_first):  # type: (Table, str) -> AoT
+    def _parse_aot(self, first: Table, name_first: str) -> AoT:
         """
         Parses all siblings of the provided table first and bundles them into
         an AoT.
@@ -1244,7 +1234,7 @@ class Parser:
 
         return AoT(payload, parsed=True)
 
-    def _peek(self, n):  # type: (int) -> str
+    def _peek(self, n: int) -> str:
         """
         Peeks ahead n characters.
 
@@ -1262,9 +1252,7 @@ class Parser:
                 break
             return buf
 
-    def _peek_unicode(
-        self, is_long
-    ):  # type: (bool) -> Tuple[Optional[str], Optional[str]]
+    def _peek_unicode(self, is_long: bool) -> Tuple[Optional[str], Optional[str]]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
