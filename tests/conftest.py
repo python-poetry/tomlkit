@@ -42,7 +42,11 @@ def invalid_example():
 
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
-IGNORED_TESTS = {}
+IGNORED_TESTS = {
+    "valid": [
+        "float/inf-and-nan",  # Can't compare nan
+    ]
+}
 
 
 def get_tomltest_cases():
@@ -63,6 +67,18 @@ def get_tomltest_cases():
                 bn, ext = f.rsplit(".", 1)
                 key = os.path.join(relpath, bn)
                 if key in ignored:
+                    continue
+                if ext == "multi":
+                    with open(os.path.join(root, f), "rb") as f:
+                        for line in f:
+                            line = line.decode("utf-8")
+                            name = line.split("=")[0].strip()
+                            if not name or name.startswith("#"):
+                                continue
+                            new_key = os.path.join(key, name)
+                            if new_key not in rv[d]:
+                                rv[d][new_key] = {}
+                            rv[d][new_key]["toml"] = line
                     continue
                 if d == "invalid" and relpath == "encoding":
                     rv["invalid_encode"][bn] = os.path.join(root, f)

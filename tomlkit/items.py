@@ -1,3 +1,4 @@
+import abc
 import re
 import string
 
@@ -230,17 +231,49 @@ class KeyType(Enum):
     Literal = "'"
 
 
-class Key:
-    """
-    A key value.
-    """
+class Key(abc.ABC):
+    sep: str
+    _original: str
+    _keys: List["SingleKey"]
+    _dotted: bool
+    key: str
+
+    @abc.abstractmethod
+    def __hash__(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def __eq__(self, __o: object) -> bool:
+        pass
+
+    def is_dotted(self) -> bool:
+        return self._dotted
+
+    def __iter__(self) -> Iterator["SingleKey"]:
+        return iter(self._keys)
+
+    def concat(self, other: "Key") -> "DottedKey":
+        keys = self._keys + other._keys
+        return DottedKey(keys, sep=self.sep)
+
+    def as_string(self) -> str:
+        return self._original
+
+    def __str__(self) -> str:
+        return self.as_string()
+
+    def __repr__(self) -> str:
+        return f"<Key {self.as_string()}>"
+
+
+class SingleKey(Key):
+    """A single key"""
 
     def __init__(
         self,
         k: str,
         t: Optional[KeyType] = None,
         sep: Optional[str] = None,
-        dotted: bool = False,
         original: Optional[str] = None,
     ) -> None:
         if t is None:
@@ -261,36 +294,47 @@ class Key:
             original = t.value + escape_quotes(k, t.value) + t.value
 
         self._original = original
-
-        self._dotted = dotted
+        self._keys = [self]
+        self._dotted = False
 
     @property
     def delimiter(self) -> str:
         return self.t.value
 
-    def is_dotted(self) -> bool:
-        return self._dotted
-
     def is_bare(self) -> bool:
         return self.t == KeyType.Bare
-
-    def as_string(self) -> str:
-        return self._original
 
     def __hash__(self) -> int:
         return hash(self.key)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Key):
-            return self.key == other.key
+            return isinstance(other, SingleKey) and self.key == other.key
 
         return self.key == other
 
-    def __str__(self) -> str:
-        return self.as_string()
 
-    def __repr__(self) -> str:
-        return f"<Key {self.as_string()}>"
+class DottedKey(Key):
+    def __init__(
+        self,
+        keys: Iterable[Key],
+        sep: Optional[str] = None,
+        original: Optional[str] = None,
+    ) -> None:
+        self._keys = list(keys)
+        if original is None:
+            original = ".".join(k.as_string() for k in self._keys)
+
+        self.sep = "=" if sep is None else sep
+        self._original = original
+        self._dotted = True
+        self.key = ".".join(k.key for k in self._keys)
+
+    def __hash__(self) -> int:
+        return hash(tuple(self._keys))
+
+    def __eq__(self, __o: object) -> bool:
+        return isinstance(__o, DottedKey) and self._keys == __o._keys
 
 
 class Item:
@@ -1426,7 +1470,8 @@ class AoT(Item, _CustomList):
         del self._body[key]
         list.__delitem__(self, key)
 
-    def insert(self, index: int, value: Table) -> None:
+    def insert(self, index: int, value: dict) -> None:
+        value = item(value, _parent=self)
         if not isinstance(value, Table):
             raise ValueError(f"Unsupported insert value type: {type(value)}")
         length = len(self)

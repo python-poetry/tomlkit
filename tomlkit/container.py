@@ -18,6 +18,7 @@ from .items import Comment
 from .items import Item
 from .items import Key
 from .items import Null
+from .items import SingleKey
 from .items import Table
 from .items import Whitespace
 from .items import _CustomDict
@@ -90,7 +91,7 @@ class Container(_CustomDict):
 
     def append(self, key: Union[Key, str, None], item: Item) -> "Container":
         if not isinstance(key, Key) and key is not None:
-            key = Key(key)
+            key = SingleKey(key)
 
         if not isinstance(item, Item):
             item = _item(item)
@@ -255,7 +256,7 @@ class Container(_CustomDict):
 
     def remove(self, key: Union[Key, str]) -> "Container":
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         idx = self._map.pop(key, None)
         if idx is None:
@@ -281,10 +282,10 @@ class Container(_CustomDict):
             raise NonExistentKey(key)
 
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         if not isinstance(other_key, Key):
-            other_key = Key(other_key)
+            other_key = SingleKey(other_key)
 
         item = _item(item)
 
@@ -323,7 +324,7 @@ class Container(_CustomDict):
             raise ValueError(f"Unable to insert at position {idx}")
 
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         item = _item(item)
 
@@ -361,7 +362,7 @@ class Container(_CustomDict):
 
     def item(self, key: Union[Key, str]) -> Item:
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         idx = self._map.get(key, None)
         if idx is None:
@@ -521,7 +522,7 @@ class Container(_CustomDict):
     # Dictionary methods
     def __getitem__(self, key: Union[Key, str]) -> Union[Item, "Container"]:
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         idx = self._map.get(key, None)
         if idx is None:
@@ -556,10 +557,10 @@ class Container(_CustomDict):
         self, key: Union[Key, str], new_key: Union[Key, str], value: Item
     ) -> None:
         if not isinstance(key, Key):
-            key = Key(key)
+            key = SingleKey(key)
 
         if not isinstance(new_key, Key):
-            new_key = Key(new_key)
+            new_key = SingleKey(new_key)
 
         idx = self._map.get(key, None)
         if idx is None:
@@ -571,7 +572,7 @@ class Container(_CustomDict):
         self, idx: Union[int, Tuple[int]], new_key: Union[Key, str], value: Item
     ) -> None:
         if not isinstance(new_key, Key):
-            new_key = Key(new_key)
+            new_key = SingleKey(new_key)
 
         if isinstance(idx, tuple):
             for i in idx[1:]:

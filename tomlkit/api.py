@@ -17,6 +17,7 @@ from .items import InlineTable
 from .items import Integer
 from .items import Item as _Item
 from .items import Key
+from .items import SingleKey
 from .items import String
 from .items import Table
 from .items import Time
@@ -141,7 +142,7 @@ def aot() -> AoT:
 
 
 def key(k: str) -> Key:
-    return Key(k)
+    return SingleKey(k)
 
 
 def value(raw: str) -> _Item:
