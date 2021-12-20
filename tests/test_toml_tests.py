@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from tomlkit import load
 from tomlkit import parse
 from tomlkit._compat import decode
 from tomlkit._utils import parse_rfc3339
@@ -20,6 +21,9 @@ stypes = {
     "integer": int,
     "float": float,
     "datetime": parse_rfc3339,
+    "datetime-local": parse_rfc3339,
+    "date-local": parse_rfc3339,
+    "time-local": parse_rfc3339,
 }
 
 
@@ -50,3 +54,9 @@ def test_valid_decode(valid_case):
 def test_invalid_decode(invalid_decode_case):
     with pytest.raises(TOMLKitError):
         parse(invalid_decode_case["toml"])
+
+
+def test_invalid_encode(invalid_encode_case):
+    with pytest.raises((TOMLKitError, UnicodeDecodeError)):
+        with open(invalid_encode_case, encoding="utf-8") as f:
+            load(f)

@@ -2,7 +2,6 @@ import re
 import string
 
 from typing import Any
-from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -14,6 +13,7 @@ from ._utils import RFC_3339_LOOSE
 from ._utils import _escaped
 from ._utils import parse_rfc3339
 from .container import Container
+from .exceptions import EmptyKeyError
 from .exceptions import EmptyTableNameError
 from .exceptions import InternalParserError
 from .exceptions import InvalidCharInStringError
@@ -40,6 +40,7 @@ from .items import Item
 from .items import Key
 from .items import KeyType
 from .items import Null
+from .items import SingleKey
 from .items import String
 from .items import StringType
 from .items import Table
@@ -67,7 +68,7 @@ class Parser:
         # Input to parse
         self._src = Source(decode(string))
 
-        self._aot_stack = []
+        self._aot_stack: List[Key] = []
 
     @property
     def _state(self):
@@ -157,7 +158,7 @@ class Parser:
             if isinstance(value, Table) and value.is_aot_element():
                 # This is just the first table in an AoT. Parse the rest of the array
                 # along with it.
-                value = self._parse_aot(value, key.key)
+                value = self._parse_aot(value, key)
 
             body.append(key, value)
 
@@ -187,75 +188,18 @@ class Parser:
 
         return True
 
-    def _is_child(self, parent: str, child: str) -> bool:
+    def _is_child(self, parent: Key, child: Key) -> bool:
         """
         Returns whether a key is strictly a child of another key.
         AoT siblings are not considered children of one another.
         """
-        parent_parts = tuple(self._split_table_name(parent))
-        child_parts = tuple(self._split_table_name(child))
+        parent_parts = tuple(parent)
+        child_parts = tuple(child)
 
         if parent_parts == child_parts:
             return False
 
         return parent_parts == child_parts[: len(parent_parts)]
-
-    def _split_table_name(self, name: str) -> Iterator[Key]:
-        in_name = False
-        current = ""
-        original = ""
-        t = KeyType.Bare
-        parts = 0
-        for c in name:
-            c = TOMLChar(c)
-
-            if c == ".":
-                if in_name:
-                    current += c
-                    original += c
-                    continue
-
-                if not current:
-                    raise self.parse_error()
-
-                yield Key(current.strip(), t=t, sep="", original=original)
-
-                parts += 1
-
-                current = original = ""
-                t = KeyType.Bare
-            elif c in {"'", '"'}:
-                if in_name:
-                    if c == t.value:
-                        in_name = False
-                    else:
-                        current += c
-                else:
-                    if (
-                        current.strip()
-                        and TOMLChar(current[-1]).is_spaces()
-                        and not parts
-                    ):
-                        raise self.parse_error()
-
-                    in_name = True
-                    t = KeyType.Literal if c == "'" else KeyType.Basic
-                original += c
-            elif in_name or c.is_bare_key_char():
-                current += c
-                original += c
-            elif c.is_spaces():
-                # A space is only valid at this point
-                # if it's in between parts.
-                # We store it for now and will check
-                # later if it's valid
-                current += c
-                original += c
-            else:
-                raise self.parse_error()
-
-        if current.strip():
-            yield Key(current.strip(), t=t, sep="", original=original)
 
     def _parse_item(self) -> Optional[Tuple[Optional[Key], Item]]:
         """
@@ -406,6 +350,10 @@ class Parser:
         Parses a Key at the current position;
         WS before the key must be exhausted first at the callsite.
         """
+        self.mark()
+        while self._current.is_spaces() and self.inc():
+            # Skip any leading whitespace
+            pass
         if self._current in "\"'":
             return self._parse_quoted_key()
         else:
@@ -415,43 +363,35 @@ class Parser:
         """
         Parses a key enclosed in either single or double quotes.
         """
+        # Extract the leading whitespace
+        original = self.extract()
         quote_style = self._current
-        key_type = None
-        dotted = False
-        for t in KeyType:
-            if t.value == quote_style:
-                key_type = t
-                break
+        key_type = next((t for t in KeyType if t.value == quote_style), None)
 
         if key_type is None:
             raise RuntimeError("Should not have entered _parse_quoted_key()")
 
-        self.inc()
+        key_str = self._parse_string(
+            StringType.SLB if key_type == KeyType.Basic else StringType.SLL
+        )
+        if key_str._t.is_multiline():
+            raise self.parse_error(UnexpectedCharError, key_str._t.value)
+        original += key_str.as_string()
         self.mark()
-
-        while self._current != quote_style and self.inc():
+        while self._current.is_spaces() and self.inc():
             pass
-
-        key = self.extract()
-
+        original += self.extract()
+        key = SingleKey(str(key_str), t=key_type, sep="", original=original)
         if self._current == ".":
             self.inc()
-            dotted = True
-            key += "." + self._parse_key().as_string()
-            key_type = KeyType.Bare
-        else:
-            self.inc()
+            key = key.concat(self._parse_key())
 
-        return Key(key, key_type, "", dotted)
+        return key
 
     def _parse_bare_key(self) -> Key:
         """
         Parses a bare key.
         """
-        key_type = None
-        dotted = False
-
-        self.mark()
         while (
             self._current.is_bare_key_char() or self._current.is_spaces()
         ) and self.inc():
@@ -461,25 +401,24 @@ class Parser:
         key = original.strip()
         if not key:
             # Empty key
-            raise self.parse_error(ParseError, "Empty key found")
+            raise self.parse_error(EmptyKeyError)
 
         if " " in key:
             # Bare key with spaces in it
             raise self.parse_error(ParseError, f'Invalid key "{key}"')
 
+        key = SingleKey(key, KeyType.Bare, "", original)
+
         if self._current == ".":
             self.inc()
-            dotted = True
-            original += "." + self._parse_key().as_string()
-            key = original.strip()
-            key_type = KeyType.Bare
+            key = key.concat(self._parse_key())
 
-        return Key(key, key_type, "", dotted, original=original)
+        return key
 
     def _handle_dotted_key(
         self, container: Union[Container, Table], key: Key, value: Any
     ) -> None:
-        names = tuple(self._split_table_name(key.as_string()))
+        names = tuple(iter(key))
         name = names[0]
         name._dotted = True
         if name in container:
@@ -796,10 +735,11 @@ class Parser:
             sign = raw[0]
             raw = raw[1:]
 
-        if (
-            len(raw) > 1
-            and raw.startswith("0")
+        if len(raw) > 1 and (
+            raw.startswith("0")
             and not raw.startswith(("0.", "0o", "0x", "0b", "0e"))
+            or sign
+            and raw.startswith(".")
         ):
             return
 
@@ -819,12 +759,16 @@ class Parser:
             base = 16
 
         # Underscores should be surrounded by digits
-        clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw)
+        clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw).lower()
 
         if "_" in clean:
             return
 
-        if clean.endswith("."):
+        if (
+            clean.endswith(".")
+            or not clean.startswith("0x")
+            and clean.split("e", 1)[0].endswith(".")
+        ):
             return
 
         try:
@@ -996,7 +940,7 @@ class Parser:
                 self.inc(exception=UnexpectedEofError)
 
     def _parse_table(
-        self, parent_name: Optional[str] = None, parent: Optional[Table] = None
+        self, parent_name: Optional[Key] = None, parent: Optional[Table] = None
     ) -> Tuple[Key, Union[Table, AoT]]:
         """
         Parses a table element.
@@ -1018,58 +962,28 @@ class Parser:
                 raise self.parse_error(UnexpectedEofError)
 
             is_aot = True
-
-        # Consume any whitespace
-        self.mark()
-        while self._current.is_spaces() and self.inc():
-            pass
-
-        ws_prefix = self.extract()
-
-        # Key
-        if self._current in [StringType.SLL.value, StringType.SLB.value]:
-            delimiter = (
-                StringType.SLL
-                if self._current == StringType.SLL.value
-                else StringType.SLB
-            )
-            name = self._parse_string(delimiter)
-            name = "{delimiter}{name}{delimiter}".format(
-                delimiter=delimiter.value, name=name
-            )
-
-            self.mark()
-            while self._current != "]" and self.inc():
-                if self.end():
-                    raise self.parse_error(UnexpectedEofError)
-
-                pass
-
-            ws_suffix = self.extract()
-            name += ws_suffix
-        else:
-            self.mark()
-            while self._current != "]" and self.inc():
-                if self.end():
-                    raise self.parse_error(UnexpectedEofError)
-
-                pass
-
-            name = self.extract()
-
-        name = ws_prefix + name
-
-        if not name.strip():
+        try:
+            key = self._parse_key()
+        except EmptyKeyError:
+            raise self.parse_error(EmptyTableNameError) from None
+        if self.end():
+            raise self.parse_error(UnexpectedEofError)
+        elif self._current != "]":
+            raise self.parse_error(UnexpectedCharError, self._current)
+        elif not key.key.strip():
             raise self.parse_error(EmptyTableNameError)
 
-        key = Key(name, sep="")
-        name_parts = tuple(self._split_table_name(name))
+        key.sep = ""
+        full_key = key
+        name_parts = tuple(key)
         if any(" " in part.key.strip() and part.is_bare() for part in name_parts):
-            raise self.parse_error(ParseError, f'Invalid table name "{name}"')
+            raise self.parse_error(
+                ParseError, f'Invalid table name "{full_key.as_string()}"'
+            )
 
         missing_table = False
         if parent_name:
-            parent_name_parts = tuple(self._split_table_name(parent_name))
+            parent_name_parts = tuple(parent_name)
         else:
             parent_name_parts = tuple()
 
@@ -1093,7 +1007,7 @@ class Parser:
             Trivia(indent, cws, comment, trail),
             is_aot,
             name=name_parts[0].key if name_parts else key.key,
-            display_name=name,
+            display_name=full_key.as_string(),
         )
 
         if len(name_parts) > 1:
@@ -1106,36 +1020,36 @@ class Parser:
                 table = Table(
                     Container(True),
                     Trivia(indent, cws, comment, trail),
-                    is_aot and name_parts[0].key in self._aot_stack,
+                    is_aot and name_parts[0] in self._aot_stack,
                     is_super_table=True,
                     name=name_parts[0].key,
                 )
 
-                result = table
-                key = name_parts[0]
+            result = table
+            key = name_parts[0]
 
-                for i, _name in enumerate(name_parts[1:]):
-                    if _name in table:
-                        child = table[_name]
-                    else:
-                        child = Table(
-                            Container(True),
-                            Trivia(indent, cws, comment, trail),
-                            is_aot and i == len(name_parts) - 2,
-                            is_super_table=i < len(name_parts) - 2,
-                            name=_name.key,
-                            display_name=name if i == len(name_parts) - 2 else None,
-                        )
+            for i, _name in enumerate(name_parts[1:]):
+                if _name in table:
+                    child = table[_name]
+                else:
+                    child = Table(
+                        Container(True),
+                        Trivia(indent, cws, comment, trail),
+                        is_aot and i == len(name_parts) - 2,
+                        is_super_table=i < len(name_parts) - 2,
+                        name=_name.key,
+                        display_name=full_key.as_string()
+                        if i == len(name_parts) - 2
+                        else None,
+                    )
 
-                    if is_aot and i == len(name_parts) - 2:
-                        table.raw_append(
-                            _name, AoT([child], name=table.name, parsed=True)
-                        )
-                    else:
-                        table.raw_append(_name, child)
+                if is_aot and i == len(name_parts) - 2:
+                    table.raw_append(_name, AoT([child], name=table.name, parsed=True))
+                else:
+                    table.raw_append(_name, child)
 
-                    table = child
-                    values = table.value
+                table = child
+                values = table.value
         else:
             if name_parts:
                 key = name_parts[0]
@@ -1151,21 +1065,21 @@ class Parser:
                         table.raw_append(_key, item)
             else:
                 if self._current == "[":
-                    is_aot_next, name_next = self._peek_table()
+                    _, key_next = self._peek_table()
 
-                    if self._is_child(name, name_next):
-                        key_next, table_next = self._parse_table(name, table)
+                    if self._is_child(full_key, key_next):
+                        key_next, table_next = self._parse_table(full_key, table)
 
                         table.raw_append(key_next, table_next)
 
                         # Picking up any sibling
                         while not self.end():
-                            _, name_next = self._peek_table()
+                            _, key_next = self._peek_table()
 
-                            if not self._is_child(name, name_next):
+                            if not self._is_child(full_key, key_next):
                                 break
 
-                            key_next, table_next = self._parse_table(name, table)
+                            key_next, table_next = self._parse_table(full_key, table)
 
                             table.raw_append(key_next, table_next)
 
@@ -1179,12 +1093,12 @@ class Parser:
         if isinstance(result, Null):
             result = table
 
-            if is_aot and (not self._aot_stack or name != self._aot_stack[-1]):
-                result = self._parse_aot(result, name)
+            if is_aot and (not self._aot_stack or full_key != self._aot_stack[-1]):
+                result = self._parse_aot(result, full_key)
 
         return key, result
 
-    def _peek_table(self) -> Tuple[bool, str]:
+    def _peek_table(self) -> Tuple[bool, Key]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
@@ -1206,16 +1120,12 @@ class Parser:
             if self._current == "[":
                 self.inc()
                 is_aot = True
+            try:
+                return is_aot, self._parse_key()
+            except EmptyKeyError:
+                raise self.parse_error(EmptyTableNameError) from None
 
-            self.mark()
-
-            table_name = ""
-            while self._current != "]" and self.inc():
-                table_name = self.extract()
-
-            return is_aot, table_name
-
-    def _parse_aot(self, first: Table, name_first: str) -> AoT:
+    def _parse_aot(self, first: Table, name_first: Key) -> AoT:
         """
         Parses all siblings of the provided table first and bundles them into
         an AoT.

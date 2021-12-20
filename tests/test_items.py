@@ -17,8 +17,8 @@ from tomlkit.items import Bool
 from tomlkit.items import Comment
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
-from tomlkit.items import Key
 from tomlkit.items import KeyType
+from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table

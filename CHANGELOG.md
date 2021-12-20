@@ -5,6 +5,7 @@
 ### Changed
 
 - Drop support for Python<3.6. ([#151](https://github.com/sdispater/tomlkit/pull/151))
+- Comply with TOML v1.0.0. ([#154](https://github.com/sdispater/tomlkit/pull/154))
 
 ### Fixed
 

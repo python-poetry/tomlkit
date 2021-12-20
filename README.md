@@ -18,7 +18,7 @@
 
 # TOML Kit - Style-preserving TOML library for Python
 
-TOML Kit is a **1.0.0rc1-compliant** [TOML](https://github.com/toml-lang/toml) library.
+TOML Kit is a **1.0.0-compliant** [TOML](https://toml.io/) library.
 
 It includes a parser that preserves all comments, indentations, whitespace and internal element ordering,
 and makes them accessible and editable via an intuitive API.
@@ -166,6 +166,7 @@ If not, you can use `pip`:
 ```bash
 pip install tomlkit
 ```
+
 ## Running tests
 
 Please clone the repo with submodules with the following command
