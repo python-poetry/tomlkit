@@ -1,0 +1,28 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  Integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - name: Clone Poetry Repo
+        run: git checkout --depth 1 https://github.com/python-poetry/poetry.git
+      - name: Install dependencies
+        run: |
+          pip install --upgrade ./poetry .
+          pip install pytest pytest-mock
+      - name: Run tests
+        run: |
+          poetry config virtualenvs.in-project true
+          cd poetry
+          pytest -q tests/
