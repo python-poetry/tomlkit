@@ -735,10 +735,11 @@ class Parser:
             sign = raw[0]
             raw = raw[1:]
 
-        if (
-            len(raw) > 1
-            and raw.startswith("0")
+        if len(raw) > 1 and (
+            raw.startswith("0")
             and not raw.startswith(("0.", "0o", "0x", "0b", "0e"))
+            or sign
+            and raw.startswith(".")
         ):
             return
 
@@ -758,12 +759,16 @@ class Parser:
             base = 16
 
         # Underscores should be surrounded by digits
-        clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw)
+        clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw).lower()
 
         if "_" in clean:
             return
 
-        if clean.endswith("."):
+        if (
+            clean.endswith(".")
+            or not clean.startswith("0x")
+            and clean.split("e", 1)[0].endswith(".")
+        ):
             return
 
         try:

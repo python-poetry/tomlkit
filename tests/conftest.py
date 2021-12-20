@@ -64,21 +64,14 @@ def get_tomltest_cases():
             if relpath == ".":
                 relpath = ""
             for f in files:
-                bn, ext = f.rsplit(".", 1)
+                try:
+                    bn, ext = f.rsplit(".", 1)
+                except ValueError:
+                    bn, ext = f.rsplit("-", 1)
                 key = os.path.join(relpath, bn)
-                if key in ignored:
-                    continue
                 if ext == "multi":
-                    with open(os.path.join(root, f), "rb") as f:
-                        for line in f:
-                            line = line.decode("utf-8")
-                            name = line.split("=")[0].strip()
-                            if not name or name.startswith("#"):
-                                continue
-                            new_key = os.path.join(key, name)
-                            if new_key not in rv[d]:
-                                rv[d][new_key] = {}
-                            rv[d][new_key]["toml"] = line
+                    continue
+                if key in ignored:
                     continue
                 if d == "invalid" and relpath == "encoding":
                     rv["invalid_encode"][bn] = os.path.join(root, f)
