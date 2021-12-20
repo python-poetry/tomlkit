@@ -25,7 +25,7 @@ from .api import value
 from .api import ws
 
 
-__version__ = "0.7.2"
+__version__ = "0.8.0"
 __all__ = [
     "aot",
     "array",
@@ -34,6 +34,7 @@ __all__ = [
     "date",
     "datetime",
     "document",
+    "dump",
     "dumps",
     "float_",
     "inline_table",
@@ -41,6 +42,7 @@ __all__ = [
     "item",
     "key",
     "key_value",
+    "load",
     "loads",
     "nl",
     "parse",
