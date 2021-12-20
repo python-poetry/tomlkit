@@ -654,3 +654,12 @@ value = false
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
+
+
+def test_table_copy():
+    table = item({"foo": "bar"})
+    table_copy = table.copy()
+    assert isinstance(table_copy, Table)
+    table["foo"] = "baz"
+    assert table_copy["foo"] == "bar"
+    assert table_copy.as_string() == 'foo = "bar"\n'

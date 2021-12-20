@@ -1,4 +1,5 @@
 import abc
+import copy
 import re
 import string
 
@@ -215,6 +216,9 @@ class Trivia:
             trail = "\n"
 
         self.trail = trail
+
+    def copy(self) -> "Trivia":
+        return type(self)(self.indent, self.comment_ws, self.comment, self.trail)
 
 
 class KeyType(Enum):
@@ -1144,6 +1148,9 @@ class AbstractTable(Item, _CustomDict):
     def __str__(self):
         return str(self.value)
 
+    def copy(self: AT) -> AT:
+        return copy.copy(self)
+
     def __repr__(self) -> str:
         return repr(self.value)
 
@@ -1209,6 +1216,16 @@ class Table(AbstractTable):
     @property
     def discriminant(self) -> int:
         return 9
+
+    def __copy__(self) -> "Table":
+        return type(self)(
+            self._value.copy(),
+            self._trivia.copy(),
+            self._is_aot_element,
+            self._is_super_table,
+            self.name,
+            self.display_name,
+        )
 
     def append(self, key, _item):
         """
@@ -1373,6 +1390,9 @@ class InlineTable(AbstractTable):
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         super().__setitem__(key, value)
+
+    def __copy__(self) -> "InlineTable":
+        return type(self)(self._value.copy(), self._trivia.copy(), self._new)
 
     def _getstate(self, protocol: int = 3) -> tuple:
         return (self._value, self._trivia)
