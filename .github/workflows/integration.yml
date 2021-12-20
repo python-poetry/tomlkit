@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade ./poetry .
-          pip install pytest pytest-mock flactdict deepdiff httpretty
+          pip install pytest pytest-mock flatdict deepdiff httpretty
       - name: Run tests
         run: |
           poetry config virtualenvs.in-project true
