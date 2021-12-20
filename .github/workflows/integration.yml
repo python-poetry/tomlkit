@@ -15,12 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
       - name: Clone Poetry Repo
         run: git clone --depth 1 https://github.com/python-poetry/poetry.git
       - name: Install dependencies
         run: |
           pip install --upgrade ./poetry .
-          pip install pytest pytest-mock
+          pip install pytest pytest-mock flactdict deepdiff httpretty
       - name: Run tests
         run: |
           poetry config virtualenvs.in-project true
