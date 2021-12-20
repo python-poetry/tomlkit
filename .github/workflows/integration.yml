@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
       - name: Clone Poetry Repo
-        run: git checkout --depth 1 https://github.com/python-poetry/poetry.git
+        run: git clone --depth 1 https://github.com/python-poetry/poetry.git
       - name: Install dependencies
         run: |
           pip install --upgrade ./poetry .
