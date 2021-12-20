@@ -147,7 +147,7 @@ class Source(str):
 
         # failed to consume minimum number of characters
         if min > 0:
-            self.parse_error(UnexpectedCharError)
+            self.parse_error(UnexpectedCharError, self.current)
 
     def end(self) -> bool:
         """
