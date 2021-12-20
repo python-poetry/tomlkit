@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Support copy protocols for table items. ([#65](https://github.com/sdispater/tomlkit/issues/#65))
 - Escape characters in double quoted key string. ([#136](https://github.com/sdispater/tomlkit/issues/#136))
 - Fix the invalid dumping output of multiline array when it is empty. ([#139](https://github.com/sdispater/tomlkit/issues/#139))
 - Fix a bug that tomlkit accepts an invalid table with missing `=`. ([#141](https://github.com/sdispater/tomlkit/issues/141))
