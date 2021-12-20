@@ -68,7 +68,7 @@ def get_tomltest_cases():
                     bn, ext = f.rsplit(".", 1)
                 except ValueError:
                     bn, ext = f.rsplit("-", 1)
-                key = os.path.join(relpath, bn)
+                key = f"{relpath}/{bn}"
                 if ext == "multi":
                     continue
                 if key in ignored:
