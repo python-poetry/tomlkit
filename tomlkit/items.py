@@ -22,7 +22,6 @@ from typing import overload
 
 from ._compat import PY38
 from ._compat import decode
-from ._utils import escape_quotes
 from ._utils import escape_string
 from .toml_char import TOMLChar
 
@@ -291,7 +290,8 @@ class SingleKey(Key):
         self.sep = sep
         self.key = k
         if original is None:
-            original = t.value + escape_quotes(k, t.value) + t.value
+            key_str = escape_string(k) if t == KeyType.Basic else k
+            original = f"{t.value}{key_str}{t.value}"
 
         self._original = original
         self._keys = [self]

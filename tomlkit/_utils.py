@@ -135,17 +135,3 @@ def merge_dicts(d1: dict, d2: dict) -> dict:
             merge_dicts(d1[k], v)
         else:
             d1[k] = d2[k]
-
-
-def escape_quotes(s: str, quote: str) -> str:
-    escaped = False
-    result = ""
-    for c in s:
-        if escaped:
-            escaped = False
-        elif c == "\\":
-            escaped = True
-        elif c == quote:
-            result += "\\"
-        result += c
-    return result
