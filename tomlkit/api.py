@@ -129,8 +129,8 @@ def array(raw: str = None) -> Array:
     return value(raw)
 
 
-def table() -> Table:
-    return Table(Container(), Trivia(), False)
+def table(is_super_table: bool = False) -> Table:
+    return Table(Container(), Trivia(), False, is_super_table)
 
 
 def inline_table() -> InlineTable:
