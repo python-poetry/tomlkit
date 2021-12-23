@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-### Changed
+### Added
 
 - Add a new argument to `table` API to allow it to be a super table. ([#159](https://github.com/sdispater/tomlkit/pull/159))
 
