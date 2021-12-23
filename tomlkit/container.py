@@ -20,6 +20,7 @@ from .items import Key
 from .items import Null
 from .items import SingleKey
 from .items import Table
+from .items import Trivia
 from .items import Whitespace
 from .items import _CustomDict
 from .items import item as _item
@@ -89,12 +90,74 @@ class Container(_CustomDict):
 
         return self.append(key, item)
 
+    def _handle_dotted_key(self, key: Key, value: Item) -> None:
+        names = tuple(iter(key))
+        name = names[0]
+        name._dotted = True
+        if name in self:
+            if not isinstance(value, Table):
+                table = Table(Container(True), Trivia(), False, is_super_table=True)
+                _table = table
+                for i, _name in enumerate(names[1:]):
+                    if i == len(names) - 2:
+                        _name.sep = key.sep
+
+                        _table.append(_name, value)
+                    else:
+                        _name._dotted = True
+                        _table.append(
+                            _name,
+                            Table(
+                                Container(True),
+                                Trivia(),
+                                False,
+                                is_super_table=i < len(names) - 2,
+                            ),
+                        )
+
+                        _table = _table[_name]
+
+                value = table
+
+            self.append(name, value)
+
+            return
+        else:
+            table = Table(Container(True), Trivia(), False, is_super_table=True)
+            self.append(name, table)
+
+        for i, _name in enumerate(names[1:]):
+            if i == len(names) - 2:
+                _name.sep = key.sep
+
+                table.append(_name, value)
+            else:
+                _name._dotted = True
+                if _name in table.value:
+                    table = table.value[_name]
+                else:
+                    table.append(
+                        _name,
+                        Table(
+                            Container(True),
+                            Trivia(),
+                            False,
+                            is_super_table=i < len(names) - 2,
+                        ),
+                    )
+
+                    table = table[_name]
+
     def append(self, key: Union[Key, str, None], item: Item) -> "Container":
         if not isinstance(key, Key) and key is not None:
             key = SingleKey(key)
 
         if not isinstance(item, Item):
             item = _item(item)
+
+        if key is not None and key.is_multi():
+            self._handle_dotted_key(key, item)
+            return self
 
         if isinstance(item, (AoT, Table)) and item.name is None:
             item.name = key.key

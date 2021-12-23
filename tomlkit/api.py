@@ -2,7 +2,9 @@ import datetime as _datetime
 
 from collections.abc import Mapping
 from typing import IO
+from typing import Iterable
 from typing import Tuple
+from typing import Union
 
 from ._utils import parse_rfc3339
 from .container import Container
@@ -12,6 +14,7 @@ from .items import Bool
 from .items import Comment
 from .items import Date
 from .items import DateTime
+from .items import DottedKey
 from .items import Float
 from .items import InlineTable
 from .items import Integer
@@ -141,8 +144,10 @@ def aot() -> AoT:
     return AoT([])
 
 
-def key(k: str) -> Key:
-    return SingleKey(k)
+def key(k: Union[str, Iterable[str]]) -> Key:
+    if isinstance(k, str):
+        return SingleKey(k)
+    return DottedKey([key(_k) for _k in k])
 
 
 def value(raw: str) -> _Item:
