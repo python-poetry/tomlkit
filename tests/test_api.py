@@ -283,3 +283,11 @@ def test_item_mixed_aray():
     t = tomlkit.item(example)
     assert t.as_string().strip() == expected
     assert dumps({"x": {"y": example}}).strip() == "[x]\ny = " + expected
+
+
+def test_build_super_table():
+    doc = tomlkit.document()
+    table = tomlkit.table(True)
+    table.add("bar", {"x": 1})
+    doc.add("foo", table)
+    assert doc.as_string() == "[foo.bar]\nx = 1\n"

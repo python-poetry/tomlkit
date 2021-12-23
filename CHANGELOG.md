@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Added
+
+- Add a new argument to `table` API to allow it to be a super table. ([#159](https://github.com/sdispater/tomlkit/pull/159))
+
 ## [0.8.0] - 2021-12-20
 
 ### Changed
