@@ -1,7 +1,6 @@
 import re
 import string
 
-from typing import Any
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -145,10 +144,8 @@ class Parser:
                 break
 
             key, value = item
-            if key is not None and key.is_dotted():
+            if (key is not None and key.is_multi()) or not self._merge_ws(value, body):
                 # We actually have a table
-                self._handle_dotted_key(body, key, value)
-            elif not self._merge_ws(value, body):
                 body.append(key, value)
 
             self.mark()
@@ -415,69 +412,6 @@ class Parser:
 
         return key
 
-    def _handle_dotted_key(
-        self, container: Union[Container, Table], key: Key, value: Any
-    ) -> None:
-        names = tuple(iter(key))
-        name = names[0]
-        name._dotted = True
-        if name in container:
-            if not isinstance(value, Table):
-                table = Table(Container(True), Trivia(), False, is_super_table=True)
-                _table = table
-                for i, _name in enumerate(names[1:]):
-                    if i == len(names) - 2:
-                        _name.sep = key.sep
-
-                        _table.append(_name, value)
-                    else:
-                        _name._dotted = True
-                        _table.append(
-                            _name,
-                            Table(
-                                Container(True),
-                                Trivia(),
-                                False,
-                                is_super_table=i < len(names) - 2,
-                            ),
-                        )
-
-                        _table = _table[_name]
-
-                value = table
-
-            container.append(name, value)
-
-            return
-        else:
-            table = Table(Container(True), Trivia(), False, is_super_table=True)
-            if isinstance(container, Table):
-                container.raw_append(name, table)
-            else:
-                container.append(name, table)
-
-        for i, _name in enumerate(names[1:]):
-            if i == len(names) - 2:
-                _name.sep = key.sep
-
-                table.append(_name, value)
-            else:
-                _name._dotted = True
-                if _name in table.value:
-                    table = table.value[_name]
-                else:
-                    table.append(
-                        _name,
-                        Table(
-                            Container(True),
-                            Trivia(),
-                            False,
-                            is_super_table=i < len(names) - 2,
-                        ),
-                    )
-
-                    table = table[_name]
-
     def _parse_value(self) -> Item:
         """
         Attempts to parse a value at the current position.
@@ -708,10 +642,7 @@ class Parser:
                     raise self.parse_error(UnexpectedCharError, self._current)
 
             key, val = self._parse_key_value(False)
-            if key.is_dotted():
-                self._handle_dotted_key(elems, key, val)
-            else:
-                elems.add(key, val)
+            elems.add(key, val)
 
             # consume trailing whitespace
             mark = self._idx
@@ -1059,10 +990,7 @@ class Parser:
             if item:
                 _key, item = item
                 if not self._merge_ws(item, values):
-                    if _key is not None and _key.is_dotted():
-                        self._handle_dotted_key(table, _key, item)
-                    else:
-                        table.raw_append(_key, item)
+                    table.raw_append(_key, item)
             else:
                 if self._current == "[":
                     _, key_next = self._peek_table()

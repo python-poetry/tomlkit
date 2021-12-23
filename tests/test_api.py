@@ -291,3 +291,13 @@ def test_build_super_table():
     table.add("bar", {"x": 1})
     doc.add("foo", table)
     assert doc.as_string() == "[foo.bar]\nx = 1\n"
+
+
+def test_add_dotted_key():
+    doc = tomlkit.document()
+    doc.add(tomlkit.key(["foo", "bar"]), 1)
+    assert doc.as_string() == "foo.bar = 1\n"
+
+    table = tomlkit.table()
+    table.add(tomlkit.key(["foo", "bar"]), 1)
+    assert table.as_string() == "foo.bar = 1\n"

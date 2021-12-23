@@ -259,6 +259,9 @@ class Key(abc.ABC):
         keys = self._keys + other._keys
         return DottedKey(keys, sep=self.sep)
 
+    def is_multi(self) -> bool:
+        return len(self._keys) > 1
+
     def as_string(self) -> str:
         return self._original
 
@@ -329,9 +332,9 @@ class DottedKey(Key):
         if original is None:
             original = ".".join(k.as_string() for k in self._keys)
 
-        self.sep = "=" if sep is None else sep
+        self.sep = " = " if sep is None else sep
         self._original = original
-        self._dotted = True
+        self._dotted = False
         self.key = ".".join(k.key for k in self._keys)
 
     def __hash__(self) -> int:
@@ -1237,7 +1240,8 @@ class Table(AbstractTable):
         self._value.append(key, _item)
 
         if isinstance(key, Key):
-            key = key.key
+            key = next(iter(key)).key
+            _item = self._value[key]
 
         if key is not None:
             dict.__setitem__(self, key, _item)
@@ -1264,7 +1268,8 @@ class Table(AbstractTable):
         self._value.append(key, _item)
 
         if isinstance(key, Key):
-            key = key.key
+            key = next(iter(key)).key
+            _item = self._value[key]
 
         if key is not None:
             dict.__setitem__(self, key, _item)
