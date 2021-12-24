@@ -32,6 +32,8 @@ _NOT_SET = object()
 class Container(_CustomDict):
     """
     A container for items within a TOMLDocument.
+
+    This class implements the `dict` interface with copy/deepcopy protocol.
     """
 
     def __init__(self, parsed: bool = False) -> None:
@@ -79,6 +81,13 @@ class Container(_CustomDict):
     ) -> "Container":
         """
         Adds an item to the current Container.
+
+        :Example:
+
+        >>> # add a key-value pair
+        >>> doc.add('key', 'value')
+        >>> # add a comment or whitespace or newline
+        >>> doc.add(comment('# comment'))
         """
         if item is None:
             if not isinstance(key, (Comment, Whitespace)):
@@ -149,6 +158,7 @@ class Container(_CustomDict):
                     table = table[_name]
 
     def append(self, key: Union[Key, str, None], item: Item) -> "Container":
+        """Similar to :meth:`add` but both key and value must be given."""
         if not isinstance(key, Key) and key is not None:
             key = SingleKey(key)
 
@@ -318,6 +328,7 @@ class Container(_CustomDict):
         return self
 
     def remove(self, key: Union[Key, str]) -> "Container":
+        """Remove a key from the container."""
         if not isinstance(key, Key):
             key = SingleKey(key)
 
@@ -424,6 +435,7 @@ class Container(_CustomDict):
         return self
 
     def item(self, key: Union[Key, str]) -> Item:
+        """Get an item for the given key."""
         if not isinstance(key, Key):
             key = SingleKey(key)
 
@@ -440,10 +452,12 @@ class Container(_CustomDict):
         return self._body[idx][1]
 
     def last_item(self) -> Optional[Item]:
+        """Get the last item."""
         if self._body:
             return self._body[-1][1]
 
     def as_string(self) -> str:
+        """Render as TOML string."""
         s = ""
         for k, v in self._body:
             if k is not None:

@@ -55,7 +55,22 @@ else:
         """Adds MutableMapping mixin while pretending to be a builtin dict"""
 
 
-def item(value, _parent=None, _sort_keys=False):
+def item(
+    value: Any, _parent: Optional["Item"] = None, _sort_keys: bool = False
+) -> "Item":
+    """Create a TOML item from a Python object.
+
+    :Example:
+
+    >>> item(42)
+    42
+    >>> item([1, 2, 3])
+    [1, 2, 3]
+    >>> item({'a': 1, 'b': 2})
+    a = 1
+    b = 2
+    """
+
     from .container import Container
 
     if isinstance(value, Item):
@@ -235,6 +250,8 @@ class KeyType(Enum):
 
 
 class Key(abc.ABC):
+    """Base class for a key"""
+
     sep: str
     _original: str
     _keys: List["SingleKey"]
@@ -250,19 +267,23 @@ class Key(abc.ABC):
         pass
 
     def is_dotted(self) -> bool:
+        """If the key is followed by other keys"""
         return self._dotted
 
     def __iter__(self) -> Iterator["SingleKey"]:
         return iter(self._keys)
 
     def concat(self, other: "Key") -> "DottedKey":
+        """Concatenate keys into a dotted key"""
         keys = self._keys + other._keys
         return DottedKey(keys, sep=self.sep)
 
     def is_multi(self) -> bool:
+        """Check if the key contains multiple keys"""
         return len(self._keys) > 1
 
     def as_string(self) -> str:
+        """The TOML representation"""
         return self._original
 
     def __str__(self) -> str:
@@ -306,9 +327,11 @@ class SingleKey(Key):
 
     @property
     def delimiter(self) -> str:
+        """The delimiter: double quote/single quote/none"""
         return self.t.value
 
     def is_bare(self) -> bool:
+        """Check if the key is bare"""
         return self.t == KeyType.Bare
 
     def __hash__(self) -> int:
@@ -354,6 +377,7 @@ class Item:
 
     @property
     def trivia(self) -> Trivia:
+        """The trivia element associated with this item"""
         return self._trivia
 
     @property
@@ -361,11 +385,13 @@ class Item:
         raise NotImplementedError()
 
     def as_string(self) -> str:
+        """The TOML representation"""
         raise NotImplementedError()
 
     # Helpers
 
     def comment(self, comment: str) -> "Item":
+        """Attach a comment to this item"""
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -375,6 +401,7 @@ class Item:
         return self
 
     def indent(self, indent: int) -> "Item":
+        """Indent this item with given number of spaces"""
         if self._trivia.indent.startswith("\n"):
             self._trivia.indent = "\n" + " " * indent
         else:
@@ -419,6 +446,7 @@ class Whitespace(Item):
 
     @property
     def value(self) -> str:
+        """The wrapped string of the whitespace"""
         return self._s
 
     @property
@@ -430,6 +458,7 @@ class Whitespace(Item):
         return 0
 
     def is_fixed(self) -> bool:
+        """If the whitespace is fixed, it can't be merged or discarded from the output."""
         return self._fixed
 
     def as_string(self) -> str:
@@ -483,6 +512,7 @@ class Integer(int, Item):
 
     @property
     def value(self) -> int:
+        """The wrapped integer value"""
         return self
 
     def as_string(self) -> str:
@@ -550,6 +580,7 @@ class Float(float, Item):
 
     @property
     def value(self) -> float:
+        """The wrapped float value"""
         return self
 
     def as_string(self) -> str:
@@ -610,6 +641,7 @@ class Bool(Item):
 
     @property
     def value(self) -> bool:
+        """The wrapped boolean value"""
         return self._value
 
     def as_string(self) -> str:
@@ -896,6 +928,20 @@ class Array(Item, _CustomList):
         return self
 
     def multiline(self, multiline: bool) -> "Array":
+        """Change the array to display in multiline or not.
+
+        :Example:
+
+        >>> a = item([1, 2, 3])
+        >>> print(a.as_string())
+        [1, 2, 3]
+        >>> print(a.multiline(True).as_string())
+        [
+            1,
+            2,
+            3,
+        ]
+        """
         self._multiline = multiline
 
         return self
@@ -930,9 +976,21 @@ class Array(Item, _CustomList):
         add_comma: bool = True,
         newline: bool = True,
     ) -> None:
-        """Add multiple items in a line.
+        """Add multiple items in a line to control the format precisely.
         When add_comma is True, only accept actual values and
         ", " will be added between values automatically.
+
+        :Example:
+
+        >>> a = array()
+        >>> a.add_line(1, 2, 3)
+        >>> a.add_line(4, 5, 6)
+        >>> a.add_line(indent="")
+        >>> print(a.as_string())
+        [
+            1, 2, 3,
+            4, 5, 6,
+        ]
         """
         values = self._value[:]
         new_values = []
@@ -977,6 +1035,7 @@ class Array(Item, _CustomList):
         self._reindex()
 
     def clear(self) -> None:
+        """Clear the array."""
         list.clear(self)
 
         self._value.clear()
@@ -1246,7 +1305,7 @@ class Table(AbstractTable):
         if key is not None:
             dict.__setitem__(self, key, _item)
 
-        m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
+        m = re.match(r"(?s)^[^ ]*([ ]+).*$", self._trivia.indent)
         if not m:
             return self
 
@@ -1262,6 +1321,7 @@ class Table(AbstractTable):
         return self
 
     def raw_append(self, key: Union[Key, str], _item: Any) -> "Table":
+        """Similar to :meth:`append` but does not copy indentation."""
         if not isinstance(_item, Item):
             _item = item(_item)
 
@@ -1277,9 +1337,12 @@ class Table(AbstractTable):
         return self
 
     def is_aot_element(self) -> bool:
+        """True if the table is the direct child of an AOT element."""
         return self._is_aot_element
 
     def is_super_table(self) -> bool:
+        """A super table is the intermediate parent of a nested table as in [a.b.c].
+        If true, it won't appear in the TOML representation."""
         return self._is_super_table
 
     def as_string(self) -> str:
@@ -1288,6 +1351,7 @@ class Table(AbstractTable):
     # Helpers
 
     def indent(self, indent: int) -> "Table":
+        """Indent the table with given number of spaces."""
         super().indent(indent)
 
         m = re.match("(?s)^[^ ]*([ ]+).*$", self._trivia.indent)

@@ -31,7 +31,7 @@ from .parser import Parser
 from .toml_document import TOMLDocument
 
 
-def loads(string: str) -> TOMLDocument:
+def loads(string: Union[str, bytes]) -> TOMLDocument:
     """
     Parses a string into a TOMLDocument.
 
@@ -66,13 +66,16 @@ def load(fp: IO) -> TOMLDocument:
 def dump(data: Mapping, fp: IO[str], *, sort_keys: bool = False) -> None:
     """
     Dump a TOMLDocument into a writable file stream.
+
+    :param data: a dict-like object to dump
+    :param sort_keys: if true, sort the keys in alphabetic order
     """
     fp.write(dumps(data, sort_keys=sort_keys))
 
 
-def parse(string: str) -> TOMLDocument:
+def parse(string: Union[str, bytes]) -> TOMLDocument:
     """
-    Parses a string into a TOMLDocument.
+    Parses a string or bytes into a TOMLDocument.
     """
     return Parser(string).parse()
 
@@ -85,23 +88,28 @@ def document() -> TOMLDocument:
 
 
 # Items
-def integer(raw: str) -> Integer:
+def integer(raw: Union[str, int]) -> Integer:
+    """Create an integer item from a number or string."""
     return item(int(raw))
 
 
-def float_(raw: str) -> Float:
+def float_(raw: Union[str, float]) -> Float:
+    """Create an float item from a number or string."""
     return item(float(raw))
 
 
 def boolean(raw: str) -> Bool:
+    """Turn `true` or `false` into a boolean item."""
     return item(raw == "true")
 
 
 def string(raw: str) -> String:
+    """Create a string item."""
     return item(raw)
 
 
 def date(raw: str) -> Date:
+    """Create a TOML date."""
     value = parse_rfc3339(raw)
     if not isinstance(value, _datetime.date):
         raise ValueError("date() only accepts date strings.")
@@ -110,6 +118,7 @@ def date(raw: str) -> Date:
 
 
 def time(raw: str) -> Time:
+    """Create a TOML time."""
     value = parse_rfc3339(raw)
     if not isinstance(value, _datetime.time):
         raise ValueError("time() only accepts time strings.")
@@ -118,6 +127,7 @@ def time(raw: str) -> Time:
 
 
 def datetime(raw: str) -> DateTime:
+    """Create a TOML datetime."""
     value = parse_rfc3339(raw)
     if not isinstance(value, _datetime.datetime):
         raise ValueError("datetime() only accepts datetime strings.")
@@ -126,6 +136,17 @@ def datetime(raw: str) -> DateTime:
 
 
 def array(raw: str = None) -> Array:
+    """Create an array item for its string representation.
+
+    :Example:
+
+    >>> array("[1, 2, 3]")  # Create from a string
+    [1, 2, 3]
+    >>> a = array()
+    >>> a.extend([1, 2, 3])  # Create from a list
+    >>> a
+    [1, 2, 3]
+    """
     if raw is None:
         raw = "[]"
 
@@ -133,38 +154,108 @@ def array(raw: str = None) -> Array:
 
 
 def table(is_super_table: bool = False) -> Table:
+    """Create an empty table.
+
+    :param is_super_table: if true, the table is a super table
+
+    :Example:
+
+    >>> doc = document()
+    >>> foo = table(True)
+    >>> bar = table()
+    >>> bar.update({'x': 1})
+    >>> foo.append('bar', bar)
+    >>> doc.append('foo', foo)
+    >>> print(doc.as_string())
+    [foo.bar]
+    x = 1
+    """
     return Table(Container(), Trivia(), False, is_super_table)
 
 
 def inline_table() -> InlineTable:
+    """Create an inline table.
+
+    :Example:
+
+    >>> table = inline_table()
+    >>> table.update({'x': 1, 'y': 2})
+    >>> print(table.as_string())
+    {x = 1, y = 2}
+    """
     return InlineTable(Container(), Trivia(), new=True)
 
 
 def aot() -> AoT:
+    """Create an array of table.
+
+    :Example:
+
+    >>> doc = document()
+    >>> aot = aot()
+    >>> aot.append(item({'x': 1}))
+    >>> doc.append('foo', aot)
+    >>> print(doc.as_string())
+    [[foo]]
+    x = 1
+    """
     return AoT([])
 
 
 def key(k: Union[str, Iterable[str]]) -> Key:
+    """Create a key from a string. When a list of string is given,
+    it will create a dotted key.
+
+    :Example:
+
+    >>> doc = document()
+    >>> doc.append(key('foo'), 1)
+    >>> doc.append(key(['bar', 'baz']), 2)
+    >>> print(doc.as_string())
+    foo = 1
+    bar.baz = 2
+    """
     if isinstance(k, str):
         return SingleKey(k)
     return DottedKey([key(_k) for _k in k])
 
 
 def value(raw: str) -> _Item:
+    """Parse a simple value from a string.
+
+    :Example:
+
+    >>> value("1")
+    1
+    >>> value("true")
+    True
+    >>> value("[1, 2, 3]")
+    [1, 2, 3]
+    """
     return Parser(raw)._parse_value()
 
 
 def key_value(src: str) -> Tuple[Key, _Item]:
+    """Parse a key-value pair from a string.
+
+    :Example:
+
+    >>> key_value("foo = 1")
+    (Key('foo'), 1)
+    """
     return Parser(src)._parse_key_value()
 
 
 def ws(src: str) -> Whitespace:
+    """Create a whitespace from a string."""
     return Whitespace(src, fixed=True)
 
 
 def nl() -> Whitespace:
+    """Create a newline item."""
     return ws("\n")
 
 
 def comment(string: str) -> Comment:
+    """Create a comment item."""
     return Comment(Trivia(comment_ws="  ", comment="# " + string))
