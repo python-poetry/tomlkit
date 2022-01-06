@@ -24,7 +24,7 @@ Part of the implementation as been adapted, improved and fixed from [Molten](htt
 
 ## Usage
 
-See the [documentation](https://tomlkit.readthedocs.io/en/latest/quickstart.html) for more information.
+See the [documentation](docs/quickstart.rst) for more information.
 
 ## Installation
 
