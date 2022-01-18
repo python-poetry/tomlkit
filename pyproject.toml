@@ -22,10 +22,6 @@ python = "^3.6"
 pytest = "^6.2.5"
 pytest-cov = "^3.0.0"
 PyYAML = "^6.0"
-pre-commit = {version = "^2.1.0", python = "^3.6.1"}
-mypy = "^0.920"
-Sphinx = "^4.3.2"
-furo = "^2021.11.23"
 
 [tool.black]
 line-length = 88
@@ -57,3 +53,40 @@ known_third_party = ["pytest"]
 [build-system]
 requires = ["poetry-core>=1.0.0a9"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pyprojectx]
+poetry = "poetry==1.1.12"
+black = "black==21.12b0"
+isort = "isort==5.10.1"
+flake8 = "flake8==4.0.1"
+pre-commit = "pre-commit"
+sphinx ="""\
+sphinx==4.3.2
+furo==2021.11.23"""
+
+[tool.pyprojectx.aliases]
+install = "poetry install"
+outdated = "poetry show --outdated"
+clean = """\
+rm -r .venv
+rm -r .pytest_cache
+rm -r dist"""
+clean-all = """\
+pw@clean
+rm -r .pyprojectx"""
+format-code = "black tomlkit && pw@isort tomlkit"
+test = "poetry run pytest tests/"
+lint = "flake8 tomlkit"
+check-black = "black tomlkit --check"
+check = "pw@check-black && pw@lint && pw@test"
+build = "pw@install && pw@check && pw@poetry build"
+generate-docs = "@sphinx: sphinx-build docs build/docs"
+
+[tool.pyprojectx.os.win.aliases]
+clean = """\
+rmdir /s/q .venv
+rmdir /s/q .pytest_cache
+rmdir /s/q dist"""
+clean-all = """\
+pw@clean
+rmdir /s/q .pyprojectx"""

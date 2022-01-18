@@ -24,12 +24,20 @@ jobs:
     strategy:
       matrix:
         os: [Ubuntu, MacOS, Windows]
-        python-version: [3.6, 3.7, 3.8, 3.9, "3.10"]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: "recursive"
+
+      - name: Cache .pyprojectx
+        uses: actions/cache@v2
+        env:
+          cache-name: .pyprojectx
+        with:
+          path: .pyprojectx
+          key: ${{ runner.os }}-pyprojectx
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -42,22 +50,6 @@ jobs:
         run: |
           echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
-      - name: Install Poetry
-        shell: bash
-        run: |
-          curl -fsSL https://install.python-poetry.org | python - -y
-      - name: Update PATH
-        if: ${{ matrix.os != 'Windows' }}
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Path for Windows
-        if: ${{ matrix.os == 'Windows' }}
-        shell: bash
-        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
-      - name: Configure Poetry
-        shell: bash
-        run: |
-          poetry config virtualenvs.in-project true
       - name: Set up cache
         uses: actions/cache@v2
         id: cache
@@ -70,12 +62,6 @@ jobs:
         shell: bash
         run: timeout 10s poetry run pip --version || rm -rf .venv
 
-      - name: Install dependencies
+      - name: Install dependencies and run tests
         shell: bash
-        run: |
-          poetry install
-
-      - name: Run tests
-        shell: bash
-        run: |
-          poetry run pytest -q tests
+        run: python pw i && python pw test

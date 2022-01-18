@@ -14,17 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: "recursive"
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
-      - name: Clone Poetry Repo
-        run: git clone --depth 1 https://github.com/python-poetry/poetry.git
-      - name: Install dependencies
-        run: |
-          pip install --upgrade ./poetry .
-          pip install pytest pytest-mock flatdict deepdiff httpretty
+      - name: Cache .pyprojectx
+        uses: actions/cache@v2
+        env:
+          cache-name: .pyprojectx
+        with:
+          path: .pyprojectx
+          key: ${{ runner.os }}-pyprojectx
       - name: Run tests
-        run: |
-          poetry config virtualenvs.in-project true
-          cd poetry
-          pytest -q tests/
+        run: python pw i && python pw test
