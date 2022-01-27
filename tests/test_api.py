@@ -301,3 +301,9 @@ def test_add_dotted_key():
     table = tomlkit.table()
     table.add(tomlkit.key(["foo", "bar"]), 1)
     assert table.as_string() == "foo.bar = 1\n"
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("true", True), ("false", False)])
+def test_value_parses_boolean(raw, expected):
+    parsed = tomlkit.value(raw)
+    assert parsed == expected
