@@ -424,9 +424,16 @@ class Parser:
             return self._parse_basic_string()
         elif c == StringType.SLL.value:
             return self._parse_literal_string()
-        elif c == BoolType.TRUE.value[0]:
+        # peek one furhter then the value so we don't parse values that look like trueXXX or falseXXX
+        elif (
+            c == BoolType.TRUE.value[0]
+            and self._peek(len(BoolType.TRUE.value) + 1) == BoolType.TRUE.value
+        ):
             return self._parse_true()
-        elif c == BoolType.FALSE.value[0]:
+        elif (
+            c == BoolType.FALSE.value[0]
+            and self._peek(len(BoolType.FALSE.value) + 1) == BoolType.FALSE.value
+        ):
             return self._parse_false()
         elif c == "[":
             return self._parse_array()
@@ -1082,7 +1089,7 @@ class Parser:
         with self._state(restore=True):
             buf = ""
             for _ in range(n):
-                if self._current not in " \t\n\r#,]}":
+                if self._current not in " \t\n\r#,]}" + self._src.EOF:
                     buf += self._current
                     self.inc()
                     continue

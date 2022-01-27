@@ -303,7 +303,15 @@ def test_add_dotted_key():
     assert table.as_string() == "foo.bar = 1\n"
 
 
-@pytest.mark.parametrize(("raw", "expected"), [("true", True), ("false", False)])
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("true", True),
+        ("false", False),
+        ("true ", True),
+        ("false ", False),
+    ],
+)
 def test_value_parses_boolean(raw, expected):
     parsed = tomlkit.value(raw)
     assert parsed == expected
@@ -314,5 +322,35 @@ def test_value_parses_boolean(raw, expected):
 )
 def test_value_rejects_values_looking_like_bool_at_start(raw):
     """Reproduces https://github.com/sdispater/tomlkit/issues/165"""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        tomlkit.value(raw)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "truee",
+        "truely",
+        "true-thoughts",
+        "true_hip_hop",
+    ],
+)
+def test_value_rejects_values_having_true_prefix(raw):
+    """Values that have ``true`` or ``false`` as prefix but then have additional chars are rejected."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        tomlkit.value(raw)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "falsee",
+        "falsely",
+        "false-ideas",
+        "false_prophet",
+    ],
+)
+def test_value_rejects_values_having_false_prefix(raw):
+    """Values that have ``true`` or ``false`` as prefix but then have additional chars are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
