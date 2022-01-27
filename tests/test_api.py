@@ -307,3 +307,12 @@ def test_add_dotted_key():
 def test_value_parses_boolean(raw, expected):
     parsed = tomlkit.value(raw)
     assert parsed == expected
+
+
+@pytest.mark.parametrize(
+    "raw", ["t", "f", "tru", "fals", "test", "friend", "truthy", "falsify"]
+)
+def test_value_rejects_values_looking_like_bool_at_start(raw):
+    """Reproduces https://github.com/sdispater/tomlkit/issues/165"""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        tomlkit.value(raw)
