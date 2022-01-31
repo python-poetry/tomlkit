@@ -147,7 +147,7 @@ class Source(str):
 
         # failed to consume minimum number of characters
         if min > 0:
-            self.parse_error(UnexpectedCharError, self.current)
+            raise self.parse_error(UnexpectedCharError, self.current)
 
     def end(self) -> bool:
         """
@@ -162,14 +162,17 @@ class Source(str):
         self._marker = self._idx
 
     def parse_error(
-        self, exception: Type[ParseError] = ParseError, *args: Any
+        self,
+        exception: Type[ParseError] = ParseError,
+        *args: Any,
+        **kwargs: Any,
     ) -> ParseError:
         """
         Creates a generic "parse error" at the current position.
         """
         line, col = self._to_linecol()
 
-        return exception(line, col, *args)
+        return exception(line, col, *args, **kwargs)
 
     def _to_linecol(self) -> Tuple[int, int]:
         cur = 0

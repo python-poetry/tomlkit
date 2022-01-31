@@ -123,11 +123,11 @@ class Parser:
         """
         self._src.mark()
 
-    def parse_error(self, exception=ParseError, *args):
+    def parse_error(self, exception=ParseError, *args, **kwargs):
         """
         Creates a generic "parse error" at the current position.
         """
-        return self._src.parse_error(exception, *args)
+        return self._src.parse_error(exception, *args, **kwargs)
 
     def parse(self) -> TOMLDocument:
         body = TOMLDocument(True)
@@ -1082,7 +1082,7 @@ class Parser:
         with self._state(restore=True):
             buf = ""
             for _ in range(n):
-                if self._current not in " \t\n\r#,]}":
+                if self._current not in " \t\n\r#,]}" + self._src.EOF:
                     buf += self._current
                     self.inc()
                     continue
