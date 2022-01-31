@@ -8,6 +8,7 @@ from typing import Union
 
 from ._utils import parse_rfc3339
 from .container import Container
+from .exceptions import UnexpectedCharError
 from .items import AoT
 from .items import Array
 from .items import Bool
@@ -232,7 +233,11 @@ def value(raw: str) -> _Item:
     >>> value("[1, 2, 3]")
     [1, 2, 3]
     """
-    return Parser(raw)._parse_value()
+    parser = Parser(raw)
+    v = parser._parse_value()
+    if not parser.end():
+        raise parser.parse_error(UnexpectedCharError, char=parser._current)
+    return v
 
 
 def key_value(src: str) -> Tuple[Key, _Item]:

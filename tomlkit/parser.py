@@ -123,11 +123,11 @@ class Parser:
         """
         self._src.mark()
 
-    def parse_error(self, exception=ParseError, *args):
+    def parse_error(self, exception=ParseError, *args, **kwargs):
         """
         Creates a generic "parse error" at the current position.
         """
-        return self._src.parse_error(exception, *args)
+        return self._src.parse_error(exception, *args, **kwargs)
 
     def parse(self) -> TOMLDocument:
         body = TOMLDocument(True)
@@ -424,16 +424,9 @@ class Parser:
             return self._parse_basic_string()
         elif c == StringType.SLL.value:
             return self._parse_literal_string()
-        # peek one furhter then the value so we don't parse values that look like trueXXX or falseXXX
-        elif (
-            c == BoolType.TRUE.value[0]
-            and self._peek(len(BoolType.TRUE.value) + 1) == BoolType.TRUE.value
-        ):
+        elif c == BoolType.TRUE.value[0]:
             return self._parse_true()
-        elif (
-            c == BoolType.FALSE.value[0]
-            and self._peek(len(BoolType.FALSE.value) + 1) == BoolType.FALSE.value
-        ):
+        elif c == BoolType.FALSE.value[0]:
             return self._parse_false()
         elif c == "[":
             return self._parse_array()

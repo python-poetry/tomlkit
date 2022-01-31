@@ -308,8 +308,6 @@ def test_add_dotted_key():
     [
         ("true", True),
         ("false", False),
-        ("true ", True),
-        ("false ", False),
     ],
 )
 def test_value_parses_boolean(raw, expected):
@@ -352,5 +350,27 @@ def test_value_rejects_values_having_true_prefix(raw):
 )
 def test_value_rejects_values_having_false_prefix(raw):
     """Values that have ``true`` or ``false`` as prefix but then have additional chars are rejected."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        tomlkit.value(raw)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '"foo"1.2',
+        "truefalse",
+        "1.0false",
+        "100true",
+        "truetrue",
+        "falsefalse",
+        "1.2.3.4",
+        "[][]",
+        "{a=[][]}[]",
+        "true[]",
+        "false{a=1}",
+    ],
+)
+def test_value_rejects_values_with_appendage(raw):
+    """Values that appear valid at the beginning but leave chars unparsed are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
