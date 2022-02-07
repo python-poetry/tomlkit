@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix a bug of separators not being kept when replacing the value. ([#170](https://github.com/sdispater/tomlkit/pull/170))
+
 ## [0.9.0] - 2022-02-01
 
 ### Added

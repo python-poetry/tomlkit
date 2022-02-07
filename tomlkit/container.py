@@ -619,7 +619,8 @@ class Container(_CustomDict):
 
     def __setitem__(self, key: Union[Key, str], value: Any) -> None:
         if key is not None and key in self:
-            self._replace(key, key, value)
+            old_key = next(filter(lambda k: k == key, self._map))
+            self._replace(old_key, key, value)
         else:
             self.append(key, value)
 
@@ -636,9 +637,6 @@ class Container(_CustomDict):
         if not isinstance(key, Key):
             key = SingleKey(key)
 
-        if not isinstance(new_key, Key):
-            new_key = SingleKey(new_key)
-
         idx = self._map.get(key, None)
         if idx is None:
             raise NonExistentKey(key)
@@ -648,8 +646,7 @@ class Container(_CustomDict):
     def _replace_at(
         self, idx: Union[int, Tuple[int]], new_key: Union[Key, str], value: Item
     ) -> None:
-        if not isinstance(new_key, Key):
-            new_key = SingleKey(new_key)
+        value = _item(value)
 
         if isinstance(idx, tuple):
             for i in idx[1:]:
@@ -658,17 +655,21 @@ class Container(_CustomDict):
             idx = idx[0]
 
         k, v = self._body[idx]
+        if not isinstance(new_key, Key):
+            if (
+                isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table))
+                or new_key != k.key
+            ):
+                new_key = SingleKey(new_key)
+            else:  # Inherit the sep of the old key
+                new_key = k
 
-        self._map[new_key] = self._map.pop(k)
+        del self._map[k]
+        self._map[new_key] = idx
         if new_key != k:
             dict.__delitem__(self, k)
 
-        if isinstance(self._map[new_key], tuple):
-            self._map[new_key] = self._map[new_key][0]
-
-        value = _item(value)
-
-        if isinstance(value, (AoT, Table)) and not isinstance(v, (AoT, Table)):
+        if isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table)):
             # new tables should appear after all non-table values
             self.remove(k)
             for i in range(idx, len(self._body)):
