@@ -735,6 +735,44 @@ foo = "bar"
     )
 
 
+def test_replace_table_with_value():
+    content = """[foo]
+a = 1
+
+[bar]
+b = 2
+"""
+    doc = parse(content)
+    doc["bar"] = 42
+    assert (
+        doc.as_string()
+        == """bar = 42
+[foo]
+a = 1
+
+"""
+    )
+
+
+def test_replace_preserve_sep():
+    content = """a   =   1
+
+[foo]
+b  =  "what"
+"""
+    doc = parse(content)
+    doc["a"] = 2
+    doc["foo"]["b"] = "how"
+    assert (
+        doc.as_string()
+        == """a   =   2
+
+[foo]
+b  =  "how"
+"""
+    )
+
+
 def test_replace_with_table_of_nested():
     example = """\
     [a]
