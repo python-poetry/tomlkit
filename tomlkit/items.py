@@ -92,7 +92,7 @@ def item(
             val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
 
         return val
-    elif isinstance(value, list):
+    elif isinstance(value, (list, tuple)):
         if value and all(isinstance(v, dict) for v in value):
             a = AoT([])
             table_constructor = Table

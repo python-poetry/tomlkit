@@ -165,6 +165,14 @@ def test_dumps_weird_object():
         dumps(object())
 
 
+def test_dump_tuple_value_as_array():
+    x = {"foo": (1, 2)}
+    assert dumps(x) == "foo = [1, 2]\n"
+
+    x = {"foo": ({"a": 1}, {"a": 2})}
+    assert dumps(x) == "[[foo]]\na = 1\n\n[[foo]]\na = 2\n"
+
+
 def test_dump_to_file_object():
     doc = {"foo": "bar"}
     fp = io.StringIO()
