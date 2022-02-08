@@ -1,6 +1,10 @@
 # Change Log
 
-## [Unreleased]
+## [0.9.2] - 2022-02-08
+
+### Changed
+
+- When a table's only child is a table or array of table, it is created as a super table. ([#175](https://github.com/sdispater/tomlkit/issues/175))
 
 ## [0.9.1] - 2022-02-07
 
@@ -241,7 +245,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.9.1...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.9.2...master
+[0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.9.2
 [0.9.1]: https://github.com/sdispater/tomlkit/releases/tag/0.9.1
 [0.9.0]: https://github.com/sdispater/tomlkit/releases/tag/0.9.0
 [0.8.0]: https://github.com/sdispater/tomlkit/releases/tag/0.8.0

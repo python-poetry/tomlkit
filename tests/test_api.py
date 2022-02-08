@@ -382,3 +382,13 @@ def test_value_rejects_values_with_appendage(raw):
     """Values that appear valid at the beginning but leave chars unparsed are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
+
+
+def test_create_super_table_with_table():
+    data = {"foo": {"bar": {"a": 1}}}
+    assert dumps(data) == "[foo.bar]\na = 1\n"
+
+
+def test_create_super_table_with_aot():
+    data = {"foo": {"bar": [{"a": 1}]}}
+    assert dumps(data) == "[[foo.bar]]\na = 1\n"

@@ -90,6 +90,14 @@ def item(
             key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
         ):
             val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
+        only_child = len(value) == 1 and val[next(iter(value))]
+        if (
+            table_constructor is Table
+            and only_child
+            and isinstance(only_child, (AoT, Table))
+        ):
+            # The table becomes super table if the only child is a table or AoT.
+            val._is_super_table = True
 
         return val
     elif isinstance(value, (list, tuple)):
