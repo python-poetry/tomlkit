@@ -1,5 +1,11 @@
 # Change Log
 
+[Unreleased]
+
+### Fixed
+
+- Fix the only child detection when creating tables. ([#175](https://github.com/sdispater/tomlkit/issues/175))
+
 ## [0.9.2] - 2022-02-08
 
 ### Changed
