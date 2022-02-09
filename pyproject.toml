@@ -12,7 +12,9 @@ repository = "https://github.com/sdispater/tomlkit"
 
 include = [
   { path = "tomlkit/py.typed" },
-  { path = "tests", format = "sdist" }
+  { path = "tests", format = "sdist" },
+  { path = "docs", format = "sdist" },
+  { path = "CHANGELOG.md", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]

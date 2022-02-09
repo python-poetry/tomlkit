@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix the only child detection when creating tables. ([#175](https://github.com/sdispater/tomlkit/issues/175))
+- Include the `docs/` directory and `CHANGELOG.md` in sdist tarball. ([#176](https://github.com/sdispater/tomlkit/issues/176))
 
 ## [0.9.2] - 2022-02-08
 
