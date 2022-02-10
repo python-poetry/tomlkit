@@ -392,3 +392,23 @@ def test_create_super_table_with_table():
 def test_create_super_table_with_aot():
     data = {"foo": {"bar": [{"a": 1}]}}
     assert dumps(data) == "[[foo.bar]]\na = 1\n"
+
+
+@pytest.mark.parametrize(
+    "kwargs, example, expected",
+    [
+        ({}, "My\nString\u0001", '"My\\nString\\u0001"'),
+        ({"escape": False}, "My String\u0001", '"My String\u0001"'),
+        ({"single_quotes": True}, "My\nString", "'My\\nString'"),
+        ({"multiline": True}, "\nMy\nString\n", '"""\nMy\nString\n"""'),
+        ({"multiline": True, "single_quotes": True}, "My\nString", "'''My\nString'''"),
+        (
+            {"multiline": True, "single_quotes": True, "escape": True},
+            "My\nString",
+            "'''My\\nString'''"
+        ),
+    ]
+)
+def test_create_string_with_different_types(kwargs, example, expected):
+    value = tomlkit.string(example, **kwargs)
+    assert value.as_string() == expected

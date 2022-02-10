@@ -23,6 +23,7 @@ from .items import Item as _Item
 from .items import Key
 from .items import SingleKey
 from .items import String
+from .items import StringType as _StringType
 from .items import Table
 from .items import Time
 from .items import Trivia
@@ -104,9 +105,24 @@ def boolean(raw: str) -> Bool:
     return item(raw == "true")
 
 
-def string(raw: str) -> String:
-    """Create a string item."""
-    return item(raw)
+def string(
+    raw: str,
+    *,
+    single_quotes: bool = False,
+    multiline: bool = False,
+    escape: Union[None, bool] = None
+) -> String:
+    """Create a string item.
+
+    Boolean flags (e.g. ``single_quotes=True`` and/or ``multiline=True``)
+    can be used for personalization.
+
+    By default, single line strings are escaped, but multi line strings are not.
+    This can be controlled by explicitly setting ``escape``.
+    """
+    escape = not(multiline) if escape is None else escape
+    type_ = _StringType.select(single_quotes, multiline)
+    return String.from_raw(raw, type_, escape)
 
 
 def date(raw: str) -> Date:

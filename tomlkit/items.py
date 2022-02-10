@@ -166,6 +166,15 @@ class StringType(Enum):
     # Multi Line Literal
     MLL = "'''"
 
+    @classmethod
+    def select(cls, single_quotes=False, multiline=False) -> "StringType":
+        return {
+            (False, False): cls.SLB,
+            (False, True): cls.MLB,
+            (True, False): cls.SLL,
+            (True, True): cls.MLL,
+        }[(single_quotes, multiline)]
+
     @property
     @lru_cache(maxsize=None)
     def unit(self) -> str:
@@ -1511,6 +1520,12 @@ class String(str, Item):
 
     def _getstate(self, protocol=3):
         return self._t, str(self), self._original, self._trivia
+
+    @classmethod
+    def from_raw(cls, value: str, type_=StringType.SLB, escape=False) -> "String":
+        string_value = escape_string(value) if escape else value
+
+        return cls(type_, decode(value), string_value, Trivia())
 
 
 class AoT(Item, _CustomList):
