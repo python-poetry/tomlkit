@@ -405,9 +405,9 @@ def test_create_super_table_with_aot():
         (
             {"multiline": True, "single_quotes": True, "escape": True},
             "My\nString",
-            "'''My\\nString'''"
+            "'''My\\nString'''",
         ),
-    ]
+    ],
 )
 def test_create_string_with_different_types(kwargs, example, expected):
     value = tomlkit.string(example, **kwargs)

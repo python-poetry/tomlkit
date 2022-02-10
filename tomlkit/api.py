@@ -110,7 +110,7 @@ def string(
     *,
     single_quotes: bool = False,
     multiline: bool = False,
-    escape: Union[None, bool] = None
+    escape: Union[None, bool] = None,
 ) -> String:
     """Create a string item.
 
@@ -120,7 +120,7 @@ def string(
     By default, single line strings are escaped, but multi line strings are not.
     This can be controlled by explicitly setting ``escape``.
     """
-    escape = not(multiline) if escape is None else escape
+    escape = (not multiline) if escape is None else escape
     type_ = _StringType.select(single_quotes, multiline)
     return String.from_raw(raw, type_, escape)
 
