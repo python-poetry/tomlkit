@@ -124,9 +124,7 @@ def item(
 
         return a
     elif isinstance(value, str):
-        escaped = escape_string(value)
-
-        return String(StringType.SLB, decode(value), escaped, Trivia())
+        return String.from_raw(value, escape=True)
     elif isinstance(value, datetime):
         return DateTime(
             value.year,
