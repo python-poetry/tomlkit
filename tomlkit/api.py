@@ -108,20 +108,30 @@ def boolean(raw: str) -> Bool:
 def string(
     raw: str,
     *,
-    single_quotes: bool = False,
+    literal: bool = False,
     multiline: bool = False,
-    escape: Union[None, bool] = None,
+    escape: bool = True,
 ) -> String:
     """Create a string item.
 
-    Boolean flags (e.g. ``single_quotes=True`` and/or ``multiline=True``)
+    Boolean flags (e.g. ``literal=True`` and/or ``multiline=True``)
     can be used for personalization.
 
-    By default, single line strings are escaped, but multi line strings are not.
-    This can be controlled by explicitly setting ``escape``.
+    By default, common escaping rules will be applied so strings are valid
+    according to the TOML spec.
+
+    This can be controlled by explicitly setting ``escape=False``.
+    Please note that, if you disable escaping, you will have to make sure that
+    the given strings don't contain any forbidden character or sequence.
+
+    Also note that, although escaping is done even when ``literal=True``, to
+    prevent invalid TOML, TOML parsers will interpret literal and basic
+    strings in a different way.
+
+    For more information, please check the spec:
+    `https://toml.io/en/v1.0.0#string`_.
     """
-    escape = (not multiline) if escape is None else escape
-    type_ = _StringType.select(single_quotes, multiline)
+    type_ = _StringType.select(literal, multiline)
     return String.from_raw(raw, type_, escape)
 
 

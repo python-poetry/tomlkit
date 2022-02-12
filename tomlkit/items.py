@@ -11,6 +11,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -23,6 +24,7 @@ from typing import overload
 
 from ._compat import PY38
 from ._compat import decode
+from ._utils import CONTROL_CHARS
 from ._utils import escape_string
 from .toml_char import TOMLChar
 
@@ -124,7 +126,7 @@ def item(
 
         return a
     elif isinstance(value, str):
-        return String.from_raw(value, escape=True)
+        return String.from_raw(value)
     elif isinstance(value, datetime):
         return DateTime(
             value.year,
@@ -165,13 +167,36 @@ class StringType(Enum):
     MLL = "'''"
 
     @classmethod
-    def select(cls, single_quotes=False, multiline=False) -> "StringType":
+    def select(cls, literal=False, multiline=False) -> "StringType":
         return {
             (False, False): cls.SLB,
             (False, True): cls.MLB,
             (True, False): cls.SLL,
             (True, True): cls.MLL,
-        }[(single_quotes, multiline)]
+        }[(literal, multiline)]
+
+    @property
+    def escaped_chars(self) -> Collection[str]:
+        # https://toml.io/en/v1.0.0#string
+        escaped_in_basic = CONTROL_CHARS | {"\\"}
+        forbidden_in_literal = CONTROL_CHARS - {"\t"}
+        allowed_in_multiline = {"\t", "\n", "\r"}
+        return {
+            StringType.SLB: escaped_in_basic | {'"'},
+            StringType.MLB: escaped_in_basic - allowed_in_multiline,
+            StringType.SLL: forbidden_in_literal | {"'"},
+            StringType.MLL: forbidden_in_literal - allowed_in_multiline,
+        }[self]
+
+    @property
+    def escaped_sequences(self) -> Collection[str]:
+        # https://toml.io/en/v1.0.0#string
+        return {
+            StringType.SLB: (),
+            StringType.MLB: ('"""',),
+            StringType.SLL: (),
+            StringType.MLL: ("'''",),
+        }[self]
 
     @property
     @lru_cache(maxsize=None)
@@ -1520,8 +1545,9 @@ class String(str, Item):
         return self._t, str(self), self._original, self._trivia
 
     @classmethod
-    def from_raw(cls, value: str, type_=StringType.SLB, escape=False) -> "String":
-        string_value = escape_string(value) if escape else value
+    def from_raw(cls, value: str, type_=StringType.SLB, escape=True) -> "String":
+        escape_args = (type_.escaped_chars, type_.escaped_sequences)
+        string_value = escape_string(value, *escape_args) if escape else value
 
         return cls(type_, decode(value), string_value, Trivia())
 

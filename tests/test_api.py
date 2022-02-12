@@ -397,18 +397,44 @@ def test_create_super_table_with_aot():
 @pytest.mark.parametrize(
     "kwargs, example, expected",
     [
-        ({}, "My\nString\u0001", '"My\\nString\\u0001"'),
-        ({"escape": False}, "My String\u0001", '"My String\u0001"'),
-        ({"single_quotes": True}, "My\nString", "'My\\nString'"),
+        ({}, "My\nString", '"My\\nString"'),
+        ({"literal": True}, "My\nString", "'My\\nString'"),
         ({"multiline": True}, "\nMy\nString\n", '"""\nMy\nString\n"""'),
-        ({"multiline": True, "single_quotes": True}, "My\nString", "'''My\nString'''"),
-        (
-            {"multiline": True, "single_quotes": True, "escape": True},
-            "My\nString",
-            "'''My\\nString'''",
-        ),
+        ({"multiline": True, "literal": True}, "My\nString", "'''My\nString'''"),
     ],
 )
 def test_create_string_with_different_types(kwargs, example, expected):
+    value = tomlkit.string(example, **kwargs)
+    assert value.as_string() == expected
+
+
+@pytest.mark.parametrize(
+    "kwargs, example, expected",
+    [
+        ({}, "My\nString\u0001", '"My\\nString\\u0001"'),
+        ({"escape": False}, "My String\u0001", '"My String\u0001"'),
+        ({"escape": False, "literal": True}, "My'String", "'My'String'"),
+        ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
+        ({"multiline": True, "literal": True}, "My'''String", "'''My''\\'String'''"),
+        (
+            {"multiline": True},
+            '"""My"""Str"""ing"""',
+            '"""""\\"My""\\"Str""\\"ing""\\""""',
+        ),
+        # Examples from standard
+        (
+            {"literal": True},
+            r"C:\Users\nodejs\templates",
+            r"'C:\Users\nodejs\templates'",
+        ),
+        ({"literal": True}, r"<\i\c*\s*>", r"'<\i\c*\s*>'"),
+        (
+            {"multiline": True, "literal": True},
+            r"I [dw]on't need \d{2} apples",
+            r"'''I [dw]on't need \d{2} apples'''",
+        ),
+    ],
+)
+def test_create_string_escaping(kwargs, example, expected):
     value = tomlkit.string(example, **kwargs)
     assert value.as_string() == expected
