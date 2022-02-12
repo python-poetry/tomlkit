@@ -412,6 +412,7 @@ def test_create_string_with_different_types(kwargs, example, expected):
     "kwargs, example, expected",
     [
         ({}, "My\nString\u0001", '"My\\nString\\u0001"'),
+        ({"literal": True}, "My'String", "'My\\u0027String'"),
         ({"escape": False}, "My String\u0001", '"My String\u0001"'),
         ({"escape": False, "literal": True}, "My'String", "'My'String'"),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
