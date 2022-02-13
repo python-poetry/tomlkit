@@ -26,6 +26,7 @@ from ._compat import PY38
 from ._compat import decode
 from ._utils import CONTROL_CHARS
 from ._utils import escape_string
+from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
 
 
@@ -176,26 +177,27 @@ class StringType(Enum):
         }[(literal, multiline)]
 
     @property
-    def escaped_chars(self) -> Collection[str]:
+    def escaped_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
         escaped_in_basic = CONTROL_CHARS | {"\\"}
-        forbidden_in_literal = CONTROL_CHARS - {"\t"}
-        allowed_in_multiline = {"\t", "\n", "\r"}
+        allowed_in_multiline = {"\n", "\r"}
         return {
             StringType.SLB: escaped_in_basic | {'"'},
-            StringType.MLB: escaped_in_basic - allowed_in_multiline,
-            StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: forbidden_in_literal - allowed_in_multiline,
+            StringType.MLB: (escaped_in_basic | {'"""'}) - allowed_in_multiline,
+            StringType.SLL: (),
+            StringType.MLL: (),
         }[self]
 
     @property
-    def escaped_sequences(self) -> Collection[str]:
+    def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
+        forbidden_in_literal = CONTROL_CHARS - {"\t"}
+        allowed_in_multiline = {"\n", "\r"}
         return {
             StringType.SLB: (),
-            StringType.MLB: ('"""',),
-            StringType.SLL: (),
-            StringType.MLL: ("'''",),
+            StringType.MLB: (),
+            StringType.SLL: forbidden_in_literal | {"'"},
+            StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
         }[self]
 
     @property
@@ -1546,8 +1548,14 @@ class String(str, Item):
 
     @classmethod
     def from_raw(cls, value: str, type_=StringType.SLB, escape=True) -> "String":
-        escape_args = (type_.escaped_chars, type_.escaped_sequences)
-        string_value = escape_string(value, *escape_args) if escape else value
+        value = decode(value)
+
+        invalid = type_.invalid_sequences
+        if any(c in value for c in invalid):
+            raise InvalidStringError(value, invalid, type_.value)
+
+        escaped = type_.escaped_sequences
+        string_value = escape_string(value, escaped) if escape and escaped else value
 
         return cls(type_, decode(value), string_value, Trivia())
 

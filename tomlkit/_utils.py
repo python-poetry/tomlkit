@@ -109,19 +109,18 @@ _escaped = {
     '"': '"',
     "\\": "\\",
 }
-_compact_escapes = {v: k for k, v in _escaped.items()}
-_basic_escapes = frozenset(CONTROL_CHARS | {'"', "\\"})
-_escaped_sequences = {
+_compact_escapes = {
+    **{v: f"\\{k}" for k, v in _escaped.items()},
     '"""': '""\\"',
-    "'''": "''\\'",
 }
+_basic_escapes = CONTROL_CHARS | {'"'}
 
 
-def escape_string(
-    s: str,
-    escape_chars: Collection[str] = _basic_escapes,
-    escape_sequences: Collection[str] = (),
-) -> str:
+def _unicode_escape(seq: str) -> str:
+    return "".join(f"\\u{ord(c):04x}" for c in seq)
+
+
+def escape_string(s: str, escape_sequences: Collection[str] = _basic_escapes) -> str:
     s = decode(s)
 
     res = []
@@ -136,18 +135,11 @@ def escape_string(
 
     i = 0
     while i < l:
-        c = s[i]
-        if c in escape_chars:
-            start = flush()
-            if c in _compact_escapes:
-                res.append("\\" + _compact_escapes[c])
-            else:
-                res.append("\\u%04x" % ord(c))
         for seq in escape_sequences:
             seq_len = len(seq)
             if s[i:].startswith(seq):
                 start = flush(seq_len)
-                res.append(_escaped_sequences[seq])
+                res.append(_compact_escapes.get(seq) or _unicode_escape(seq))
                 i += seq_len - 1  # fast-forward escape sequence
         i += 1
 

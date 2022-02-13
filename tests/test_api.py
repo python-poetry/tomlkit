@@ -21,6 +21,7 @@ from tomlkit.exceptions import InvalidControlChar
 from tomlkit.exceptions import InvalidDateError
 from tomlkit.exceptions import InvalidDateTimeError
 from tomlkit.exceptions import InvalidNumberError
+from tomlkit.exceptions import InvalidStringError
 from tomlkit.exceptions import InvalidTimeError
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import AoT
@@ -398,31 +399,31 @@ def test_create_super_table_with_aot():
     "kwargs, example, expected",
     [
         ({}, "My\nString", '"My\\nString"'),
-        ({"literal": True}, "My\nString", "'My\\nString'"),
-        ({"multiline": True}, "\nMy\nString\n", '"""\nMy\nString\n"""'),
-        ({"multiline": True, "literal": True}, "My\nString", "'''My\nString'''"),
-    ],
-)
-def test_create_string_with_different_types(kwargs, example, expected):
-    value = tomlkit.string(example, **kwargs)
-    assert value.as_string() == expected
-
-
-@pytest.mark.parametrize(
-    "kwargs, example, expected",
-    [
-        ({}, "My\nString\u0001", '"My\\nString\\u0001"'),
-        ({"literal": True}, "My'String", "'My\\u0027String'"),
+        ({"escape": False}, "My String\t", '"My String\t"'),
+        ({"literal": True}, "My String\t", "'My String\t'"),
+        ({"escape": True, "literal": True}, "My String\t", "'My String\t'"),
+        ({}, "My String\u0001", '"My String\\u0001"'),
+        ({}, "My String\u000b", '"My String\\u000b"'),
+        ({}, "My String\x08", '"My String\\b"'),
+        ({}, "My String\x0c", '"My String\\f"'),
+        ({}, "My String\x01", '"My String\\u0001"'),
+        ({}, "My String\x06", '"My String\\u0006"'),
+        ({}, "My String\x12", '"My String\\u0012"'),
+        ({}, "My String\x7f", '"My String\\u007f"'),
         ({"escape": False}, "My String\u0001", '"My String\u0001"'),
-        ({"escape": False, "literal": True}, "My'String", "'My'String'"),
+        ({"multiline": True}, "\nMy\nString\n", '"""\nMy\nString\n"""'),
+        ({"multiline": True}, 'My"String', '"""My"String"""'),
+        ({"multiline": True}, 'My""String', '"""My""String"""'),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
-        ({"multiline": True, "literal": True}, "My'''String", "'''My''\\'String'''"),
+        ({"multiline": True}, 'My""""String', '"""My""\\""String"""'),
         (
             {"multiline": True},
             '"""My"""Str"""ing"""',
             '"""""\\"My""\\"Str""\\"ing""\\""""',
         ),
-        # Examples from standard
+        ({"multiline": True, "literal": True}, "My\nString", "'''My\nString'''"),
+        ({"multiline": True, "literal": True}, "My'String", "'''My'String'''"),
+        ({"multiline": True, "literal": True}, "My\r\nString", "'''My\r\nString'''"),
         (
             {"literal": True},
             r"C:\Users\nodejs\templates",
@@ -436,6 +437,24 @@ def test_create_string_with_different_types(kwargs, example, expected):
         ),
     ],
 )
-def test_create_string_escaping(kwargs, example, expected):
+def test_create_string(kwargs, example, expected):
     value = tomlkit.string(example, **kwargs)
     assert value.as_string() == expected
+
+
+@pytest.mark.parametrize(
+    "kwargs, example",
+    [
+        ({"literal": True}, "My'String"),
+        ({"literal": True}, "My\nString"),
+        ({"literal": True}, "My\r\nString"),
+        ({"literal": True}, "My\bString"),
+        ({"literal": True}, "My\x08String"),
+        ({"literal": True}, "My\x0cString"),
+        ({"literal": True}, "My\x7fString"),
+        ({"multiline": True, "literal": True}, "My'''String"),
+    ],
+)
+def test_create_string_with_invalid_characters(kwargs, example):
+    with pytest.raises(InvalidStringError):
+        tomlkit.string(example, **kwargs)
