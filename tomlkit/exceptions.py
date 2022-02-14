@@ -1,3 +1,4 @@
+from typing import Collection
 from typing import Optional
 
 
@@ -213,3 +214,12 @@ class InvalidControlChar(ParseError):
         )
 
         super().__init__(line, col, message=message)
+
+
+class InvalidStringError(ValueError, TOMLKitError):
+    def __init__(self, value: str, invalid_sequences: Collection[str], delimiter: str):
+        repr_ = repr(value)[1:-1]
+        super().__init__(
+            f"Invalid string: {delimiter}{repr_}{delimiter}. "
+            f"The character sequences {invalid_sequences} are invalid."
+        )

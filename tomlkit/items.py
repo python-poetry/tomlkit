@@ -11,6 +11,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -23,7 +24,9 @@ from typing import overload
 
 from ._compat import PY38
 from ._compat import decode
+from ._utils import CONTROL_CHARS
 from ._utils import escape_string
+from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
 
 
@@ -124,9 +127,7 @@ def item(
 
         return a
     elif isinstance(value, str):
-        escaped = escape_string(value)
-
-        return String(StringType.SLB, decode(value), escaped, Trivia())
+        return String.from_raw(value)
     elif isinstance(value, datetime):
         return DateTime(
             value.year,
@@ -165,6 +166,39 @@ class StringType(Enum):
     SLL = "'"
     # Multi Line Literal
     MLL = "'''"
+
+    @classmethod
+    def select(cls, literal=False, multiline=False) -> "StringType":
+        return {
+            (False, False): cls.SLB,
+            (False, True): cls.MLB,
+            (True, False): cls.SLL,
+            (True, True): cls.MLL,
+        }[(literal, multiline)]
+
+    @property
+    def escaped_sequences(self) -> Collection[str]:
+        # https://toml.io/en/v1.0.0#string
+        escaped_in_basic = CONTROL_CHARS | {"\\"}
+        allowed_in_multiline = {"\n", "\r"}
+        return {
+            StringType.SLB: escaped_in_basic | {'"'},
+            StringType.MLB: (escaped_in_basic | {'"""'}) - allowed_in_multiline,
+            StringType.SLL: (),
+            StringType.MLL: (),
+        }[self]
+
+    @property
+    def invalid_sequences(self) -> Collection[str]:
+        # https://toml.io/en/v1.0.0#string
+        forbidden_in_literal = CONTROL_CHARS - {"\t"}
+        allowed_in_multiline = {"\n", "\r"}
+        return {
+            StringType.SLB: (),
+            StringType.MLB: (),
+            StringType.SLL: forbidden_in_literal | {"'"},
+            StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
+        }[self]
 
     @property
     @lru_cache(maxsize=None)
@@ -1511,6 +1545,19 @@ class String(str, Item):
 
     def _getstate(self, protocol=3):
         return self._t, str(self), self._original, self._trivia
+
+    @classmethod
+    def from_raw(cls, value: str, type_=StringType.SLB, escape=True) -> "String":
+        value = decode(value)
+
+        invalid = type_.invalid_sequences
+        if any(c in value for c in invalid):
+            raise InvalidStringError(value, invalid, type_.value)
+
+        escaped = type_.escaped_sequences
+        string_value = escape_string(value, escaped) if escape and escaped else value
+
+        return cls(type_, decode(value), string_value, Trivia())
 
 
 class AoT(Item, _CustomList):
