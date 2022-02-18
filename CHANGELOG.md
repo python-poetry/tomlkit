@@ -1,6 +1,8 @@
 # Change Log
 
-[Unreleased]
+## [Unreleased]
+
+## [0.10.0] - 2022-02-18
 
 ### Fixed
 
@@ -256,7 +258,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.9.2...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.0...master
+[0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.0
 [0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.9.2
 [0.9.1]: https://github.com/sdispater/tomlkit/releases/tag/0.9.1
 [0.9.0]: https://github.com/sdispater/tomlkit/releases/tag/0.9.0
