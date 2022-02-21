@@ -12,6 +12,7 @@ import tomlkit
 from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
+from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
 
 
@@ -927,3 +928,18 @@ def test_pop_add_whitespace_and_insert_table_work_togheter():
     assert out["d"] == 4
     assert "d" not in out["e"]
     assert text == dedent(expected)
+
+
+def test_add_newline_before_super_table():
+    doc = document()
+    doc["a"] = 1
+    doc["b"] = {"c": {}}
+    doc["d"] = {"e": {}}
+    expected = """\
+    a = 1
+
+    [b.c]
+
+    [d.e]
+    """
+    assert doc.as_string() == dedent(expected)
