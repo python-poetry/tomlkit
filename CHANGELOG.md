@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve the newlines before super tables when rendering. ([#178](https://github.com/sdispater/tomlkit/issues/178))
+
 ## [0.10.0] - 2022-02-18
 
 ### Fixed
