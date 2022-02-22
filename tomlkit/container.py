@@ -505,6 +505,8 @@ class Container(_CustomDict):
                 table.trivia.trail,
                 "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else "",
             )
+        elif table.trivia.indent == "\n":
+            cur += table.trivia.indent
 
         for k, v in table.value.body:
             if isinstance(v, Table):
