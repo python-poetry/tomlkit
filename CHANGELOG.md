@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.1] - 2022-03-27
+
 ### Fixed
 
 - Preserve the newlines before super tables when rendering. ([#178](https://github.com/sdispater/tomlkit/issues/178))
@@ -263,7 +265,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.0...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.1...master
+[0.10.1]: https://github.com/sdispater/tomlkit/releases/tag/0.10.1
 [0.10.0]: https://github.com/sdispater/tomlkit/releases/tag/0.10.0
 [0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.9.2
 [0.9.1]: https://github.com/sdispater/tomlkit/releases/tag/0.9.1
