@@ -20,7 +20,7 @@ and makes them accessible and editable via an intuitive API.
 
 You can also create new TOML documents from scratch using the provided helpers.
 
-Part of the implementation as been adapted, improved and fixed from [Molten](https://github.com/LeopoldArkham/Molten).
+Part of the implementation has been adapted, improved and fixed from [Molten](https://github.com/LeopoldArkham/Molten).
 
 ## Usage
 
