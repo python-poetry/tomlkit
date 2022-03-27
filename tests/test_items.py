@@ -275,6 +275,30 @@ x = [
     )
 
 
+def test_append_to_multiline_array_with_comment():
+    doc = parse(
+        """\
+x = [
+    # Here is a comment
+    1,
+    2
+]
+"""
+    )
+    doc["x"].multiline(True).append(3)
+    assert (
+        doc.as_string()
+        == """\
+x = [
+    # Here is a comment
+    1,
+    2,
+    3,
+]
+"""
+    )
+
+
 def test_append_dict_to_array():
     doc = parse("x = [ ]")
     doc["x"].append({"name": "John Doe", "email": "john@doe.com"})
