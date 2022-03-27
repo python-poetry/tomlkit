@@ -5,6 +5,7 @@
 ### Fixed
 
 - Preserve the newlines before super tables when rendering. ([#178](https://github.com/sdispater/tomlkit/issues/178))
+- Fix the bug that comments are appended with comma when rendering a multiline array. ([#181](https://github.com/sdispater/tomlkit/issues/181))
 
 ## [0.10.0] - 2022-02-18
 

@@ -988,11 +988,15 @@ class Array(Item, _CustomList):
         if not self._multiline or not self._value:
             return "[{}]".format("".join(v.as_string() for v in self._value))
 
-        s = "[\n" + self.trivia.indent + " " * 4
-        s += (",\n" + self.trivia.indent + " " * 4).join(
-            v.as_string() for v in self._value if not isinstance(v, Whitespace)
+        s = "[\n"
+        s += "".join(
+            self.trivia.indent
+            + " " * 4
+            + v.as_string()
+            + ("\n" if isinstance(v, Comment) else ",\n")
+            for v in self._value
+            if not isinstance(v, Whitespace)
         )
-        s += ",\n"
         s += "]"
 
         return s
