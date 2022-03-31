@@ -997,7 +997,7 @@ class Array(Item, _CustomList):
             for v in self._value
             if not isinstance(v, Whitespace)
         )
-        s += "]"
+        s += self.trivia.indent + "]"
 
         return s
 
