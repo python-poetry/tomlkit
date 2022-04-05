@@ -27,7 +27,7 @@ class TOMLChar(str):
     @lru_cache(maxsize=None)
     def is_kv_sep(self) -> bool:
         """
-        Whether the character is a valid key/value separator ot not.
+        Whether the character is a valid key/value separator or not.
         """
         return self in self.KV
 

@@ -226,7 +226,7 @@ class Parser:
                     # Found a table, delegate to the calling function.
                     return
                 else:
-                    # Begining of a KV pair.
+                    # Beginning of a KV pair.
                     # Return to beginning of whitespace so it gets included
                     # as indentation for the KV about to be parsed.
                     state.restore = True
