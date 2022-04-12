@@ -492,6 +492,10 @@ class Item:
         """The TOML representation"""
         raise NotImplementedError()
 
+    def as_ppo(self):
+        """Returns as pure python object (ppo)"""
+        raise NotImplementedError()
+
     # Helpers
 
     def comment(self, comment: str) -> "Item":
@@ -533,6 +537,8 @@ class Item:
 
     def __reduce_ex__(self, protocol):
         return self.__class__, self._getstate(protocol)
+
+    def 
 
 
 class Whitespace(Item):
@@ -610,6 +616,9 @@ class Integer(int, Item):
         if re.match(r"^[+\-]\d+$", raw):
             self._sign = True
 
+    def as_ppo(self) -> int:
+        return int(self)
+
     @property
     def discriminant(self) -> int:
         return 2
@@ -678,6 +687,9 @@ class Float(float, Item):
         if re.match(r"^[+\-].+$", raw):
             self._sign = True
 
+    def as_ppo(self) -> float:
+        return float(self)
+
     @property
     def discriminant(self) -> int:
         return 3
@@ -738,6 +750,9 @@ class Bool(Item):
         super().__init__(trivia)
 
         self._value = bool(t)
+
+    def as_ppo(self) -> bool:
+        return bool(self)
 
     @property
     def discriminant(self) -> int:
@@ -820,6 +835,10 @@ class DateTime(Item, datetime):
         super().__init__(trivia or Trivia())
 
         self._raw = raw or self.isoformat()
+
+    def as_ppo(self) -> datetime:
+        (year, month, day, hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
+        return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
 
     @property
     def discriminant(self) -> int:
@@ -924,6 +943,10 @@ class Date(Item, date):
 
         self._raw = raw
 
+    def as_ppo(self) -> date:
+        (year, month, day, _, _) = self._getstate()
+        return date(year, month, day)
+
     @property
     def discriminant(self) -> int:
         return 6
@@ -995,6 +1018,10 @@ class Time(Item, time):
         super().__init__(trivia)
 
         self._raw = raw
+
+    def as_ppo(self) -> datetime:
+        (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
+        return time(hour, minute, second, microsecond, tzinfo)
 
     @property
     def discriminant(self) -> int:
@@ -1294,6 +1321,9 @@ class AbstractTable(Item, _CustomDict):
         for k, v in self._value.body:
             if k is not None:
                 dict.__setitem__(self, k.key, v)
+
+    def as_ppo(self):
+        pass
 
     @property
     def value(self) -> "container.Container":
@@ -1616,6 +1646,9 @@ class String(str, Item):
 
         self._t = t
         self._original = original
+
+    def as_ppo(self) -> str:
+        return self.as_string()
 
     @property
     def discriminant(self) -> int:
