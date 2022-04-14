@@ -492,7 +492,7 @@ class Item:
         """The TOML representation"""
         raise NotImplementedError()
 
-    def as_ppo(self):
+    def unwrap(self, recursive: bool = True):
         """Returns as pure python object (ppo)"""
         raise NotImplementedError()
 
@@ -616,7 +616,7 @@ class Integer(int, Item):
         if re.match(r"^[+\-]\d+$", raw):
             self._sign = True
 
-    def as_ppo(self) -> int:
+    def unwrap(self, recursive: bool = True) -> int:
         return int(self)
 
     @property
@@ -687,7 +687,7 @@ class Float(float, Item):
         if re.match(r"^[+\-].+$", raw):
             self._sign = True
 
-    def as_ppo(self) -> float:
+    def unwrap(self, recursive: bool = True) -> float:
         return float(self)
 
     @property
@@ -751,7 +751,7 @@ class Bool(Item):
 
         self._value = bool(t)
 
-    def as_ppo(self) -> bool:
+    def unwrap(self, recursive: bool = True) -> bool:
         return bool(self)
 
     @property
@@ -836,7 +836,7 @@ class DateTime(Item, datetime):
 
         self._raw = raw or self.isoformat()
 
-    def as_ppo(self) -> datetime:
+    def unwrap(self, recursive: bool = True) -> datetime:
         (year, month, day, hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
         return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
 
@@ -943,7 +943,7 @@ class Date(Item, date):
 
         self._raw = raw
 
-    def as_ppo(self) -> date:
+    def unwrap(self, recursive: bool = True) -> date:
         (year, month, day, _, _) = self._getstate()
         return date(year, month, day)
 
@@ -1019,7 +1019,7 @@ class Time(Item, time):
 
         self._raw = raw
 
-    def as_ppo(self) -> datetime:
+    def unwrap(self, recursive: bool = True) -> datetime:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
         return time(hour, minute, second, microsecond, tzinfo)
 
@@ -1322,7 +1322,7 @@ class AbstractTable(Item, _CustomDict):
             if k is not None:
                 dict.__setitem__(self, k.key, v)
 
-    def as_ppo(self):
+    def unwrap(self, recursive: bool = True):
         pass
 
     @property
@@ -1647,7 +1647,7 @@ class String(str, Item):
         self._t = t
         self._original = original
 
-    def as_ppo(self) -> str:
+    def unwrap(self, recursive: bool = True) -> str:
         return self.as_string()
 
     @property
