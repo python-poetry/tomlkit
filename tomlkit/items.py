@@ -1078,6 +1078,15 @@ class Array(Item, _CustomList):
         self._multiline = multiline
         self._reindex()
 
+    def unwrap(self, recursive: bool = True) -> str:
+        unwrapped = []
+        for v in self:
+            if recursive:
+                unwrapped.append(v.unwrap(recursive=recursive))
+            else:
+                unwrapped.append(v)
+        return unwrapped
+
     @property
     def discriminant(self) -> int:
         return 8
@@ -1323,7 +1332,14 @@ class AbstractTable(Item, _CustomDict):
                 dict.__setitem__(self, k.key, v)
 
     def unwrap(self, recursive: bool = True):
-        pass
+        unwrapped = {}
+        for k in self:
+            if recursive:
+                unwrapped[k] = self[k].unwrap(recursive=recursive)
+            else:
+                unwrapped[k] = self[k]
+
+        return unwrapped
 
     @property
     def value(self) -> "container.Container":
@@ -1708,6 +1724,15 @@ class AoT(Item, _CustomList):
         for table in body:
             self.append(table)
 
+    def unwrap(self, recursive: bool = True) -> str:
+        unwrapped = []
+        for t in self._body:
+            if recursive:
+                unwrapped.append(t.unwrap(recursive=recursive))
+            else:
+                unwrapped.append(t)
+        return unwrapped
+
     @property
     def body(self) -> List[Table]:
         return self._body
@@ -1798,6 +1823,9 @@ class Null(Item):
 
     def __init__(self) -> None:
         pass
+
+    def unwrap(self, recursive: bool = True) -> str:
+        return None
 
     @property
     def discriminant(self) -> int:

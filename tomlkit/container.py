@@ -46,6 +46,25 @@ class Container(_CustomDict):
     def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
 
+    def unwrap(self, recursive: bool = True) -> str:
+        unwrapped = {}
+        for k, v in self._body:
+            if k is None:
+                continue
+
+            k = k.key
+            v = v.value
+
+            if isinstance(v, Container):
+                v = v.unwrap(recursive=recursive)
+
+            if k in unwrapped:
+                merge_dicts(unwrapped[k], v)
+            else:
+                unwrapped[k] = v.unwrap(recursive=recursive)
+
+        return unwrapped
+
     @property
     def value(self) -> Dict[Any, Any]:
         d = {}
@@ -795,6 +814,9 @@ class OutOfOrderTableProxy(_CustomDict):
                     self._tables_map[k] = table_idx
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
+
+    def unwrap(self, recursive: bool = True) -> str:
+        return self._internal_container.unwrap(recursive=recursive)
 
     @property
     def value(self):
