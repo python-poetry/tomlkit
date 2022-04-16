@@ -17,6 +17,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -56,6 +57,71 @@ else:
 
     class _CustomDict(MutableMapping, dict):
         """Adds MutableMapping mixin while pretending to be a builtin dict"""
+
+
+ItemT = TypeVar("ItemT", bound="Item")
+
+
+@overload
+def item(value: bool) -> "Bool":
+    ...
+
+
+@overload
+def item(value: int) -> "Integer":
+    ...
+
+
+@overload
+def item(value: float) -> "Float":
+    ...
+
+
+@overload
+def item(value: str) -> "String":
+    ...
+
+
+@overload
+def item(value: datetime) -> "DateTime":
+    ...
+
+
+@overload
+def item(value: date) -> "Date":
+    ...
+
+
+@overload
+def item(value: time) -> "Time":
+    ...
+
+
+@overload
+def item(value: Sequence[dict]) -> "AoT":
+    ...
+
+
+@overload
+def item(value: Sequence) -> "Array":
+    ...
+
+
+@overload
+def item(value: dict, _parent: "Array" = ..., _sort_keys: bool = ...) -> "InlineTable":
+    ...
+
+
+@overload
+def item(
+    value: dict, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
+) -> "Table":
+    ...
+
+
+@overload
+def item(value: ItemT) -> ItemT:
+    ...
 
 
 def item(

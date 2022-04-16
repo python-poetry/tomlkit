@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
-- Fix the `astimezone()` and `replace()` methods of datetime objects. ([#188](https://github.com/sdispater/tomlkit/issues/178))
+### Fixed
+
+- Fix the `astimezone()` and `replace()` methods of datetime objects. ([#188](https://github.com/sdispater/tomlkit/issues/188))
+- Add type definitions for `items()` function. ([#190](https://github.com/sdispater/tomlkit/issues/190))
 
 ## [0.10.1] - 2022-03-27
 
