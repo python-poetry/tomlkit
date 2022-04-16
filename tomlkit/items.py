@@ -721,8 +721,7 @@ class DateTime(Item, datetime):
         second: int,
         microsecond: int,
         tzinfo: Optional[tzinfo],
-        trivia: Trivia,
-        raw: str,
+        *_: Any,
         **kwargs: Any,
     ) -> datetime:
         return datetime.__new__(
@@ -748,12 +747,13 @@ class DateTime(Item, datetime):
         second: int,
         microsecond: int,
         tzinfo: Optional[tzinfo],
-        trivia: Trivia,
-        raw: str,
+        trivia: Optional[Trivia] = None,
+        raw: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(trivia)
+        super().__init__(trivia or Trivia())
 
-        self._raw = raw
+        self._raw = raw or self.isoformat()
 
     @property
     def discriminant(self) -> int:
@@ -803,7 +803,16 @@ class DateTime(Item, datetime):
 
         return result
 
-    def _new(self, result):
+    def replace(self, *args: Any, **kwargs: Any) -> datetime:
+        return self._new(super().replace(*args, **kwargs))
+
+    def astimezone(self, tz: tzinfo) -> datetime:
+        result = super().astimezone(tz)
+        if PY38:
+            return result
+        return self._new(result)
+
+    def _new(self, result) -> "DateTime":
         raw = result.isoformat()
 
         return DateTime(
@@ -879,6 +888,9 @@ class Date(Item, date):
 
         return result
 
+    def replace(self, *args: Any, **kwargs: Any) -> date:
+        return self._new(super().replace(*args, **kwargs))
+
     def _new(self, result):
         raw = result.isoformat()
 
@@ -928,6 +940,22 @@ class Time(Item, time):
 
     def as_string(self) -> str:
         return self._raw
+
+    def replace(self, *args: Any, **kwargs: Any) -> time:
+        return self._new(super().replace(*args, **kwargs))
+
+    def _new(self, result):
+        raw = result.isoformat()
+
+        return Time(
+            result.hour,
+            result.minute,
+            result.second,
+            result.microsecond,
+            result.tzinfo,
+            self._trivia,
+            raw,
+        )
 
     def _getstate(self, protocol: int = 3) -> tuple:
         return (

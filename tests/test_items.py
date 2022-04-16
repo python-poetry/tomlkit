@@ -8,10 +8,8 @@ from datetime import timedelta
 
 import pytest
 
-from tomlkit import inline_table
+from tomlkit import api
 from tomlkit import parse
-from tomlkit.api import array
-from tomlkit.api import ws
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Bool
 from tomlkit.items import Comment
@@ -25,6 +23,50 @@ from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
+
+
+@pytest.fixture()
+def tz_pst():
+    try:
+        from datetime import timezone
+
+        return timezone(timedelta(hours=-8), "PST")
+    except ImportError:
+        from datetime import tzinfo
+
+        class PST(tzinfo):
+            def utcoffset(self, dt):
+                return timedelta(hours=-8)
+
+            def tzname(self, dt):
+                return "PST"
+
+            def dst(self, dt):
+                return timedelta(0)
+
+        return PST()
+
+
+@pytest.fixture()
+def tz_utc():
+    try:
+        from datetime import timezone
+
+        return timezone.utc
+    except ImportError:
+        from datetime import tzinfo
+
+        class UTC(tzinfo):
+            def utcoffset(self, dt):
+                return timedelta(hours=0)
+
+            def tzname(self, dt):
+                return "UTC"
+
+            def dst(self, dt):
+                return timedelta(0)
+
+        return UTC()
 
 
 def test_key_comparison():
@@ -320,10 +362,10 @@ bar = "baz"
 
 
 def test_array_add_line():
-    t = array()
+    t = api.array()
     t.add_line(1, 2, 3, comment="Line 1")
     t.add_line(4, 5, 6, comment="Line 2")
-    t.add_line(7, ws(","), ws(" "), 8, add_comma=False)
+    t.add_line(7, api.ws(","), api.ws(" "), 8, add_comma=False)
     t.add_line(indent="")
     assert len(t) == 8
     assert list(t) == [1, 2, 3, 4, 5, 6, 7, 8]
@@ -338,9 +380,9 @@ def test_array_add_line():
 
 
 def test_array_add_line_invalid_value():
-    t = array()
+    t = api.array()
     with pytest.raises(ValueError, match="is not allowed"):
-        t.add_line(1, ws(" "))
+        t.add_line(1, api.ws(" "))
     with pytest.raises(ValueError, match="is not allowed"):
         t.add_line(Comment(Trivia("  ", comment="test")))
     assert len(t) == 0
@@ -465,7 +507,7 @@ def test_floats_behave_like_floats():
     assert doc.as_string() == "float = +35.12"
 
 
-def test_datetimes_behave_like_datetimes():
+def test_datetimes_behave_like_datetimes(tz_utc, tz_pst):
     i = item(datetime(2018, 7, 22, 12, 34, 56))
 
     assert i == datetime(2018, 7, 22, 12, 34, 56)
@@ -478,6 +520,14 @@ def test_datetimes_behave_like_datetimes():
     i -= timedelta(days=2)
     assert i == datetime(2018, 7, 21, 12, 34, 56)
     assert i.as_string() == "2018-07-21T12:34:56"
+
+    i = i.replace(year=2019, tzinfo=tz_utc)
+    assert i == datetime(2019, 7, 21, 12, 34, 56, tzinfo=tz_utc)
+    assert i.as_string() == "2019-07-21T12:34:56+00:00"
+
+    i = i.astimezone(tz_pst)
+    assert i == datetime(2019, 7, 21, 4, 34, 56, tzinfo=tz_pst)
+    assert i.as_string() == "2019-07-21T04:34:56-08:00"
 
     doc = parse("dt = 2018-07-22T12:34:56-05:00")
     doc["dt"] += timedelta(days=1)
@@ -499,6 +549,10 @@ def test_dates_behave_like_dates():
     assert i == date(2018, 7, 21)
     assert i.as_string() == "2018-07-21"
 
+    i = i.replace(year=2019)
+    assert i == datetime(2019, 7, 21)
+    assert i.as_string() == "2019-07-21"
+
     doc = parse("dt = 2018-07-22 # Comment")
     doc["dt"] += timedelta(days=1)
 
@@ -510,6 +564,10 @@ def test_times_behave_like_times():
 
     assert i == time(12, 34, 56)
     assert i.as_string() == "12:34:56"
+
+    i = i.replace(hour=13)
+    assert i == time(13, 34, 56)
+    assert i.as_string() == "13:34:56"
 
 
 def test_strings_behave_like_strs():
@@ -611,7 +669,7 @@ def test_items_are_pickable():
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
 
-    n = inline_table()
+    n = api.inline_table()
     n["foo"] = "bar"
 
     s = pickle.dumps(n)
@@ -629,7 +687,7 @@ def test_items_are_pickable():
 
 
 def test_trim_comments_when_building_inline_table():
-    table = inline_table()
+    table = api.inline_table()
     row = parse('foo = "bar"  # Comment')
     table.update(row)
     assert table.as_string() == '{foo = "bar"}'
@@ -641,7 +699,7 @@ def test_trim_comments_when_building_inline_table():
 
 
 def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
-    table = inline_table()
+    table = api.inline_table()
     table["foo"] = "bar"
     table["baz"] = "boom"
 
@@ -651,7 +709,7 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
 
     assert '{foo = "bar"}' == table.as_string()
 
-    table = inline_table()
+    table = api.inline_table()
     table["foo"] = "bar"
 
     del table["foo"]

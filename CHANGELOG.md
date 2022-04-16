@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix the `astimezone()` and `replace()` methods of datetime objects. ([#188](https://github.com/sdispater/tomlkit/issues/178))
+
 ## [0.10.1] - 2022-03-27
 
 ### Fixed
