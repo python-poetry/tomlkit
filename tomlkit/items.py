@@ -806,6 +806,12 @@ class DateTime(Item, datetime):
     def replace(self, *args: Any, **kwargs: Any) -> datetime:
         return self._new(super().replace(*args, **kwargs))
 
+    def astimezone(self, tz: tzinfo) -> datetime:
+        result = super().astimezone(tz)
+        if PY38:
+            return result
+        return self._new(result)
+
     def _new(self, result) -> "DateTime":
         raw = result.isoformat()
 
