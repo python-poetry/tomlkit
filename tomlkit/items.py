@@ -9,7 +9,7 @@ from datetime import time
 from datetime import tzinfo
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Collection
 from typing import Dict
@@ -17,6 +17,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import TypeVar
 from typing import Union
 from typing import cast
