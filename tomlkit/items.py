@@ -9,7 +9,7 @@ from datetime import time
 from datetime import tzinfo
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 from typing import Any
 from typing import Collection
 from typing import Dict
@@ -56,6 +56,71 @@ else:
 
     class _CustomDict(MutableMapping, dict):
         """Adds MutableMapping mixin while pretending to be a builtin dict"""
+
+
+ItemT = TypeVar("ItemT", bound="Item")
+
+
+@overload
+def item(value: bool) -> "Bool":
+    ...
+
+
+@overload
+def item(value: int) -> "Integer":
+    ...
+
+
+@overload
+def item(value: float) -> "Float":
+    ...
+
+
+@overload
+def item(value: str) -> "String":
+    ...
+
+
+@overload
+def item(value: datetime) -> "DateTime":
+    ...
+
+
+@overload
+def item(value: date) -> "Date":
+    ...
+
+
+@overload
+def item(value: time) -> "Time":
+    ...
+
+
+@overload
+def item(value: Sequence[dict]) -> "AoT":
+    ...
+
+
+@overload
+def item(value: Sequence) -> "Array":
+    ...
+
+
+@overload
+def item(value: dict, _parent: "Array" = ..., _sort_keys: bool = ...) -> "InlineTable":
+    ...
+
+
+@overload
+def item(
+    value: dict, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
+) -> "Table":
+    ...
+
+
+@overload
+def item(value: ItemT) -> ItemT:
+    ...
 
 
 def item(
