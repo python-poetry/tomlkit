@@ -194,6 +194,7 @@ class KeyAlreadyPresent(TOMLKitError):
     """
 
     def __init__(self, key):
+        key = getattr(key, "key", key)
         message = f'Key "{key}" already exists.'
 
         super().__init__(message)

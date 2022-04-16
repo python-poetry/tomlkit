@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Use the plain python string representation of `Key` in `KeyAlreadyPresent` error message. ([#185](https://github.com/sdispater/tomlkit/issues/185))
 - Fix the `astimezone()` and `replace()` methods of datetime objects. ([#188](https://github.com/sdispater/tomlkit/issues/188))
 - Add type definitions for `items()` function. ([#190](https://github.com/sdispater/tomlkit/issues/190))
 
