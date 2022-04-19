@@ -538,8 +538,6 @@ class Item:
     def __reduce_ex__(self, protocol):
         return self.__class__, self._getstate(protocol)
 
-    def 
-
 
 class Whitespace(Item):
     """
