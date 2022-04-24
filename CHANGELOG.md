@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.2] - 2022-04-24
+
 ### Fixed
 
 - Use the plain python string representation of `Key` in `KeyAlreadyPresent` error message. ([#185](https://github.com/sdispater/tomlkit/issues/185))
@@ -271,7 +273,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.1...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.2...master
+[0.10.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.2
 [0.10.1]: https://github.com/sdispater/tomlkit/releases/tag/0.10.1
 [0.10.0]: https://github.com/sdispater/tomlkit/releases/tag/0.10.0
 [0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.9.2
