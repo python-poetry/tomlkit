@@ -48,7 +48,7 @@ class Container(_CustomDict):
 
     def unwrap(self, recursive: bool = True) -> str:
         unwrapped = {}
-        for k, v in self._body:
+        for k, v in self.items():
             if k is None:
                 continue
 
