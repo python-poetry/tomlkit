@@ -15,12 +15,18 @@ from tomlkit.items import Bool
 from tomlkit.items import Comment
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
+from tomlkit.items import Float
+from tomlkit.items import DateTime
+from tomlkit.items import Date
+from tomlkit.items import Time
+from tomlkit.items import Array
 from tomlkit.items import KeyType
 from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
+from tomlkit.items import Item
 from tomlkit.items import item
 from tomlkit.parser import Parser
 
@@ -71,7 +77,7 @@ def tz_utc():
 
 def test_item_base_has_no_unwrap():
     trivia = Trivia(indent='\t', comment_ws=' ', comment='For unit test')
-    item = items.Item(trivia)
+    item = Item(trivia)
     try:
         item.unwrap()
     except NotImplementedError:
@@ -79,13 +85,51 @@ def test_item_base_has_no_unwrap():
     else:
         raise AssertionError("`items.Item` should not implement `unwrap`")
 
+def assert_is_ppo(v_unwrapped, TomlkitType, unwrappedType):
+    assert type(v_unwrapped) != TomlkitType
+    assert type(v_unwrapped) == unwrappedType
+
+def elementary_test(v, TomlkitType, unwrappedType):
+    v_unwrapped = v.unwrap()
+    assert type(v) == TomlkitType
+    assert type(v) != unwrappedType
+    assert_is_ppo(v_unwrapped, TomlkitType, unwrappedType)
+
+def elementary_fail(v, TomlkitType, unwrappedType):
+    v_unwrapped = v.unwrap()
+    assert type(v) == TomlkitType
+    assert type(v_unwrapped) == TomlkitType
+    assert type(v_unwrapped) == unwrappedType
+    assert type(v) != unwrappedType
+
 def test_integer_unwrap():
-    i = item(666)
-
-    i_unwrapped = i.unwrap()
-
-    assert type(i) == Integer
-    assert type(i_unwrapped) != Integer
+    elementary_test(item(666), Integer, int)
+def test_float_unwrap():
+    elementary_test(item(2.78), Float, float)
+def test_false_unwrap():
+    elementary_test(item(False), Bool, bool)
+def test_true_unwrap():
+    elementary_test(item(True), Bool, bool)
+def test_datetime_unwrap():
+    dt=datetime.utcnow()
+    elementary_test(item(dt), DateTime, datetime)
+def test_time_unwrap():
+    t=time(3, 8, 14)
+    elementary_test(item(t), Time, time)
+def test_date_unwrap():
+    d=date.today()
+    elementary_test(item(d), Date, date)
+def test_array_unwrap():
+    trivia = Trivia(indent='\t', comment_ws=' ', comment='For unit test')
+    i=item(666)
+    f=item(2.78)
+    b=item(False)
+    a=Array([i, f, b], trivia)
+    a_unwrapped=a.unwrap()
+    assert type(a_unwrapped) == list
+    assert_is_ppo(a_unwrapped[0], Integer, int)
+    assert_is_ppo(a_unwrapped[1], Float, float)
+    assert_is_ppo(a_unwrapped[2], Bool, bool)
 
 def test_key_comparison():
     k = Key("foo")
