@@ -69,6 +69,24 @@ def tz_utc():
         return UTC()
 
 
+def test_item_base_has_no_unwrap():
+    trivia = Trivia(indent='\t', comment_ws=' ', comment='For unit test')
+    item = items.Item(trivia)
+    try:
+        item.unwrap()
+    except NotImplementedError:
+        pass
+    else:
+        raise AssertionError("`items.Item` should not implement `unwrap`")
+
+def test_integer_unwrap():
+    i = item(666)
+
+    i_unwrapped = i.unwrap()
+
+    assert type(i) == Integer
+    assert type(i_unwrapped) != Integer
+
 def test_key_comparison():
     k = Key("foo")
 
