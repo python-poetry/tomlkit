@@ -28,6 +28,7 @@ from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Item
 from tomlkit.items import item
+from tomlkit.items import Null
 from tomlkit.parser import Parser
 from tomlkit.check import is_tomlkit
 
@@ -114,6 +115,23 @@ def test_true_unwrap():
 def test_datetime_unwrap():
     dt=datetime.utcnow()
     elementary_test(item(dt), DateTime, datetime)
+def test_string_unwrap():
+    elementary_test(item("hello"), String, str)
+def test_null_unwrap():
+    n = Null()
+    elementary_test(n, Null, type(None))
+def test_aot_unwrap():
+    d = item([{"a": "A"}, {"b": "B"}])
+    assert is_tomlkit(d)
+    unwrapped = d.unwrap()
+    assert type(unwrapped) == list
+    for de in unwrapped:
+        assert type(de) == dict
+        for k in de:
+            v = de[k]
+            assert type(k) == str
+            assert type(v) == str
+
 def test_time_unwrap():
     t=time(3, 8, 14)
     elementary_test(item(t), Time, time)
