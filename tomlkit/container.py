@@ -25,6 +25,8 @@ from .items import Whitespace
 from .items import _CustomDict
 from .items import item as _item
 
+from .check import is_tomlkit
+
 
 _NOT_SET = object()
 
@@ -46,25 +48,22 @@ class Container(_CustomDict):
     def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
 
-    def _unwrap_inner(self, k, v, d):
-        if k is None:
-            return
-
-        k = k.key
-        v = v.value
-
-        if isinstance(v, Container):
-            v = v.value
-
-        if k in d:
-            merge_dicts(d[k], v)
-        else:
-            d[k] = v
-
     def unwrap(self) -> str:
         unwrapped = {}
         for k, v in self.items():
-            self._unwrap_inner(k, v, unwrapped)
+            if k is None:
+                continue
+
+            if not type(k) == str:
+                k = k.key
+
+            if not type(v) == str:
+                v = v.unwrap()
+
+            if k in unwrapped:
+                merge_dicts(unwrapped[k], v)
+            else:
+                unwrapped[k] = v
 
         return unwrapped
 
@@ -72,7 +71,19 @@ class Container(_CustomDict):
     def value(self) -> Dict[Any, Any]:
         d = {}
         for k, v in self._body:
-            self._unwrap_inner(k, v, d)
+            if k is None:
+                continue
+
+            k = k.key
+            v = v.value
+
+            if isinstance(v, Container):
+                v = v.value
+
+            if k in d:
+                merge_dicts(d[k], v)
+            else:
+                d[k] = v
 
         return d
 

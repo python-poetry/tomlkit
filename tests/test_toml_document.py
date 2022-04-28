@@ -153,6 +153,19 @@ name = "bar"
 
     assert "tool" in d
 
+def test_toml_document_unwrap():
+    content = """[tool.poetry]
+name = "foo"
+"""
+
+    doc = parse(content)
+    unwrapped=doc.unwrap()
+    assert type(unwrapped) == dict
+    assert type(list(unwrapped.keys())[0]) == str
+    assert type(unwrapped["tool"]) == dict
+    assert type(list(unwrapped["tool"].keys())[0]) == str
+    assert type(unwrapped["tool"]["poetry"]["name"]) == str
+
 
 def test_toml_document_with_dotted_keys(example):
     content = example("0.5.0")
