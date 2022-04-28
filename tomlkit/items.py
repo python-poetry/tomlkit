@@ -1333,10 +1333,15 @@ class AbstractTable(Item, _CustomDict):
     def unwrap(self):
         unwrapped = {}
         for k in self:
-            if is_tomlkit(v):
-                unwrapped[k] = self[k].unwrap()
+            if is_tomlkit(k):
+                nk = k.unwrap()
             else:
-                unwrapped[k] = self[k]
+                nk = k
+            if is_tomlkit(self[k]):
+                nv = self[k].unwrap()
+            else:
+                nv = self[k]
+            unwrapped[nk] = nv
 
         return unwrapped
 

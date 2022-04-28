@@ -29,6 +29,7 @@ from tomlkit.items import Trivia
 from tomlkit.items import Item
 from tomlkit.items import item
 from tomlkit.parser import Parser
+from tomlkit.check import is_tomlkit
 
 
 @pytest.fixture()
@@ -130,6 +131,18 @@ def test_array_unwrap():
     assert_is_ppo(a_unwrapped[0], Integer, int)
     assert_is_ppo(a_unwrapped[1], Float, float)
     assert_is_ppo(a_unwrapped[2], Bool, bool)
+def test_abstract_table_unwrap():
+    table = item({"foo": "bar"})
+    super_table = item({"table": table, "baz": "borg"})
+    assert is_tomlkit(super_table["table"])
+
+    table_unwrapped = super_table.unwrap()
+    assert type(table_unwrapped) == dict
+    sub_table = table_unwrapped["table"]
+    assert type(sub_table) == dict
+    for (k, v) in zip(sub_table.keys(), sub_table):
+        assert type(k) == str
+        assert type(v) == str
 
 def test_key_comparison():
     k = Key("foo")
