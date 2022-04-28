@@ -46,7 +46,7 @@ class Container(_CustomDict):
     def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
 
-    def unwrap(self, recursive: bool = True) -> str:
+    def unwrap(self) -> str:
         unwrapped = {}
         for k, v in self.items():
             if k is None:
@@ -56,12 +56,12 @@ class Container(_CustomDict):
             v = v.value
 
             if isinstance(v, Container):
-                v = v.unwrap(recursive=recursive)
+                v = v.unwrap()
 
             if k in unwrapped:
                 merge_dicts(unwrapped[k], v)
             else:
-                unwrapped[k] = v.unwrap(recursive=recursive)
+                unwrapped[k] = v.unwrap()
 
         return unwrapped
 
@@ -815,8 +815,8 @@ class OutOfOrderTableProxy(_CustomDict):
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
 
-    def unwrap(self, recursive: bool = True) -> str:
-        return self._internal_container.unwrap(recursive=recursive)
+    def unwrap(self) -> str:
+        return self._internal_container.unwrap()
 
     @property
     def value(self):

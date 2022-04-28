@@ -29,6 +29,7 @@ from ._utils import CONTROL_CHARS
 from ._utils import escape_string
 from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
+from .check import is_tomlkit
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -492,7 +493,7 @@ class Item:
         """The TOML representation"""
         raise NotImplementedError()
 
-    def unwrap(self, recursive: bool = True):
+    def unwrap(self):
         """Returns as pure python object (ppo)"""
         raise NotImplementedError()
 
@@ -614,7 +615,7 @@ class Integer(int, Item):
         if re.match(r"^[+\-]\d+$", raw):
             self._sign = True
 
-    def unwrap(self, recursive: bool = True) -> int:
+    def unwrap(self) -> int:
         return int(self)
 
     @property
@@ -685,7 +686,7 @@ class Float(float, Item):
         if re.match(r"^[+\-].+$", raw):
             self._sign = True
 
-    def unwrap(self, recursive: bool = True) -> float:
+    def unwrap(self) -> float:
         return float(self)
 
     @property
@@ -749,7 +750,7 @@ class Bool(Item):
 
         self._value = bool(t)
 
-    def unwrap(self, recursive: bool = True) -> bool:
+    def unwrap(self) -> bool:
         return bool(self)
 
     @property
@@ -834,7 +835,7 @@ class DateTime(Item, datetime):
 
         self._raw = raw or self.isoformat()
 
-    def unwrap(self, recursive: bool = True) -> datetime:
+    def unwrap(self) -> datetime:
         (year, month, day, hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
         return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
 
@@ -941,7 +942,7 @@ class Date(Item, date):
 
         self._raw = raw
 
-    def unwrap(self, recursive: bool = True) -> date:
+    def unwrap(self) -> date:
         (year, month, day, _, _) = self._getstate()
         return date(year, month, day)
 
@@ -1017,7 +1018,7 @@ class Time(Item, time):
 
         self._raw = raw
 
-    def unwrap(self, recursive: bool = True) -> datetime:
+    def unwrap(self) -> datetime:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
         return time(hour, minute, second, microsecond, tzinfo)
 
@@ -1076,11 +1077,11 @@ class Array(Item, _CustomList):
         self._multiline = multiline
         self._reindex()
 
-    def unwrap(self, recursive: bool = True) -> str:
+    def unwrap(self) -> str:
         unwrapped = []
         for v in self:
-            if recursive:
-                unwrapped.append(v.unwrap(recursive=recursive))
+            if is_tomlkit(v):
+                unwrapped.append(v.unwrap())
             else:
                 unwrapped.append(v)
         return unwrapped
@@ -1329,11 +1330,11 @@ class AbstractTable(Item, _CustomDict):
             if k is not None:
                 dict.__setitem__(self, k.key, v)
 
-    def unwrap(self, recursive: bool = True):
+    def unwrap(self):
         unwrapped = {}
         for k in self:
-            if recursive:
-                unwrapped[k] = self[k].unwrap(recursive=recursive)
+            if is_tomlkit(v):
+                unwrapped[k] = self[k].unwrap()
             else:
                 unwrapped[k] = self[k]
 
@@ -1661,7 +1662,7 @@ class String(str, Item):
         self._t = t
         self._original = original
 
-    def unwrap(self, recursive: bool = True) -> str:
+    def unwrap(self) -> str:
         return self.as_string()
 
     @property
@@ -1722,11 +1723,11 @@ class AoT(Item, _CustomList):
         for table in body:
             self.append(table)
 
-    def unwrap(self, recursive: bool = True) -> str:
+    def unwrap(self) -> str:
         unwrapped = []
         for t in self._body:
-            if recursive:
-                unwrapped.append(t.unwrap(recursive=recursive))
+            if is_tomlkit(v):
+                unwrapped.append(t.unwrap())
             else:
                 unwrapped.append(t)
         return unwrapped
@@ -1822,7 +1823,7 @@ class Null(Item):
     def __init__(self) -> None:
         pass
 
-    def unwrap(self, recursive: bool = True) -> str:
+    def unwrap(self) -> str:
         return None
 
     @property
