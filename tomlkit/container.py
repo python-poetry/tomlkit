@@ -57,8 +57,10 @@ class Container(_CustomDict):
             if not isinstance(k, str):
                 k = k.key
 
-            if not isinstance(v, str):
+            try:
                 v = v.unwrap()
+            except AttributeError:
+                pass
 
             if k in unwrapped:
                 merge_dicts(unwrapped[k], v)
