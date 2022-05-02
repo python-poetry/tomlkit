@@ -54,10 +54,10 @@ class Container(_CustomDict):
             if k is None:
                 continue
 
-            if not type(k) == str:
+            if not isinstance(k, str):
                 k = k.key
 
-            if not type(v) == str:
+            if not isinstance(v, str):
                 v = v.unwrap()
 
             if k in unwrapped:
