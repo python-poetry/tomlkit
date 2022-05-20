@@ -91,15 +91,6 @@ def test_item_base_has_no_unwrap():
     else:
         raise AssertionError("`items.Item` should not implement `unwrap`")
 
-# a check thats designed to fail to make sure the tests works
-# TODO Remove before merge (maybe?)
-def elementary_fail(v, TomlkitType, unwrappedType):
-    v_unwrapped = v.unwrap()
-    assert type(v) == TomlkitType
-    assert type(v_unwrapped) == TomlkitType
-    assert type(v_unwrapped) == unwrappedType
-    assert type(v) != unwrappedType
-
 def test_integer_unwrap():
     elementary_test(item(666), int)
 def test_float_unwrap():
