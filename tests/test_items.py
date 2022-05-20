@@ -27,6 +27,7 @@ from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Item
+from tomlkit.items import AoT
 from tomlkit.items import item
 from tomlkit.items import Null
 from tomlkit.parser import Parser
@@ -88,15 +89,16 @@ def test_item_base_has_no_unwrap():
         raise AssertionError("`items.Item` should not implement `unwrap`")
 
 def assert_is_ppo(v_unwrapped, TomlkitType, unwrappedType):
-    assert type(v_unwrapped) != TomlkitType
-    assert type(v_unwrapped) == unwrappedType
+    assert not isinstance(v_unwrapped, TomlkitType)
+    assert isinstance(v_unwrapped, unwrappedType)
 
 def elementary_test(v, TomlkitType, unwrappedType):
     v_unwrapped = v.unwrap()
-    assert type(v) == TomlkitType
-    assert type(v) != unwrappedType
+    assert isinstance(v, TomlkitType)
     assert_is_ppo(v_unwrapped, TomlkitType, unwrappedType)
 
+# a check thats designed to fail to make sure the tests works
+# TODO Remove before merge (maybe?)
 def elementary_fail(v, TomlkitType, unwrappedType):
     v_unwrapped = v.unwrap()
     assert type(v) == TomlkitType
@@ -124,13 +126,13 @@ def test_aot_unwrap():
     d = item([{"a": "A"}, {"b": "B"}])
     assert is_tomlkit(d)
     unwrapped = d.unwrap()
-    assert type(unwrapped) == list
-    for de in unwrapped:
-        assert type(de) == dict
-        for k in de:
-            v = de[k]
-            assert type(k) == str
-            assert type(v) == str
+    assert_is_ppo(unwrapped, AoT, list)
+    for du, dw in zip(unwrapped, d):
+        assert_is_ppo(du, Table, dict)
+        for ku in du:
+            vu = du[ku]
+            assert_is_ppo(ku, String, str)
+            assert_is_ppo(vu, String, str)
 
 def test_time_unwrap():
     t=time(3, 8, 14)
@@ -145,7 +147,7 @@ def test_array_unwrap():
     b=item(False)
     a=Array([i, f, b], trivia)
     a_unwrapped=a.unwrap()
-    assert type(a_unwrapped) == list
+    assert_is_ppo(a_unwrapped, Array, list)
     assert_is_ppo(a_unwrapped[0], Integer, int)
     assert_is_ppo(a_unwrapped[1], Float, float)
     assert_is_ppo(a_unwrapped[2], Bool, bool)
@@ -155,12 +157,13 @@ def test_abstract_table_unwrap():
     assert is_tomlkit(super_table["table"])
 
     table_unwrapped = super_table.unwrap()
-    assert type(table_unwrapped) == dict
     sub_table = table_unwrapped["table"]
-    assert type(sub_table) == dict
-    for (k, v) in zip(sub_table.keys(), sub_table):
-        assert type(k) == str
-        assert type(v) == str
+    assert_is_ppo(table_unwrapped, Table, dict)
+    assert_is_ppo(sub_table, Table, dict)
+    for ku in sub_table:
+        vu = sub_table[ku]
+        assert_is_ppo(ku, String, str)
+        assert_is_ppo(vu, String, str)
 
 def test_key_comparison():
     k = Key("foo")
