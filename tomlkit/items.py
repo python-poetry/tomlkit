@@ -1731,7 +1731,7 @@ class AoT(Item, _CustomList):
     def unwrap(self) -> str:
         unwrapped = []
         for t in self._body:
-            if is_tomlkit(t):
+            if isinstance(t, Item):
                 unwrapped.append(t.unwrap())
             else:
                 unwrapped.append(t)
