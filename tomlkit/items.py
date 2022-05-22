@@ -27,9 +27,9 @@ from ._compat import PY38
 from ._compat import decode
 from ._utils import CONTROL_CHARS
 from ._utils import escape_string
+from .check import is_tomlkit
 from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
-from .check import is_tomlkit
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -836,7 +836,18 @@ class DateTime(Item, datetime):
         self._raw = raw or self.isoformat()
 
     def unwrap(self) -> datetime:
-        (year, month, day, hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
+        (
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            microsecond,
+            tzinfo,
+            _,
+            _,
+        ) = self._getstate()
         return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
 
     @property

@@ -10,6 +10,7 @@ from typing import Union
 
 from ._compat import decode
 from ._utils import merge_dicts
+from .check import is_tomlkit
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
 from .exceptions import TOMLKitError
@@ -24,8 +25,6 @@ from .items import Trivia
 from .items import Whitespace
 from .items import _CustomDict
 from .items import item as _item
-
-from .check import is_tomlkit
 
 
 _NOT_SET = object()

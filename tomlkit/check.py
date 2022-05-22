@@ -1,7 +1,8 @@
 def is_tomlkit(v):
-    from .items import Item as _Item
     from .container import Container
     from .container import OutOfOrderTableProxy
+    from .items import Item as _Item
+
     if isinstance(v, _Item):
         return True
     if isinstance(v, Container):
