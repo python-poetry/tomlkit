@@ -10,6 +10,7 @@ from typing import Union
 
 from ._compat import decode
 from ._utils import merge_dicts
+from .check import is_tomlkit
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
 from .exceptions import TOMLKitError
@@ -45,6 +46,25 @@ class Container(_CustomDict):
     @property
     def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
+
+    def unwrap(self) -> str:
+        unwrapped = {}
+        for k, v in self.items():
+            if k is None:
+                continue
+
+            if not isinstance(k, str):
+                k = k.key
+
+            if isinstance(v, Item):
+                v = v.unwrap()
+
+            if k in unwrapped:
+                merge_dicts(unwrapped[k], v)
+            else:
+                unwrapped[k] = v
+
+        return unwrapped
 
     @property
     def value(self) -> Dict[Any, Any]:
@@ -795,6 +815,9 @@ class OutOfOrderTableProxy(_CustomDict):
                     self._tables_map[k] = table_idx
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
+
+    def unwrap(self) -> str:
+        return self._internal_container.unwrap()
 
     @property
     def value(self):

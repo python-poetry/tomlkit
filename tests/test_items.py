@@ -10,19 +10,31 @@ import pytest
 
 from tomlkit import api
 from tomlkit import parse
+from tomlkit.check import is_tomlkit
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.items import AoT
+from tomlkit.items import Array
 from tomlkit.items import Bool
 from tomlkit.items import Comment
+from tomlkit.items import Date
+from tomlkit.items import DateTime
+from tomlkit.items import Float
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
+from tomlkit.items import Item
 from tomlkit.items import KeyType
+from tomlkit.items import Null
 from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
+from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
+
+from .util import assert_is_ppo
+from .util import elementary_test
 
 
 @pytest.fixture()
@@ -67,6 +79,98 @@ def tz_utc():
                 return timedelta(0)
 
         return UTC()
+
+
+def test_item_base_has_no_unwrap():
+    trivia = Trivia(indent="\t", comment_ws=" ", comment="For unit test")
+    item = Item(trivia)
+    try:
+        item.unwrap()
+    except NotImplementedError:
+        pass
+    else:
+        raise AssertionError("`items.Item` should not implement `unwrap`")
+
+
+def test_integer_unwrap():
+    elementary_test(item(666), int)
+
+
+def test_float_unwrap():
+    elementary_test(item(2.78), float)
+
+
+def test_false_unwrap():
+    elementary_test(item(False), bool)
+
+
+def test_true_unwrap():
+    elementary_test(item(True), bool)
+
+
+def test_datetime_unwrap():
+    dt = datetime.utcnow()
+    elementary_test(item(dt), datetime)
+
+
+def test_string_unwrap():
+    elementary_test(item("hello"), str)
+
+
+def test_null_unwrap():
+    n = Null()
+    elementary_test(n, type(None))
+
+
+def test_aot_unwrap():
+    d = item([{"a": "A"}, {"b": "B"}])
+    assert is_tomlkit(d)
+    unwrapped = d.unwrap()
+    assert_is_ppo(unwrapped, list)
+    for du, dw in zip(unwrapped, d):
+        assert_is_ppo(du, dict)
+        for ku in du:
+            vu = du[ku]
+            assert_is_ppo(ku, str)
+            assert_is_ppo(vu, str)
+
+
+def test_time_unwrap():
+    t = time(3, 8, 14)
+    elementary_test(item(t), time)
+
+
+def test_date_unwrap():
+    d = date.today()
+    elementary_test(item(d), date)
+
+
+def test_array_unwrap():
+    trivia = Trivia(indent="\t", comment_ws=" ", comment="For unit test")
+    i = item(666)
+    f = item(2.78)
+    b = item(False)
+    a = Array([i, f, b], trivia)
+    a_unwrapped = a.unwrap()
+    assert_is_ppo(a_unwrapped, list)
+    assert_is_ppo(a_unwrapped[0], int)
+    assert_is_ppo(a_unwrapped[1], float)
+    assert_is_ppo(a_unwrapped[2], bool)
+
+
+def test_abstract_table_unwrap():
+    table = item({"foo": "bar"})
+    super_table = item({"table": table, "baz": "borg"})
+    assert is_tomlkit(super_table["table"])
+
+    table_unwrapped = super_table.unwrap()
+    sub_table = table_unwrapped["table"]
+    assert_is_ppo(table_unwrapped, dict)
+    assert_is_ppo(sub_table, dict)
+    for ku in sub_table:
+        vu = sub_table[ku]
+        assert_is_ppo(ku, str)
+        assert_is_ppo(vu, str)
 
 
 def test_key_comparison():

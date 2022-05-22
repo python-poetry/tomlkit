@@ -14,6 +14,10 @@ from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.toml_document import TOMLDocument
+
+from .util import assert_is_ppo
+from .util import elementary_test
 
 
 def test_document_is_a_dict(example):
@@ -152,6 +156,20 @@ name = "bar"
     d.update(doc)
 
     assert "tool" in d
+
+
+def test_toml_document_unwrap():
+    content = """[tool.poetry]
+name = "foo"
+"""
+
+    doc = parse(content)
+    unwrapped = doc.unwrap()
+    assert_is_ppo(unwrapped, dict)
+    assert_is_ppo(list(unwrapped.keys())[0], str)
+    assert_is_ppo(unwrapped["tool"], dict)
+    assert_is_ppo(list(unwrapped["tool"].keys())[0], str)
+    assert_is_ppo(unwrapped["tool"]["poetry"]["name"], str)
 
 
 def test_toml_document_with_dotted_keys(example):

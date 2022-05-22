@@ -27,6 +27,7 @@ from ._compat import PY38
 from ._compat import decode
 from ._utils import CONTROL_CHARS
 from ._utils import escape_string
+from .check import is_tomlkit
 from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
 
@@ -492,6 +493,10 @@ class Item:
         """The TOML representation"""
         raise NotImplementedError()
 
+    def unwrap(self):
+        """Returns as pure python object (ppo)"""
+        raise NotImplementedError()
+
     # Helpers
 
     def comment(self, comment: str) -> "Item":
@@ -610,6 +615,9 @@ class Integer(int, Item):
         if re.match(r"^[+\-]\d+$", raw):
             self._sign = True
 
+    def unwrap(self) -> int:
+        return int(self)
+
     @property
     def discriminant(self) -> int:
         return 2
@@ -678,6 +686,9 @@ class Float(float, Item):
         if re.match(r"^[+\-].+$", raw):
             self._sign = True
 
+    def unwrap(self) -> float:
+        return float(self)
+
     @property
     def discriminant(self) -> int:
         return 3
@@ -738,6 +749,9 @@ class Bool(Item):
         super().__init__(trivia)
 
         self._value = bool(t)
+
+    def unwrap(self) -> bool:
+        return bool(self)
 
     @property
     def discriminant(self) -> int:
@@ -820,6 +834,21 @@ class DateTime(Item, datetime):
         super().__init__(trivia or Trivia())
 
         self._raw = raw or self.isoformat()
+
+    def unwrap(self) -> datetime:
+        (
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            microsecond,
+            tzinfo,
+            _,
+            _,
+        ) = self._getstate()
+        return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
 
     @property
     def discriminant(self) -> int:
@@ -924,6 +953,10 @@ class Date(Item, date):
 
         self._raw = raw
 
+    def unwrap(self) -> date:
+        (year, month, day, _, _) = self._getstate()
+        return date(year, month, day)
+
     @property
     def discriminant(self) -> int:
         return 6
@@ -996,6 +1029,10 @@ class Time(Item, time):
 
         self._raw = raw
 
+    def unwrap(self) -> datetime:
+        (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
+        return time(hour, minute, second, microsecond, tzinfo)
+
     @property
     def discriminant(self) -> int:
         return 7
@@ -1050,6 +1087,15 @@ class Array(Item, _CustomList):
         self._value = value
         self._multiline = multiline
         self._reindex()
+
+    def unwrap(self) -> str:
+        unwrapped = []
+        for v in self:
+            if is_tomlkit(v):
+                unwrapped.append(v.unwrap())
+            else:
+                unwrapped.append(v)
+        return unwrapped
 
     @property
     def discriminant(self) -> int:
@@ -1294,6 +1340,21 @@ class AbstractTable(Item, _CustomDict):
         for k, v in self._value.body:
             if k is not None:
                 dict.__setitem__(self, k.key, v)
+
+    def unwrap(self):
+        unwrapped = {}
+        for k in self:
+            if is_tomlkit(k):
+                nk = k.unwrap()
+            else:
+                nk = k
+            if is_tomlkit(self[k]):
+                nv = self[k].unwrap()
+            else:
+                nv = self[k]
+            unwrapped[nk] = nv
+
+        return unwrapped
 
     @property
     def value(self) -> "container.Container":
@@ -1617,6 +1678,9 @@ class String(str, Item):
         self._t = t
         self._original = original
 
+    def unwrap(self) -> str:
+        return self.as_string()
+
     @property
     def discriminant(self) -> int:
         return 11
@@ -1674,6 +1738,15 @@ class AoT(Item, _CustomList):
 
         for table in body:
             self.append(table)
+
+    def unwrap(self) -> str:
+        unwrapped = []
+        for t in self._body:
+            if isinstance(t, Item):
+                unwrapped.append(t.unwrap())
+            else:
+                unwrapped.append(t)
+        return unwrapped
 
     @property
     def body(self) -> List[Table]:
@@ -1765,6 +1838,9 @@ class Null(Item):
 
     def __init__(self) -> None:
         pass
+
+    def unwrap(self) -> str:
+        return None
 
     @property
     def discriminant(self) -> int:
