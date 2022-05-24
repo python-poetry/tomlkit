@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2022-05-25
+
+## Fixed
+
+- Add `unwrap` methods that return tomlkit objects recursively converted to plain python objects. ([#43](https://github.com/sdispater/tomlkit/issues/43))
+
 ## [0.10.2] - 2022-04-24
 
 ### Fixed
@@ -274,6 +280,7 @@
 - Fixed raw strings escaping.
 
 [unreleased]: https://github.com/sdispater/tomlkit/compare/0.10.2...master
+[0.11.0]: https://github.com/sdispater/tomlkit/releases/tag/0.11.0
 [0.10.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.2
 [0.10.1]: https://github.com/sdispater/tomlkit/releases/tag/0.10.1
 [0.10.0]: https://github.com/sdispater/tomlkit/releases/tag/0.10.0
