@@ -27,7 +27,6 @@ from ._compat import PY38
 from ._compat import decode
 from ._utils import CONTROL_CHARS
 from ._utils import escape_string
-from .check import is_tomlkit
 from .exceptions import InvalidStringError
 from .toml_char import TOMLChar
 
@@ -1091,7 +1090,7 @@ class Array(Item, _CustomList):
     def unwrap(self) -> str:
         unwrapped = []
         for v in self:
-            if is_tomlkit(v):
+            if isinstance(v, Item):
                 unwrapped.append(v.unwrap())
             else:
                 unwrapped.append(v)
@@ -1343,16 +1342,12 @@ class AbstractTable(Item, _CustomDict):
 
     def unwrap(self):
         unwrapped = {}
-        for k in self:
-            if is_tomlkit(k):
-                nk = k.unwrap()
-            else:
-                nk = k
-            if is_tomlkit(self[k]):
-                nv = self[k].unwrap()
-            else:
-                nv = self[k]
-            unwrapped[nk] = nv
+        for k, v in self.items():
+            if isinstance(k, Key):
+                k = k.key
+            if isinstance(v, Item):
+                v = v.unwrap()
+            unwrapped[k] = v
 
         return unwrapped
 
