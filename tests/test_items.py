@@ -10,15 +10,10 @@ import pytest
 
 from tomlkit import api
 from tomlkit import parse
-from tomlkit.check import is_tomlkit
 from tomlkit.exceptions import NonExistentKey
-from tomlkit.items import AoT
 from tomlkit.items import Array
 from tomlkit.items import Bool
 from tomlkit.items import Comment
-from tomlkit.items import Date
-from tomlkit.items import DateTime
-from tomlkit.items import Float
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Item
@@ -28,7 +23,6 @@ from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
-from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
@@ -124,7 +118,6 @@ def test_null_unwrap():
 
 def test_aot_unwrap():
     d = item([{"a": "A"}, {"b": "B"}])
-    assert is_tomlkit(d)
     unwrapped = d.unwrap()
     assert_is_ppo(unwrapped, list)
     for du, dw in zip(unwrapped, d):
@@ -161,7 +154,6 @@ def test_array_unwrap():
 def test_abstract_table_unwrap():
     table = item({"foo": "bar"})
     super_table = item({"table": table, "baz": "borg"})
-    assert is_tomlkit(super_table["table"])
 
     table_unwrapped = super_table.unwrap()
     sub_table = table_unwrapped["table"]

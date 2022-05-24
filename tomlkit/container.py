@@ -10,7 +10,6 @@ from typing import Union
 
 from ._compat import decode
 from ._utils import merge_dicts
-from .check import is_tomlkit
 from .exceptions import KeyAlreadyPresent
 from .exceptions import NonExistentKey
 from .exceptions import TOMLKitError
@@ -53,7 +52,7 @@ class Container(_CustomDict):
             if k is None:
                 continue
 
-            if not isinstance(k, str):
+            if isinstance(k, Key):
                 k = k.key
 
             if isinstance(v, Item):
