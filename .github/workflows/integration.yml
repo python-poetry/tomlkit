@@ -83,7 +83,7 @@ jobs:
         if: matrix.project != 'poetry-core'
         run: |
           # we explicitly remove to mitigate a bug in poetry 1.1.13, can be removed with 1.2.0
-          poetry run pip uninstall tomlkit
+          poetry run pip uninstall -y tomlkit
           poetry add --lock ./tomlkit
 
       - name: Install dependencies
