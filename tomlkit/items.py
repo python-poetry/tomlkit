@@ -1674,7 +1674,7 @@ class String(str, Item):
         self._original = original
 
     def unwrap(self) -> str:
-        return self.as_string()
+        return str(self)
 
     @property
     def discriminant(self) -> int:

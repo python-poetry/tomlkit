@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `unwrap()` for String values to remove the quotes. ([#199](https://github.com/sdispater/tomlkit/issues/199))
+
 ## [0.11.0] - 2022-05-24
 
-## Added
+### Added
 
 - Add `unwrap` methods that return tomlkit objects recursively converted to plain python objects. ([#43](https://github.com/sdispater/tomlkit/issues/43))
 
