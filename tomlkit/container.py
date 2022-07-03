@@ -192,7 +192,7 @@ class Container(_CustomDict):
             item.name = key.key
 
         prev = self._previous_item()
-        prev_ws = isinstance(prev, Whitespace) or ends_with_withespace(prev)
+        prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
         if isinstance(item, Table):
             if item.name != key.key:
                 item.invalidate_display_name()
@@ -310,7 +310,7 @@ class Container(_CustomDict):
                         previous_item = self._body[-1][1]
                         if not (
                             isinstance(previous_item, Whitespace)
-                            or ends_with_withespace(previous_item)
+                            or ends_with_whitespace(previous_item)
                             or is_table
                             or "\n" in previous_item.trivia.trail
                         ):
@@ -425,7 +425,7 @@ class Container(_CustomDict):
             previous_item = self._body[idx - 1][1]
             if not (
                 isinstance(previous_item, Whitespace)
-                or ends_with_withespace(previous_item)
+                or ends_with_whitespace(previous_item)
                 or isinstance(item, (AoT, Table))
                 or "\n" in previous_item.trivia.trail
             ):
@@ -719,7 +719,7 @@ class Container(_CustomDict):
             # - it is not the last item
             last, _ = self._previous_item_with_index()
             idx = last if idx < 0 else idx
-            has_ws = ends_with_withespace(value)
+            has_ws = ends_with_whitespace(value)
             next_ws = idx < last and isinstance(self._body[idx + 1][1], Whitespace)
             if idx < last and not (next_ws or has_ws):
                 value.append(None, Whitespace("\n"))
@@ -868,7 +868,7 @@ class OutOfOrderTableProxy(_CustomDict):
         return self[key]
 
 
-def ends_with_withespace(it: Any) -> bool:
+def ends_with_whitespace(it: Any) -> bool:
     """Returns ``True`` if the given item ``it`` is a ``Table`` or ``AoT`` object
     ending with a ``Whitespace``.
     """
