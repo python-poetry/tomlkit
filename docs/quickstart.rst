@@ -64,7 +64,7 @@ TOML Kit provides an intuitive API to modify TOML documents::
     """
 
     # Remove the newly added table
-    >>> doc.remove("table2")
+    >>> doc.pop("table2")
     # del doc["table2] is also possible
 
 Writing
