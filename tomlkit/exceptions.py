@@ -188,7 +188,7 @@ class NonExistentKey(KeyError, TOMLKitError):
         super().__init__(message)
 
 
-class KeyAlreadyPresent(TOMLKitError):
+class KeyAlreadyPresent(ParseError):
     """
     An already present key was used.
     """
@@ -217,7 +217,7 @@ class InvalidControlChar(ParseError):
         super().__init__(line, col, message=message)
 
 
-class InvalidStringError(ValueError, TOMLKitError):
+class InvalidStringError(ParseError):
     def __init__(self, value: str, invalid_sequences: Collection[str], delimiter: str):
         repr_ = repr(value)[1:-1]
         super().__init__(
