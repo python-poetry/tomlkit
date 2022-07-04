@@ -5,6 +5,9 @@
 ### Fixed
 
 - Fix `unwrap()` for String values to remove the quotes. ([#199](https://github.com/sdispater/tomlkit/issues/199))
+- Make `KeyAlreadyPresent` and `InvalidStringError` subclasses of `ParseError`. ([#202](https://github.com/sdispater/tomlkit/issues/202))
+- Remove empty table from `OutOfOrderTableProxy` when deleting items. ([#204](https://github.com/sdispater/tomlkit/issues/204))
+- Raise errors when trying to access unsupported methods on `OutOfOrderTableProxy`. ([#205](https://github.com/sdispater/tomlkit/issues/205))
 
 ## [0.11.0] - 2022-05-24
 

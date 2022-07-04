@@ -146,7 +146,10 @@ class Parser:
             key, value = item
             if (key is not None and key.is_multi()) or not self._merge_ws(value, body):
                 # We actually have a table
-                body.append(key, value)
+                try:
+                    body.append(key, value)
+                except Exception as e:
+                    raise self.parse_error(ParseError, str(e)) from e
 
             self.mark()
 
@@ -157,7 +160,10 @@ class Parser:
                 # along with it.
                 value = self._parse_aot(value, key)
 
-            body.append(key, value)
+            try:
+                body.append(key, value)
+            except Exception as e:
+                raise self.parse_error(ParseError, str(e)) from e
 
         body.parsing(False)
 
