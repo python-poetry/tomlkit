@@ -346,6 +346,25 @@ class Container(_CustomDict):
 
         return self
 
+    def _remove_at(self, idx: int) -> None:
+        key = self._body[idx][0]
+        index = self._map.get(key)
+        if index is None:
+            raise NonExistentKey(key)
+        self._body[idx] = (None, Null())
+
+        if isinstance(index, tuple):
+            index = list(index)
+            index.remove(idx)
+            if len(index) == 1:
+                index = index.pop()
+            else:
+                index = tuple(index)
+            self._map[key] = index
+        else:
+            dict.__delitem__(self, key.key)
+            self._map.pop(key)
+
     def remove(self, key: Union[Key, str]) -> "Container":
         """Remove a key from the container."""
         if not isinstance(key, Key):
@@ -804,7 +823,7 @@ class OutOfOrderTableProxy(_CustomDict):
         self._tables_map = {}
 
         for i in indices:
-            key, item = self._container._body[i]
+            _, item = self._container._body[i]
 
             if isinstance(item, Table):
                 self._tables.append(item)
@@ -842,10 +861,20 @@ class OutOfOrderTableProxy(_CustomDict):
         if key is not None:
             dict.__setitem__(self, key, item)
 
+    def _remove_table(self, table: Table) -> None:
+        """Remove table from the parent container"""
+        self._tables.remove(table)
+        for idx, item in enumerate(self._container._body):
+            if item[1] is table:
+                self._container._remove_at(idx)
+                break
+
     def __delitem__(self, key: Union[Key, str]) -> None:
         if key in self._tables_map:
             table = self._tables[self._tables_map[key]]
             del table[key]
+            if not table and len(self._tables) > 1:
+                self._remove_table(table)
             del self._tables_map[key]
         else:
             raise NonExistentKey(key)
@@ -859,9 +888,6 @@ class OutOfOrderTableProxy(_CustomDict):
 
     def __len__(self) -> int:
         return dict.__len__(self)
-
-    def __getattr__(self, attribute):
-        return getattr(self._internal_container, attribute)
 
     def setdefault(self, key: Union[Key, str], default: Any) -> Any:
         super().setdefault(key, default=default)

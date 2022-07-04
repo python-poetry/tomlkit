@@ -14,10 +14,8 @@ from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
-from tomlkit.toml_document import TOMLDocument
 
 from .util import assert_is_ppo
-from .util import elementary_test
 
 
 def test_document_is_a_dict(example):
@@ -652,6 +650,31 @@ a = "b"
 """
 
     assert expected == doc.as_string()
+
+
+def test_remove_from_out_of_order_table():
+    content = """[a]
+x = 1
+
+[c]
+z = 3
+
+[a.b]
+y = 2
+"""
+    document = parse(content)
+    del document["a"]["b"]
+    assert (
+        document.as_string()
+        == """[a]
+x = 1
+
+[c]
+z = 3
+
+"""
+    )
+    assert json.dumps(document) == '{"a": {"x": 1}, "c": {"z": 3}}'
 
 
 def test_updating_nested_value_keeps_correct_indent():
