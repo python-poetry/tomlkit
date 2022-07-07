@@ -62,3 +62,46 @@ def test_mixed_eol(tmpdir):
 
     with open(toml_path, "rb") as f:
         assert f.read() == b"a = 1\r\nrb = 2\n"
+
+
+def test_consistent_eol(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    with open(toml_path, "wb+") as f:
+        f.write(b"a = 1\r\nb = 2\r\n")
+
+    f = TOMLFile(toml_path)
+    content = f.read()
+    content["c"] = 3
+    f.write(content)
+
+    with open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1\r\nb = 2\r\nc = 3\r\n"
+
+
+def test_consistent_eol_2(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    with open(toml_path, "wb+") as f:
+        f.write(b"a = 1\nb = 2\n")
+
+    f = TOMLFile(toml_path)
+    content = f.read()
+    content["c"] = 3
+    content["c"].trivia.trail = "\r\n"
+    f.write(content)
+
+    with open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1\nb = 2\nc = 3\n"
+
+
+def test_default_eol_is_os_linesep(tmpdir):
+    toml_path = str(tmpdir / "pyproject.toml")
+    f = TOMLFile(toml_path)
+    content = TOMLDocument()
+    content.append("a", 1)
+    content["a"].trivia.trail = "\n"
+    content.append("b", 2)
+    content["b"].trivia.trail = "\r\n"
+    f.write(content)
+    linesep = os.linesep.encode()
+    with open(toml_path, "rb") as f:
+        assert f.read() == b"a = 1" + linesep + b"b = 2" + linesep
