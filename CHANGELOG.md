@@ -1,13 +1,16 @@
 # Change Log
 
-## [Unreleased]
+## [0.11.1] - 2022-07-07
 
-### Fixed
+### Changed
 
-- Fix `unwrap()` for String values to remove the quotes. ([#199](https://github.com/sdispater/tomlkit/issues/199))
+- Keep consistent line endings when changing files. ([#201](https://github.com/sdispater/tomlkit/issues/201))
 - Make `KeyAlreadyPresent` and `InvalidStringError` subclasses of `ParseError`. ([#202](https://github.com/sdispater/tomlkit/issues/202))
 - Remove empty table from `OutOfOrderTableProxy` when deleting items. ([#204](https://github.com/sdispater/tomlkit/issues/204))
 - Raise errors when trying to access unsupported methods on `OutOfOrderTableProxy`. ([#205](https://github.com/sdispater/tomlkit/issues/205))
+
+### Fixed
+- Fix `unwrap()` for String values to remove the quotes. ([#199](https://github.com/sdispater/tomlkit/issues/199))
 
 ## [0.11.0] - 2022-05-24
 
@@ -286,7 +289,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.0...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.1...master
+[0.11.1]: https://github.com/sdispater/tomlkit/releases/tag/0.11.1
 [0.11.0]: https://github.com/sdispater/tomlkit/releases/tag/0.11.0
 [0.10.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.2
 [0.10.1]: https://github.com/sdispater/tomlkit/releases/tag/0.10.1
