@@ -24,7 +24,7 @@ Part of the implementation has been adapted, improved and fixed from [Molten](ht
 
 ## Usage
 
-See the [documentation](docs/quickstart.rst) for more information.
+See the [documentation](https://github.com/sdispater/tomlkit/blob/master/docs/quickstart.rst) for more information.
 
 ## Installation
 
