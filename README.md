@@ -24,9 +24,9 @@ Part of the implementation has been adapted, improved and fixed from [Molten](ht
 
 ## Usage
 
-See the [documentation](docs/quickstart.rst) for more information.
+See the [documentation](https://github.com/sdispater/tomlkit/blob/master/docs/quickstart.rst) for more information.
 
-## Installation
+## Installationsdispater/tomlkit/fork
 
 If you are using [Poetry](https://poetry.eustace.io),
 add `tomlkit` to your `pyproject.toml` file by using:
