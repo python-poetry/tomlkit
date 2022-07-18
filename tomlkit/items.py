@@ -1847,5 +1847,5 @@ class Null(Item):
     def as_string(self) -> str:
         return ""
 
-    def _getstate(self, protocol=3):
-        return tuple()
+    def _getstate(self, protocol=3) -> tuple:
+        return ()

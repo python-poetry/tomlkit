@@ -918,7 +918,7 @@ class Parser:
         if parent_name:
             parent_name_parts = tuple(parent_name)
         else:
-            parent_name_parts = tuple()
+            parent_name_parts = ()
 
         if len(name_parts) > len(parent_name_parts) + 1:
             missing_table = True
