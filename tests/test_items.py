@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import pickle
 
@@ -120,7 +122,7 @@ def test_aot_unwrap():
     d = item([{"a": "A"}, {"b": "B"}])
     unwrapped = d.unwrap()
     assert_is_ppo(unwrapped, list)
-    for du, dw in zip(unwrapped, d):
+    for du, _dw in zip(unwrapped, d):
         assert_is_ppo(du, dict)
         for ku in du:
             vu = du[ku]

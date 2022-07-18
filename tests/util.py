@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from tomlkit.items import AoT
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -43,7 +45,7 @@ TOMLKIT_TYPES = [
 
 
 def assert_not_tomlkit_type(v):
-    for i, T in enumerate(TOMLKIT_TYPES):
+    for _, T in enumerate(TOMLKIT_TYPES):
         assert not isinstance(v, T)
 
 
