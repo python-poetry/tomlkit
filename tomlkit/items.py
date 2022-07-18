@@ -41,8 +41,8 @@ if TYPE_CHECKING:  # pragma: no cover
     # Importing from builtins is preferred over simple assignment, see issues:
     # https://github.com/python/mypy/issues/8715
     # https://github.com/python/mypy/issues/10068
-    from builtins import dict as _CustomDict
-    from builtins import list as _CustomList
+    from builtins import dict as _CustomDict  # noqa: N812
+    from builtins import list as _CustomList  # noqa: N812
 
     # Allow type annotations but break circular imports
     from . import container

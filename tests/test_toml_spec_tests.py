@@ -109,6 +109,5 @@ def test_valid_decode(test):
 @pytest.mark.parametrize("test", ERROR_TESTS)
 def test_invalid_decode(test):
     toml_file = os.path.join(SPEC_TEST_DIR, "errors", test + ".toml")
-    with pytest.raises(TOMLKitError):
-        with open(toml_file, encoding="utf-8") as f:
-            parse(f.read())
+    with pytest.raises(TOMLKitError), open(toml_file, encoding="utf-8") as f:
+        parse(f.read())

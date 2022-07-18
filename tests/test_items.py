@@ -184,26 +184,26 @@ def test_items_can_be_appended_to_and_removed_from_a_table():
     _, table = parser._parse_table()
 
     assert isinstance(table, Table)
-    assert "" == table.as_string()
+    assert table.as_string() == ""
 
     table.append(Key("foo"), String(StringType.SLB, "bar", "bar", Trivia(trail="\n")))
 
-    assert 'foo = "bar"\n' == table.as_string()
+    assert table.as_string() == 'foo = "bar"\n'
 
     table.append(
         Key("baz"),
         Integer(34, Trivia(comment_ws="   ", comment="# Integer", trail=""), "34"),
     )
 
-    assert 'foo = "bar"\nbaz = 34   # Integer' == table.as_string()
+    assert table.as_string() == 'foo = "bar"\nbaz = 34   # Integer'
 
     table.remove(Key("baz"))
 
-    assert 'foo = "bar"\n' == table.as_string()
+    assert table.as_string() == 'foo = "bar"\n'
 
     table.remove(Key("foo"))
 
-    assert "" == table.as_string()
+    assert table.as_string() == ""
 
     with pytest.raises(NonExistentKey):
         table.remove(Key("foo"))
@@ -217,23 +217,23 @@ def test_items_can_be_appended_to_and_removed_from_an_inline_table():
     _, table = parser._parse_item()
 
     assert isinstance(table, InlineTable)
-    assert "{}" == table.as_string()
+    assert table.as_string() == "{}"
 
     table.append(Key("foo"), String(StringType.SLB, "bar", "bar", Trivia(trail="")))
 
-    assert '{foo = "bar"}' == table.as_string()
+    assert table.as_string() == '{foo = "bar"}'
 
     table.append(Key("baz"), Integer(34, Trivia(trail=""), "34"))
 
-    assert '{foo = "bar", baz = 34}' == table.as_string()
+    assert table.as_string() == '{foo = "bar", baz = 34}'
 
     table.remove(Key("baz"))
 
-    assert '{foo = "bar"}' == table.as_string()
+    assert table.as_string() == '{foo = "bar"}'
 
     table.remove(Key("foo"))
 
-    assert "{}" == table.as_string()
+    assert table.as_string() == "{}"
 
     with pytest.raises(NonExistentKey):
         table.remove(Key("foo"))
@@ -341,7 +341,7 @@ def test_array_multiline():
     t = item([])
     t.multiline(True)
 
-    assert "[]" == t.as_string()
+    assert t.as_string() == "[]"
 
 
 def test_array_multiline_modify():
@@ -793,7 +793,7 @@ def test_trim_comments_when_building_inline_table():
     value.comment("Another comment")
     table.append("baz", value)
     assert "# Another comment" not in table.as_string()
-    assert '{foo = "bar", baz = "foobaz"}' == table.as_string()
+    assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
 
 
 def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
@@ -801,11 +801,11 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
     table["foo"] = "bar"
     table["baz"] = "boom"
 
-    assert '{foo = "bar", baz = "boom"}' == table.as_string()
+    assert table.as_string() == '{foo = "bar", baz = "boom"}'
 
     del table["baz"]
 
-    assert '{foo = "bar"}' == table.as_string()
+    assert table.as_string() == '{foo = "bar"}'
 
     table = api.inline_table()
     table["foo"] = "bar"
@@ -814,7 +814,7 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
 
     table["baz"] = "boom"
 
-    assert '{baz = "boom"}' == table.as_string()
+    assert table.as_string() == '{baz = "boom"}'
 
 
 def test_booleans_comparison():

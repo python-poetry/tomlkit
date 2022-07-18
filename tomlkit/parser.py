@@ -804,9 +804,7 @@ class Parser:
                 delim.is_singleline()
                 and not escaped
                 and (code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I)
-            ):
-                raise self.parse_error(InvalidControlChar, code, "strings")
-            elif (
+            ) or (
                 delim.is_multiline()
                 and not escaped
                 and (
@@ -962,10 +960,9 @@ class Parser:
             key = name_parts[0]
 
             for i, _name in enumerate(name_parts[1:]):
-                if _name in table:
-                    child = table[_name]
-                else:
-                    child = Table(
+                child = table.get(
+                    _name,
+                    Table(
                         Container(True),
                         Trivia(indent, cws, comment, trail),
                         is_aot and i == len(name_parts) - 2,
@@ -974,7 +971,8 @@ class Parser:
                         display_name=full_key.as_string()
                         if i == len(name_parts) - 2
                         else None,
-                    )
+                    ),
+                )
 
                 if is_aot and i == len(name_parts) - 2:
                     table.raw_append(_name, AoT([child], name=table.name, parsed=True))
