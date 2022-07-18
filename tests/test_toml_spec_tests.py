@@ -80,7 +80,7 @@ def untag(value):
         elif value["type"] == "array":
             return [untag(i) for i in value["value"]]
         else:
-            raise Exception("Unsupported type {}".format(value["type"]))
+            raise Exception(f'Unsupported type {value["type"]}')
     else:
         return {k: untag(v) for k, v in value.items()}
 

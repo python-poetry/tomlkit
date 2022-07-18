@@ -6,6 +6,10 @@ per-file-ignores =
     __init__.py:F401,
     # N818: error suffix in exception names (API-breaking change)
     tomlkit/exceptions.py: N818,
+    # FS003: f-string missing prefix
+    tests/test_items.py: FS003,
+    tests/test_api.py: FS003,
+    tests/test_toml_document.py: FS003,
     # ANN201: Missing return type annotation for public function
     tests/test_*:ANN201
     tests/**/test_*:ANN201

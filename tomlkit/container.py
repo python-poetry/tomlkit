@@ -526,15 +526,18 @@ class Container(_CustomDict):
             if table.is_aot_element():
                 open_, close = "[[", "]]"
 
-            cur += "{}{}{}{}{}{}{}{}".format(
-                table.trivia.indent,
-                open_,
-                decode(_key),
-                close,
-                table.trivia.comment_ws,
-                decode(table.trivia.comment),
-                table.trivia.trail,
-                "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else "",
+            newline_in_table_trivia = (
+                "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else ""
+            )
+            cur += (
+                f"{table.trivia.indent}"
+                f"{open_}"
+                f"{decode(_key)}"
+                f"{close}"
+                f"{table.trivia.comment_ws}"
+                f"{decode(table.trivia.comment)}"
+                f"{table.trivia.trail}"
+                f"{newline_in_table_trivia}"
             )
         elif table.trivia.indent == "\n":
             cur += table.trivia.indent
@@ -578,14 +581,14 @@ class Container(_CustomDict):
         if not table.is_super_table():
             open_, close = "[[", "]]"
 
-            cur += "{}{}{}{}{}{}{}".format(
-                table.trivia.indent,
-                open_,
-                decode(_key),
-                close,
-                table.trivia.comment_ws,
-                decode(table.trivia.comment),
-                table.trivia.trail,
+            cur += (
+                f"{table.trivia.indent}"
+                f"{open_}"
+                f"{decode(_key)}"
+                f"{close}"
+                f"{table.trivia.comment_ws}"
+                f"{decode(table.trivia.comment)}"
+                f"{table.trivia.trail}"
             )
 
         for k, v in table.value.body:
@@ -613,14 +616,14 @@ class Container(_CustomDict):
         if prefix is not None:
             _key = prefix + "." + _key
 
-        return "{}{}{}{}{}{}{}".format(
-            item.trivia.indent,
-            decode(_key),
-            key.sep,
-            decode(item.as_string()),
-            item.trivia.comment_ws,
-            decode(item.trivia.comment),
-            item.trivia.trail,
+        return (
+            f"{item.trivia.indent}"
+            f"{decode(_key)}"
+            f"{key.sep}"
+            f"{decode(item.as_string())}"
+            f"{item.trivia.comment_ws}"
+            f"{decode(item.trivia.comment)}"
+            f"{item.trivia.trail}"
         )
 
     def __len__(self) -> int:
