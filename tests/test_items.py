@@ -10,6 +10,8 @@ from datetime import timedelta
 
 import pytest
 
+from tests.util import assert_is_ppo
+from tests.util import elementary_test
 from tomlkit import api
 from tomlkit import parse
 from tomlkit.exceptions import NonExistentKey
@@ -28,9 +30,6 @@ from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
-
-from .util import assert_is_ppo
-from .util import elementary_test
 
 
 @pytest.fixture()

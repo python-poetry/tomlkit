@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .container import Container
+from tomlkit.container import Container
 
 
 class TOMLDocument(Container):

@@ -10,7 +10,7 @@ from datetime import timedelta
 from datetime import timezone
 from typing import Collection
 
-from ._compat import decode
+from tomlkit._compat import decode
 
 
 RFC_3339_LOOSE = re.compile(

@@ -21,12 +21,12 @@ from typing import TypeVar
 from typing import cast
 from typing import overload
 
-from ._compat import PY38
-from ._compat import decode
-from ._utils import CONTROL_CHARS
-from ._utils import escape_string
-from .exceptions import InvalidStringError
-from .toml_char import TOMLChar
+from tomlkit._compat import PY38
+from tomlkit._compat import decode
+from tomlkit._utils import CONTROL_CHARS
+from tomlkit._utils import escape_string
+from tomlkit.exceptions import InvalidStringError
+from tomlkit.toml_char import TOMLChar
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -45,7 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from builtins import list as _CustomList  # noqa: N812
 
     # Allow type annotations but break circular imports
-    from . import container
+    from tomlkit import container
 else:
     from collections.abc import MutableMapping
     from collections.abc import MutableSequence
@@ -134,7 +134,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     b = 2
     """
 
-    from .container import Container
+    from tomlkit.container import Container
 
     if isinstance(value, Item):
         return value

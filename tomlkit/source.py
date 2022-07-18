@@ -3,9 +3,9 @@ from __future__ import annotations
 from copy import copy
 from typing import Any
 
-from .exceptions import ParseError
-from .exceptions import UnexpectedCharError
-from .toml_char import TOMLChar
+from tomlkit.exceptions import ParseError
+from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.toml_char import TOMLChar
 
 
 class _State:

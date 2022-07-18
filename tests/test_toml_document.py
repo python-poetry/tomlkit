@@ -11,13 +11,12 @@ import pytest
 
 import tomlkit
 
+from tests.util import assert_is_ppo
 from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
-
-from .util import assert_is_ppo
 
 
 def test_document_is_a_dict(example):
