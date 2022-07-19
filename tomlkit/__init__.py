@@ -49,6 +49,7 @@ __all__ = [
     "string",
     "table",
     "time",
+    "TOMLDocument",
     "value",
     "ws",
 ]

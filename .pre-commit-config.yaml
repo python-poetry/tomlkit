@@ -8,7 +8,6 @@ repos:
     rev: 5.10.1
     hooks:
       - id: isort
-        args: [--add-import, from __future__ import annotations]
         exclude: docs/.*|^.*__init__\.py$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -49,7 +48,6 @@ repos:
     hooks:
       - id: pycln
         args: [--all]
-        exclude: ^.*__init__\.py$ # without this, pycln removes TOMLDocument import
 
   - repo: https://github.com/pycqa/flake8
     rev: 4.0.1
