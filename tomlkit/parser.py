@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import re
 import string
 
@@ -48,6 +46,12 @@ from tomlkit.toml_document import TOMLDocument
 
 
 if TYPE_CHECKING:
+    from typing import List
+    from typing import Optional
+    from typing import Tuple
+    from typing import Type
+    from typing import Union
+
     from tomlkit.items import Item
     from tomlkit.items import Key
 
@@ -68,7 +72,7 @@ class Parser:
         # Input to parse
         self._src = Source(decode(string))
 
-        self._aot_stack: list[Key] = []
+        self._aot_stack: List[Key] = []
 
     @property
     def _state(self):
@@ -92,14 +96,14 @@ class Parser:
         """
         return self._src.extract()
 
-    def inc(self, exception: type[ParseError] | None = None) -> bool:
+    def inc(self, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n: int, exception: type[ParseError] | None = None) -> bool:
+    def inc_n(self, n: int, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -205,7 +209,7 @@ class Parser:
 
         return parent_parts == child_parts[: len(parent_parts)]
 
-    def _parse_item(self) -> tuple[Key | None, Item] | None:
+    def _parse_item(self) -> Optional[Tuple[Optional[Key], Item]]:
         """
         Attempts to parse the next item and returns it, along with its key
         if the item is value-like.
@@ -241,7 +245,7 @@ class Parser:
 
         return self._parse_key_value(True)
 
-    def _parse_comment_trail(self, parse_trail: bool = True) -> tuple[str, str, str]:
+    def _parse_comment_trail(self, parse_trail: bool = True) -> Tuple[str, str, str]:
         """
         Returns (comment_ws, comment, trail)
         If there is no comment, comment_ws and comment will
@@ -302,7 +306,7 @@ class Parser:
 
         return comment_ws, comment, trail
 
-    def _parse_key_value(self, parse_comment: bool = False) -> tuple[Key, Item]:
+    def _parse_key_value(self, parse_comment: bool = False) -> Tuple[Key, Item]:
         # Leading indent
         self.mark()
 
@@ -559,7 +563,7 @@ class Parser:
         # Consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
 
-        elems: list[Item] = []
+        elems: List[Item] = []
         prev_value = None
         while True:
             # consume whitespace
@@ -666,7 +670,7 @@ class Parser:
 
         return InlineTable(elems, Trivia())
 
-    def _parse_number(self, raw: str, trivia: Trivia) -> Item | None:
+    def _parse_number(self, raw: str, trivia: Trivia) -> Optional[Item]:
         # Leading zeros are not allowed
         sign = ""
         if raw.startswith(("+", "-")):
@@ -876,8 +880,8 @@ class Parser:
                 self.inc(exception=UnexpectedEofError)
 
     def _parse_table(
-        self, parent_name: Key | None = None, parent: Table | None = None
-    ) -> tuple[Key, Table | AoT]:
+        self, parent_name: Optional[Key] = None, parent: Optional[Table] = None
+    ) -> Tuple[Key, Union[Table, AoT]]:
         """
         Parses a table element.
         """
@@ -1031,7 +1035,7 @@ class Parser:
 
         return key, result
 
-    def _peek_table(self) -> tuple[bool, Key]:
+    def _peek_table(self) -> Tuple[bool, Key]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
@@ -1095,7 +1099,7 @@ class Parser:
                 break
             return buf
 
-    def _peek_unicode(self, is_long: bool) -> tuple[str | None, str | None]:
+    def _peek_unicode(self, is_long: bool) -> Tuple[Optional[str], Optional[str]]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.

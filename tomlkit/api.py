@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 import datetime as _datetime
 
 from collections.abc import Mapping
 from typing import IO
 from typing import TYPE_CHECKING
 from typing import Iterable
+from typing import Tuple
+from typing import Union
 
 from tomlkit._utils import parse_rfc3339
 from tomlkit.container import Container
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from tomlkit.items import Time
 
 
-def loads(string: str | bytes) -> TOMLDocument:
+def loads(string: Union[str, bytes]) -> TOMLDocument:
     """
     Parses a string into a TOMLDocument.
 
@@ -79,7 +79,7 @@ def dump(data: Mapping, fp: IO[str], *, sort_keys: bool = False) -> None:
     fp.write(dumps(data, sort_keys=sort_keys))
 
 
-def parse(string: str | bytes) -> TOMLDocument:
+def parse(string: Union[str, bytes]) -> TOMLDocument:
     """
     Parses a string or bytes into a TOMLDocument.
     """
@@ -94,12 +94,12 @@ def document() -> TOMLDocument:
 
 
 # Items
-def integer(raw: str | int) -> Integer:
+def integer(raw: Union[str, int]) -> Integer:
     """Create an integer item from a number or string."""
     return item(int(raw))
 
 
-def float_(raw: str | float) -> Float:
+def float_(raw: Union[str, float]) -> Float:
     """Create an float item from a number or string."""
     return item(float(raw))
 
@@ -227,7 +227,7 @@ def aot() -> AoT:
     return AoT([])
 
 
-def key(k: str | Iterable[str]) -> Key:
+def key(k: Union[str, Iterable[str]]) -> Key:
     """Create a key from a string. When a list of string is given,
     it will create a dotted key.
 
@@ -264,7 +264,7 @@ def value(raw: str) -> _Item:
     return v
 
 
-def key_value(src: str) -> tuple[Key, _Item]:
+def key_value(src: str) -> Tuple[Key, _Item]:
     """Parse a key-value pair from a string.
 
     :Example:

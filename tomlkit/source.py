@@ -1,7 +1,8 @@
-from __future__ import annotations
-
 from copy import copy
 from typing import Any
+from typing import Optional
+from typing import Tuple
+from typing import Type
 
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
@@ -11,15 +12,15 @@ from tomlkit.toml_char import TOMLChar
 class _State:
     def __init__(
         self,
-        source: Source,
-        save_marker: bool | None = False,
-        restore: bool | None = False,
+        source: "Source",
+        save_marker: Optional[bool] = False,
+        restore: Optional[bool] = False,
     ) -> None:
         self._source = source
         self._save_marker = save_marker
         self.restore = restore
 
-    def __enter__(self) -> _State:
+    def __enter__(self) -> "_State":
         # Entering this context manager - save the state
         self._chars = copy(self._source._chars)
         self._idx = self._source._idx
@@ -43,7 +44,7 @@ class _StateHandler:
     State preserver for the Parser.
     """
 
-    def __init__(self, source: Source) -> None:
+    def __init__(self, source: "Source") -> None:
         self._source = source
         self._states = []
 
@@ -106,7 +107,7 @@ class Source(str):
         """
         return self[self._marker : self._idx]
 
-    def inc(self, exception: type[ParseError] | None = None) -> bool:
+    def inc(self, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
@@ -123,7 +124,7 @@ class Source(str):
 
             return False
 
-    def inc_n(self, n: int, exception: type[ParseError] | None = None) -> bool:
+    def inc_n(self, n: int, exception: Optional[Type[ParseError]] = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -158,7 +159,7 @@ class Source(str):
 
     def parse_error(
         self,
-        exception: type[ParseError] = ParseError,
+        exception: Type[ParseError] = ParseError,
         *args: Any,
         **kwargs: Any,
     ) -> ParseError:
@@ -169,7 +170,7 @@ class Source(str):
 
         return exception(line, col, *args, **kwargs)
 
-    def _to_linecol(self) -> tuple[int, int]:
+    def _to_linecol(self) -> Tuple[int, int]:
         cur = 0
         for i, line in enumerate(self.splitlines()):
             if cur + len(line) + 1 > self.idx:

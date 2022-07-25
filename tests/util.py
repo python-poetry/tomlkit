@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from tomlkit.items import AoT
 from tomlkit.items import Array
 from tomlkit.items import Bool

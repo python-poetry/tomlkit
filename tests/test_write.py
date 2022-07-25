@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from tomlkit import dumps
 from tomlkit import loads
 
