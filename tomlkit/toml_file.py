@@ -1,13 +1,8 @@
 import os
 import re
 
-from typing import TYPE_CHECKING
-
 from tomlkit.api import loads
-
-
-if TYPE_CHECKING:
-    from tomlkit.toml_document import TOMLDocument
+from tomlkit.toml_document import TOMLDocument
 
 
 class TOMLFile:

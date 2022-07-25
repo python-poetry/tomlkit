@@ -223,6 +223,12 @@ def item(
     raise ValueError(f"Invalid type {type(value)}")
 
 
+# This code is only valid for Python < 3.8, when @cached_property was introduced
+# it replaces chained @property and @lru_cache decorators
+def lazy_property(f):
+    return property(lru_cache(maxsize=None)(f))
+
+
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -233,14 +239,12 @@ class StringType(Enum):
     # Multi Line Literal
     MLL = "'''"
 
-    def __init__(self, *args, **kwargs):
-        self.unit = property(lru_cache(maxsize=None)(self._unit))
+    def __init__(self, value):
         self.is_basic = lru_cache(maxsize=None)(self._is_basic)
         self.is_literal = lru_cache(maxsize=None)(self._is_literal)
         self.is_singleline = lru_cache(maxsize=None)(self._is_singleline)
         self.is_multiline = lru_cache(maxsize=None)(self._is_multiline)
         self.toggle = lru_cache(maxsize=None)(self._toggle)
-        super().__init__(*args, **kwargs)
 
     @classmethod
     def select(cls, literal=False, multiline=False) -> "StringType":
@@ -275,7 +279,8 @@ class StringType(Enum):
             StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
         }[self]
 
-    def _unit(self) -> str:
+    @lazy_property
+    def unit(self) -> str:
         return self.value[0]
 
     def _is_basic(self) -> bool:
@@ -303,10 +308,8 @@ class BoolType(Enum):
     TRUE = "true"
     FALSE = "false"
 
-    def __init__(self, *args, **kwargs):
-        self.__bool__ = lru_cache(maxsize=None)(self._bool)
-
-    def _bool(self):
+    @lru_cache(maxsize=None)  # noqa: B019
+    def __bool__(self):
         return {BoolType.TRUE: True, BoolType.FALSE: False}[self]
 
     def __iter__(self):

@@ -1,7 +1,11 @@
 import re
 import string
 
-from typing import TYPE_CHECKING
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import Union
 
 from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE
@@ -31,6 +35,8 @@ from tomlkit.items import DateTime
 from tomlkit.items import Float
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
+from tomlkit.items import Item
+from tomlkit.items import Key
 from tomlkit.items import KeyType
 from tomlkit.items import Null
 from tomlkit.items import SingleKey
@@ -43,17 +49,6 @@ from tomlkit.items import Whitespace
 from tomlkit.source import Source
 from tomlkit.toml_char import TOMLChar
 from tomlkit.toml_document import TOMLDocument
-
-
-if TYPE_CHECKING:
-    from typing import List
-    from typing import Optional
-    from typing import Tuple
-    from typing import Type
-    from typing import Union
-
-    from tomlkit.items import Item
-    from tomlkit.items import Key
 
 
 CTRL_I = 0x09  # Tab
