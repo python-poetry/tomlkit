@@ -78,7 +78,7 @@ def untag(value):
         elif value["type"] == "array":
             return [untag(i) for i in value["value"]]
         else:
-            raise Exception("Unsupported type {}".format(value["type"]))
+            raise Exception(f'Unsupported type {value["type"]}')
     else:
         return {k: untag(v) for k, v in value.items()}
 
@@ -107,6 +107,5 @@ def test_valid_decode(test):
 @pytest.mark.parametrize("test", ERROR_TESTS)
 def test_invalid_decode(test):
     toml_file = os.path.join(SPEC_TEST_DIR, "errors", test + ".toml")
-    with pytest.raises(TOMLKitError):
-        with open(toml_file, encoding="utf-8") as f:
-            parse(f.read())
+    with pytest.raises(TOMLKitError), open(toml_file, encoding="utf-8") as f:
+        parse(f.read())

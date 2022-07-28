@@ -1,8 +1,8 @@
 import os
 import re
 
-from .api import loads
-from .toml_document import TOMLDocument
+from tomlkit.api import loads
+from tomlkit.toml_document import TOMLDocument
 
 
 class TOMLFile:

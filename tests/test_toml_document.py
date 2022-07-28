@@ -9,13 +9,12 @@ import pytest
 
 import tomlkit
 
+from tests.util import assert_is_ppo
 from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
-
-from .util import assert_is_ppo
 
 
 def test_document_is_a_dict(example):
@@ -461,7 +460,8 @@ name = "foo"
     dev_dependencies["baz"]["source"] = "other"
 
     assert (
-        """\
+        doc.as_string()
+        == """\
 [tool.poetry]
 name = "foo"
 
@@ -472,7 +472,6 @@ bar = {version = "^3.0", source = "remote"}
 [tool.poetry.dev-dependencies]
 baz = {version = "^4.0", source = "other"}
 """
-        == doc.as_string()
     )
 
 
@@ -508,7 +507,7 @@ key = "value"
     doc = parse(content)
     doc["a"]["a"]["key"] = "new_value"
 
-    assert "new_value" == doc["a"]["a"]["key"]
+    assert doc["a"]["a"]["key"] == "new_value"
 
     expected = """
 [a.a]
@@ -588,18 +587,18 @@ key = "value"
     table = doc["a"]["a"]
     assert "key" in table
     assert "c" in table
-    assert "value" == table.get("key")
+    assert table.get("key") == "value"
     assert {} == table.get("c")
     assert table.get("d") is None
-    assert "foo" == table.get("d", "foo")
+    assert table.get("d", "foo") == "foo"
 
-    assert "bar" == table.setdefault("d", "bar")
-    assert "bar" == table["d"]
+    assert table.setdefault("d", "bar") == "bar"
+    assert table["d"] == "bar"
 
-    assert "value" == table.pop("key")
+    assert table.pop("key") == "value"
     assert "key" not in table
 
-    assert "baz" == table.pop("missing", default="baz")
+    assert table.pop("missing", default="baz") == "baz"
 
     with pytest.raises(KeyError):
         table.pop("missing")
@@ -629,7 +628,7 @@ a = "b"
     constraint["version"] = "^1.0"
     doc["tool"]["poetry"]["dependencies"]["bar"] = constraint
 
-    assert "^1.0" == doc["tool"]["poetry"]["dependencies"]["bar"]["version"]
+    assert doc["tool"]["poetry"]["dependencies"]["bar"]["version"] == "^1.0"
 
     expected = """
 [tool.poetry]

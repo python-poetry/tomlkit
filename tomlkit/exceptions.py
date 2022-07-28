@@ -210,8 +210,9 @@ class InvalidControlChar(ParseError):
         display_code += hex(char)[2:]
 
         message = (
-            "Control characters (codes less than 0x1f and 0x7f) are not allowed in {}, "
-            "use {} instead".format(type, display_code)
+            "Control characters (codes less than 0x1f and 0x7f)"
+            f" are not allowed in {type}, "
+            f"use {display_code} instead"
         )
 
         super().__init__(line, col, message=message)

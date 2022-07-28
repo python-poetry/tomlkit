@@ -7,48 +7,48 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-from ._compat import decode
-from ._utils import RFC_3339_LOOSE
-from ._utils import _escaped
-from ._utils import parse_rfc3339
-from .container import Container
-from .exceptions import EmptyKeyError
-from .exceptions import EmptyTableNameError
-from .exceptions import InternalParserError
-from .exceptions import InvalidCharInStringError
-from .exceptions import InvalidControlChar
-from .exceptions import InvalidDateError
-from .exceptions import InvalidDateTimeError
-from .exceptions import InvalidNumberError
-from .exceptions import InvalidTimeError
-from .exceptions import InvalidUnicodeValueError
-from .exceptions import ParseError
-from .exceptions import UnexpectedCharError
-from .exceptions import UnexpectedEofError
-from .items import AoT
-from .items import Array
-from .items import Bool
-from .items import BoolType
-from .items import Comment
-from .items import Date
-from .items import DateTime
-from .items import Float
-from .items import InlineTable
-from .items import Integer
-from .items import Item
-from .items import Key
-from .items import KeyType
-from .items import Null
-from .items import SingleKey
-from .items import String
-from .items import StringType
-from .items import Table
-from .items import Time
-from .items import Trivia
-from .items import Whitespace
-from .source import Source
-from .toml_char import TOMLChar
-from .toml_document import TOMLDocument
+from tomlkit._compat import decode
+from tomlkit._utils import RFC_3339_LOOSE
+from tomlkit._utils import _escaped
+from tomlkit._utils import parse_rfc3339
+from tomlkit.container import Container
+from tomlkit.exceptions import EmptyKeyError
+from tomlkit.exceptions import EmptyTableNameError
+from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import InvalidCharInStringError
+from tomlkit.exceptions import InvalidControlChar
+from tomlkit.exceptions import InvalidDateError
+from tomlkit.exceptions import InvalidDateTimeError
+from tomlkit.exceptions import InvalidNumberError
+from tomlkit.exceptions import InvalidTimeError
+from tomlkit.exceptions import InvalidUnicodeValueError
+from tomlkit.exceptions import ParseError
+from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.exceptions import UnexpectedEofError
+from tomlkit.items import AoT
+from tomlkit.items import Array
+from tomlkit.items import Bool
+from tomlkit.items import BoolType
+from tomlkit.items import Comment
+from tomlkit.items import Date
+from tomlkit.items import DateTime
+from tomlkit.items import Float
+from tomlkit.items import InlineTable
+from tomlkit.items import Integer
+from tomlkit.items import Item
+from tomlkit.items import Key
+from tomlkit.items import KeyType
+from tomlkit.items import Null
+from tomlkit.items import SingleKey
+from tomlkit.items import String
+from tomlkit.items import StringType
+from tomlkit.items import Table
+from tomlkit.items import Time
+from tomlkit.items import Trivia
+from tomlkit.items import Whitespace
+from tomlkit.source import Source
+from tomlkit.toml_char import TOMLChar
+from tomlkit.toml_document import TOMLDocument
 
 
 CTRL_I = 0x09  # Tab
@@ -808,9 +808,7 @@ class Parser:
                 delim.is_singleline()
                 and not escaped
                 and (code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I)
-            ):
-                raise self.parse_error(InvalidControlChar, code, "strings")
-            elif (
+            ) or (
                 delim.is_multiline()
                 and not escaped
                 and (
@@ -922,7 +920,7 @@ class Parser:
         if parent_name:
             parent_name_parts = tuple(parent_name)
         else:
-            parent_name_parts = tuple()
+            parent_name_parts = ()
 
         if len(name_parts) > len(parent_name_parts) + 1:
             missing_table = True
@@ -966,10 +964,9 @@ class Parser:
             key = name_parts[0]
 
             for i, _name in enumerate(name_parts[1:]):
-                if _name in table:
-                    child = table[_name]
-                else:
-                    child = Table(
+                child = table.get(
+                    _name,
+                    Table(
                         Container(True),
                         Trivia(indent, cws, comment, trail),
                         is_aot and i == len(name_parts) - 2,
@@ -978,7 +975,8 @@ class Parser:
                         display_name=full_key.as_string()
                         if i == len(name_parts) - 2
                         else None,
-                    )
+                    ),
+                )
 
                 if is_aot and i == len(name_parts) - 2:
                     table.raw_append(_name, AoT([child], name=table.name, parsed=True))

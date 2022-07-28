@@ -6,31 +6,31 @@ from typing import Iterable
 from typing import Tuple
 from typing import Union
 
-from ._utils import parse_rfc3339
-from .container import Container
-from .exceptions import UnexpectedCharError
-from .items import AoT
-from .items import Array
-from .items import Bool
-from .items import Comment
-from .items import Date
-from .items import DateTime
-from .items import DottedKey
-from .items import Float
-from .items import InlineTable
-from .items import Integer
-from .items import Item as _Item
-from .items import Key
-from .items import SingleKey
-from .items import String
-from .items import StringType as _StringType
-from .items import Table
-from .items import Time
-from .items import Trivia
-from .items import Whitespace
-from .items import item
-from .parser import Parser
-from .toml_document import TOMLDocument
+from tomlkit._utils import parse_rfc3339
+from tomlkit.container import Container
+from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.items import AoT
+from tomlkit.items import Array
+from tomlkit.items import Bool
+from tomlkit.items import Comment
+from tomlkit.items import Date
+from tomlkit.items import DateTime
+from tomlkit.items import DottedKey
+from tomlkit.items import Float
+from tomlkit.items import InlineTable
+from tomlkit.items import Integer
+from tomlkit.items import Item as _Item
+from tomlkit.items import Key
+from tomlkit.items import SingleKey
+from tomlkit.items import String
+from tomlkit.items import StringType as _StringType
+from tomlkit.items import Table
+from tomlkit.items import Time
+from tomlkit.items import Trivia
+from tomlkit.items import Whitespace
+from tomlkit.items import item
+from tomlkit.parser import Parser
+from tomlkit.toml_document import TOMLDocument
 
 
 def loads(string: Union[str, bytes]) -> TOMLDocument:
