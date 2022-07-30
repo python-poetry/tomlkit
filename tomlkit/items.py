@@ -663,7 +663,6 @@ class Integer(int, Item):
 
     def _new(self, result):
         raw = str(result)
-        
         if self._sign:
             sign = "+" if result >= 0 else "-"
             raw = sign + raw
