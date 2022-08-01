@@ -638,7 +638,7 @@ class Integer(int, Item):
 
     def __add__(self, other):
 
-        return self._new(int(self._raw)+other)
+        return self._new(int(self._raw) + other)
 
     def __radd__(self, other):
         result = super().__radd__(other)
