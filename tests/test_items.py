@@ -561,6 +561,7 @@ bar = "baz"
 """
     )
 
+
 def test_add_sum_int_with_float():
     content = "[table]\nmy_int = 2048.3"
     doc = parse(content)
