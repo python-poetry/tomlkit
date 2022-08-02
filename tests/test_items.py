@@ -562,6 +562,13 @@ bar = "baz"
     )
 
 
+def test_add_sum_int_with_float():
+    content = "[table]\nmy_int = 2048.3"
+    doc = parse(content)
+    doc["table"]["my_int"] += 5
+    assert doc["table"]["my_int"] == 2053.3
+
+
 def test_integers_behave_like_ints():
     i = item(34)
 

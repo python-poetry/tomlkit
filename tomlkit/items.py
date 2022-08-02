@@ -637,9 +637,8 @@ class Integer(int, Item):
         return self._raw
 
     def __add__(self, other):
-        result = super().__add__(other)
 
-        return self._new(result)
+        return self._new(int(self._raw) + other)
 
     def __radd__(self, other):
         result = super().__radd__(other)
@@ -664,7 +663,6 @@ class Integer(int, Item):
 
     def _new(self, result):
         raw = str(result)
-
         if self._sign:
             sign = "+" if result >= 0 else "-"
             raw = sign + raw
