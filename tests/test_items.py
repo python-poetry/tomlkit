@@ -368,7 +368,7 @@ a = [
 def test_append_to_empty_array():
     doc = parse("x = [ ]")
     doc["x"].append("a")
-    assert doc.as_string() == 'x = [ "a" ]'
+    assert doc.as_string() == 'x = ["a" ]'
     doc = parse("x = [\n]")
     doc["x"].append("a")
     assert doc.as_string() == 'x = [\n    "a"\n]'
@@ -410,6 +410,8 @@ x = [
     2
 ]"""
     )
+    doc["x"].pop(0)
+    assert doc.as_string() == "x = [\n    2\n]"
 
 
 def test_append_to_multiline_array_with_comment():
@@ -434,12 +436,23 @@ x = [
 ]
 """
     )
+    assert doc["x"].pop() == 3
+    assert (
+        doc.as_string()
+        == """\
+x = [
+    # Here is a comment
+    1,
+    2,
+]
+"""
+    )
 
 
 def test_append_dict_to_array():
-    doc = parse("x = [ ]")
+    doc = parse("x = []")
     doc["x"].append({"name": "John Doe", "email": "john@doe.com"})
-    expected = 'x = [ {name = "John Doe",email = "john@doe.com"} ]'
+    expected = 'x = [{name = "John Doe",email = "john@doe.com"}]'
     assert doc.as_string() == expected
     # Make sure the produced string is valid
     assert parse(doc.as_string()) == doc
@@ -469,7 +482,7 @@ def test_array_add_line():
         == """[
     1, 2, 3, # Line 1
     4, 5, 6, # Line 2
-    7, 8
+    7, 8,
 ]"""
     )
 
