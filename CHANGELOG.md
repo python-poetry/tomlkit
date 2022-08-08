@@ -1,5 +1,15 @@
 # Change Log
 
+## [Unreleased]
+
+## [0.11.2] - 2022-08-08
+
+### Fixed
+
+- Fix adding float to an integer value. ([#215](https://github.com/sdispater/tomlkit/issues/215))
+- Keep the end-of-array style when adding items to or removing items from an array. ([#213](https://github.com/sdispater/tomlkit/issues/213), [#216](https://github.com/sdispater/tomlkit/issues/216))
+- Fix a bug of redundant table header shown when removing children from a super table. ([#217](https://github.com/sdispater/tomlkit/issues/219))
+
 ## [0.11.1] - 2022-07-07
 
 ### Changed
@@ -10,6 +20,7 @@
 - Raise errors when trying to access unsupported methods on `OutOfOrderTableProxy`. ([#205](https://github.com/sdispater/tomlkit/issues/205))
 
 ### Fixed
+
 - Fix `unwrap()` for String values to remove the quotes. ([#199](https://github.com/sdispater/tomlkit/issues/199))
 
 ## [0.11.0] - 2022-05-24
@@ -289,7 +300,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.1...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.2...master
+[0.11.2]: https://github.com/sdispater/tomlkit/releases/tag/0.11.2
 [0.11.1]: https://github.com/sdispater/tomlkit/releases/tag/0.11.1
 [0.11.0]: https://github.com/sdispater/tomlkit/releases/tag/0.11.0
 [0.10.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.2
