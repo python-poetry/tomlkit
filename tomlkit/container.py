@@ -525,7 +525,8 @@ class Container(_CustomDict):
 
         if not table.is_super_table() or (
             any(
-                not isinstance(v, (Table, AoT, Whitespace)) for _, v in table.value.body
+                not isinstance(v, (Table, AoT, Whitespace, Null))
+                for _, v in table.value.body
             )
             and not key.is_dotted()
         ):
