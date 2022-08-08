@@ -983,3 +983,21 @@ def test_add_newline_before_super_table():
     [d.e]
     """
     assert doc.as_string() == dedent(expected)
+
+
+def test_remove_item_from_super_table():
+    content = """\
+    [hello.one]
+    a = 1
+
+    [hello.two]
+    b = 1
+    """
+    doc = parse(dedent(content))
+    del doc["hello"]["two"]
+    expected = """\
+    [hello.one]
+    a = 1
+
+    """
+    assert doc.as_string() == dedent(expected)
