@@ -656,7 +656,6 @@ class Integer(int, Item):
         return self._raw
 
     def __add__(self, other):
-
         return self._new(int(self._raw) + other)
 
     def __radd__(self, other):
@@ -1139,7 +1138,8 @@ class Array(Item, _CustomList):
     ) -> None:
         super().__init__(trivia)
         list.__init__(
-            self, [v.value for v in value if not isinstance(v, (Whitespace, Comment))]
+            self,
+            [v.value for v in value if not isinstance(v, (Whitespace, Comment, Null))],
         )
         self._index_map: Dict[int, int] = {}
         self._value = self._group_values(value)
