@@ -1,5 +1,6 @@
 import math
 import pickle
+import copy
 
 from datetime import date
 from datetime import datetime
@@ -860,3 +861,17 @@ def test_table_copy():
     table["foo"] = "baz"
     assert table_copy["foo"] == "bar"
     assert table_copy.as_string() == 'foo = "bar"\n'
+
+
+def test_copy_copy():
+    result = parse("""
+    [tool.poetry]
+    classifiers = [
+    # comment
+        "a",
+        "b",
+    ]
+    """)
+    classifiers = result["tool"]["poetry"]["classifiers"]
+    new = copy.copy(classifiers)
+    assert new == classifiers
