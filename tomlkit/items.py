@@ -1298,7 +1298,14 @@ class Array(Item, _CustomList):
         list.extend(self, data_values)
         if len(self._value) > 0:
             last_item = self._value[-1]
-            last_value_item = next((v for v in self._value[::-1] if v.value), None)
+            last_value_item = next(
+                (
+                    v
+                    for v in self._value[::-1]
+                    if v.value is not None and not isinstance(v.value, Null)
+                ),
+                None,
+            )
             if last_value_item is not None:
                 last_value_item.comma = Whitespace(",")
             if last_item.is_whitespace():

@@ -475,6 +475,7 @@ def test_array_add_line():
     t.add_line(1, 2, 3, comment="Line 1")
     t.add_line(4, 5, 6, comment="Line 2")
     t.add_line(7, api.ws(","), api.ws(" "), 8, add_comma=False)
+    t.add_line(comment="Line 4")
     t.add_line(indent="")
     assert len(t) == 8
     assert list(t) == [1, 2, 3, 4, 5, 6, 7, 8]
@@ -484,6 +485,7 @@ def test_array_add_line():
     1, 2, 3, # Line 1
     4, 5, 6, # Line 2
     7, 8,
+    # Line 4
 ]"""
     )
 
@@ -864,14 +866,16 @@ def test_table_copy():
 
 
 def test_copy_copy():
-    result = parse("""
+    result = parse(
+        """
     [tool.poetry]
     classifiers = [
     # comment
         "a",
         "b",
     ]
-    """)
+    """
+    )
     classifiers = result["tool"]["poetry"]["classifiers"]
     new = copy.copy(classifiers)
     assert new == classifiers
