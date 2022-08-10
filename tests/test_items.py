@@ -1,6 +1,6 @@
+import copy
 import math
 import pickle
-import copy
 
 from datetime import date
 from datetime import datetime

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.11.3] - 2022-08-10
+
+### Fixed
+
+- Fix a regression issue that copying an array results in extra `None` items. ([#221](https://github.com/sdispater/tomlkit/issues/221))
+- Fix a regression of `array.add_line` that it incorrectly adds a comma to non-value lines. ([#223](https://github.com/sdispater/tomlkit/issues/223))
+
 ## [0.11.2] - 2022-08-08
 
 ### Fixed
@@ -300,7 +307,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.2...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.3...master
+[0.11.3]: https://github.com/sdispater/tomlkit/releases/tag/0.11.3
 [0.11.2]: https://github.com/sdispater/tomlkit/releases/tag/0.11.2
 [0.11.1]: https://github.com/sdispater/tomlkit/releases/tag/0.11.1
 [0.11.0]: https://github.com/sdispater/tomlkit/releases/tag/0.11.0
