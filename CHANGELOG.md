@@ -1,6 +1,11 @@
 # Change Log
 
-## [Unreleased]
+## [0.11.3] - 2022-08-10
+
+### Fixed
+
+- Fix a regression issue that copying an array results in extra `None` items. ([#221](https://github.com/sdispater/tomlkit/issues/221))
+- Fix a regression of `array.add_line` that it incorrectly adds a comma to non-value lines. ([#223](https://github.com/sdispater/tomlkit/issues/223))
 
 ## [0.11.2] - 2022-08-08
 
