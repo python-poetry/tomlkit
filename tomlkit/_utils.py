@@ -6,6 +6,7 @@ from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from datetime import timezone
+from functools import lru_cache
 from typing import Collection
 from typing import Union
 
@@ -153,3 +154,6 @@ def merge_dicts(d1: dict, d2: dict) -> dict:
             merge_dicts(d1[k], v)
         else:
             d1[k] = d2[k]
+
+
+lru = lru_cache(maxsize=None)

@@ -27,6 +27,7 @@ from tomlkit._compat import PY38
 from tomlkit._compat import decode
 from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
+from tomlkit._utils import lru
 from tomlkit.exceptions import InvalidStringError
 
 
@@ -242,12 +243,6 @@ def item(
     raise ValueError(f"Invalid type {type(value)}")
 
 
-# This code is only valid for Python < 3.8, when @cached_property was introduced
-# it replaces chained @property and @lru_cache decorators
-def lazy_property(f):
-    return property(lru_cache(maxsize=None)(f))
-
-
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -257,13 +252,6 @@ class StringType(Enum):
     SLL = "'"
     # Multi Line Literal
     MLL = "'''"
-
-    def __init__(self, value):
-        self.is_basic = lru_cache(maxsize=None)(self._is_basic)
-        self.is_literal = lru_cache(maxsize=None)(self._is_literal)
-        self.is_singleline = lru_cache(maxsize=None)(self._is_singleline)
-        self.is_multiline = lru_cache(maxsize=None)(self._is_multiline)
-        self.toggle = lru_cache(maxsize=None)(self._toggle)
 
     @classmethod
     def select(cls, literal=False, multiline=False) -> "StringType":
@@ -298,23 +286,29 @@ class StringType(Enum):
             StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
         }[self]
 
-    @lazy_property
+    @property
+    @lru
     def unit(self) -> str:
         return self.value[0]
 
-    def _is_basic(self) -> bool:
+    @lru
+    def is_basic(self) -> bool:
         return self in {StringType.SLB, StringType.MLB}
 
-    def _is_literal(self) -> bool:
+    @lru
+    def is_literal(self) -> bool:
         return self in {StringType.SLL, StringType.MLL}
 
-    def _is_singleline(self) -> bool:
+    @lru
+    def is_singleline(self) -> bool:
         return self in {StringType.SLB, StringType.SLL}
 
-    def _is_multiline(self) -> bool:
+    @lru
+    def is_multiline(self) -> bool:
         return self in {StringType.MLB, StringType.MLL}
 
-    def _toggle(self) -> "StringType":
+    @lru
+    def toggle(self) -> "StringType":
         return {
             StringType.SLB: StringType.MLB,
             StringType.MLB: StringType.SLB,
