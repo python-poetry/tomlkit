@@ -258,13 +258,6 @@ class StringType(Enum):
     # Multi Line Literal
     MLL = "'''"
 
-    def __init__(self, value):
-        self.is_basic = lru_cache(maxsize=None)(self._is_basic)
-        self.is_literal = lru_cache(maxsize=None)(self._is_literal)
-        self.is_singleline = lru_cache(maxsize=None)(self._is_singleline)
-        self.is_multiline = lru_cache(maxsize=None)(self._is_multiline)
-        self.toggle = lru_cache(maxsize=None)(self._toggle)
-
     @classmethod
     def select(cls, literal=False, multiline=False) -> "StringType":
         return {
@@ -302,19 +295,19 @@ class StringType(Enum):
     def unit(self) -> str:
         return self.value[0]
 
-    def _is_basic(self) -> bool:
+    def is_basic(self) -> bool:
         return self in {StringType.SLB, StringType.MLB}
 
-    def _is_literal(self) -> bool:
+    def is_literal(self) -> bool:
         return self in {StringType.SLL, StringType.MLL}
 
-    def _is_singleline(self) -> bool:
+    def is_singleline(self) -> bool:
         return self in {StringType.SLB, StringType.SLL}
 
-    def _is_multiline(self) -> bool:
+    def is_multiline(self) -> bool:
         return self in {StringType.MLB, StringType.MLL}
 
-    def _toggle(self) -> "StringType":
+    def toggle(self) -> "StringType":
         return {
             StringType.SLB: StringType.MLB,
             StringType.MLB: StringType.SLB,
