@@ -8,7 +8,6 @@ from datetime import datetime
 from datetime import time
 from datetime import tzinfo
 from enum import Enum
-from functools import lru_cache
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Collection
@@ -242,12 +241,6 @@ def item(
     raise ValueError(f"Invalid type {type(value)}")
 
 
-# This code is only valid for Python < 3.8, when @cached_property was introduced
-# it replaces chained @property and @lru_cache decorators
-def lazy_property(f):
-    return property(lru_cache(maxsize=None)(f))
-
-
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -291,7 +284,7 @@ class StringType(Enum):
             StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
         }[self]
 
-    @lazy_property
+    @property
     def unit(self) -> str:
         return self.value[0]
 
@@ -320,7 +313,6 @@ class BoolType(Enum):
     TRUE = "true"
     FALSE = "false"
 
-    @lru_cache(maxsize=None)  # noqa: B019
     def __bool__(self):
         return {BoolType.TRUE: True, BoolType.FALSE: False}[self]
 
