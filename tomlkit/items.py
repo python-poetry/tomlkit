@@ -503,7 +503,11 @@ class Item:
         """The TOML representation"""
         raise NotImplementedError()
 
-    def unwrap(self):
+    @property
+    def value(self) -> Any:
+        return self
+
+    def unwrap(self) -> Any:
         """Returns as pure python object (ppo)"""
         raise NotImplementedError()
 
@@ -1036,7 +1040,7 @@ class Time(Item, time):
 
         self._raw = raw
 
-    def unwrap(self) -> datetime:
+    def unwrap(self) -> time:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
         return time(hour, minute, second, microsecond, tzinfo)
 
@@ -1157,7 +1161,7 @@ class Array(Item, _CustomList):
         groups.append(this_group)
         return [group for group in groups if group]
 
-    def unwrap(self) -> str:
+    def unwrap(self) -> List[Any]:
         unwrapped = []
         for v in self:
             if isinstance(v, Item):
@@ -1427,7 +1431,7 @@ class AbstractTable(Item, _CustomDict):
             if k is not None:
                 dict.__setitem__(self, k.key, v)
 
-    def unwrap(self):
+    def unwrap(self) -> Dict[str, Any]:
         unwrapped = {}
         for k, v in self.items():
             if isinstance(k, Key):
@@ -1822,7 +1826,7 @@ class AoT(Item, _CustomList):
         for table in body:
             self.append(table)
 
-    def unwrap(self) -> str:
+    def unwrap(self) -> List[Dict[str, Any]]:
         unwrapped = []
         for t in self._body:
             if isinstance(t, Item):
@@ -1922,7 +1926,7 @@ class Null(Item):
     def __init__(self) -> None:
         pass
 
-    def unwrap(self) -> str:
+    def unwrap(self) -> None:
         return None
 
     @property
