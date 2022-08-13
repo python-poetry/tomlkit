@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.11.4] - 2022-08-12
+
+### Fixed
+
+- Fix a memory leak caused by `lru_cache` on methods. ([#227](https://github.com/sdispater/tomlkit/issues/227))
+
 ## [0.11.3] - 2022-08-10
 
 ### Fixed
@@ -307,7 +313,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.3...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.4...master
+[0.11.4]: https://github.com/sdispater/tomlkit/releases/tag/0.11.4
 [0.11.3]: https://github.com/sdispater/tomlkit/releases/tag/0.11.3
 [0.11.2]: https://github.com/sdispater/tomlkit/releases/tag/0.11.2
 [0.11.1]: https://github.com/sdispater/tomlkit/releases/tag/0.11.1
