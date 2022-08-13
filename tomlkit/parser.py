@@ -1,3 +1,4 @@
+import datetime
 import re
 import string
 
@@ -470,6 +471,7 @@ class Parser:
                     # datetime
                     try:
                         dt = parse_rfc3339(raw)
+                        assert isinstance(dt, datetime.datetime)
                         return DateTime(
                             dt.year,
                             dt.month,
@@ -488,6 +490,7 @@ class Parser:
                 if m.group(1):
                     try:
                         dt = parse_rfc3339(raw)
+                        assert isinstance(dt, datetime.date)
                         date = Date(dt.year, dt.month, dt.day, trivia, raw)
                         self.mark()
                         while self._current not in "\t\n\r#,]}" and self.inc():
@@ -499,6 +502,7 @@ class Parser:
                             return date
 
                         dt = parse_rfc3339(raw + time_raw)
+                        assert isinstance(dt, datetime.datetime)
                         return DateTime(
                             dt.year,
                             dt.month,
@@ -517,6 +521,7 @@ class Parser:
                 if m.group(5):
                     try:
                         t = parse_rfc3339(raw)
+                        assert isinstance(t, datetime.time)
                         return Time(
                             t.hour,
                             t.minute,
@@ -678,10 +683,10 @@ class Parser:
             or sign
             and raw.startswith(".")
         ):
-            return
+            return None
 
         if raw.startswith(("0o", "0x", "0b")) and sign:
-            return
+            return None
 
         digits = "[0-9]"
         base = 10
@@ -699,14 +704,14 @@ class Parser:
         clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw).lower()
 
         if "_" in clean:
-            return
+            return None
 
         if (
             clean.endswith(".")
             or not clean.startswith("0x")
             and clean.split("e", 1)[0].endswith(".")
         ):
-            return
+            return None
 
         try:
             return Integer(int(sign + clean, base), trivia, sign + raw)
@@ -714,7 +719,7 @@ class Parser:
             try:
                 return Float(float(sign + clean), trivia, sign + raw)
             except ValueError:
-                return
+                return None
 
     def _parse_literal_string(self) -> String:
         with self._state:

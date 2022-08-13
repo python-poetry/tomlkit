@@ -46,7 +46,7 @@ class Container(_CustomDict):
     def body(self) -> List[Tuple[Optional[Key], Item]]:
         return self._body
 
-    def unwrap(self) -> str:
+    def unwrap(self) -> Dict[str, Any]:
         unwrapped = {}
         for k, v in self.items():
             if k is None:
@@ -66,7 +66,7 @@ class Container(_CustomDict):
         return unwrapped
 
     @property
-    def value(self) -> Dict[Any, Any]:
+    def value(self) -> Dict[str, Any]:
         d = {}
         for k, v in self._body:
             if k is None:
