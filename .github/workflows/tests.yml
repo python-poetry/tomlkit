@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install -U pipx
-          pipx install poetry
+          pipx install --verbose poetry
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
