@@ -708,6 +708,14 @@ def test_strings_behave_like_strs():
     assert doc.as_string() == 'str = "foo bar" # Comment'
 
 
+def test_string_add_preserve_escapes():
+    i = api.value('"foo\\"bar"')
+    i += " baz"
+
+    assert i == 'foo"bar baz'
+    assert i.as_string() == '"foo\\"bar baz"'
+
+
 def test_tables_behave_like_dicts():
     t = item({"foo": "bar"})
 
