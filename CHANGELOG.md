@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Clear the existing table header when it is adding to another table. ([#230](https://github.com/sdispater/tomlkit/issues/230))
+
 ## [0.11.4] - 2022-08-12
 
 ### Fixed
