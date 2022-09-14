@@ -1779,18 +1779,16 @@ class String(str, Item):
     def as_string(self) -> str:
         return f"{self._t.value}{decode(self._original)}{self._t.value}"
 
-    def __add__(self, other):
+    def __add__(self: ItemT, other: str) -> ItemT:
+        if not isinstance(other, str):
+            return NotImplemented
         result = super().__add__(other)
+        original = self._original + getattr(other, "_original", other)
 
-        return self._new(result)
+        return self._new(result, original)
 
-    def __sub__(self, other):
-        result = super().__sub__(other)
-
-        return self._new(result)
-
-    def _new(self, result):
-        return String(self._t, result, result, self._trivia)
+    def _new(self, result: str, original: str) -> "String":
+        return String(self._t, result, original, self._trivia)
 
     def _getstate(self, protocol=3):
         return self._t, str(self), self._original, self._trivia

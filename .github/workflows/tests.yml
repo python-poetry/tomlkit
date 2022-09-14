@@ -27,12 +27,12 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9, "3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -45,7 +45,7 @@ jobs:
       - name: Install Poetry
         shell: bash
         run: |
-          curl -fsSL https://install.python-poetry.org | python - -y
+          curl -fsSL https://install.python-poetry.org | python - -y --version 1.1.15
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -59,7 +59,7 @@ jobs:
         run: |
           poetry config virtualenvs.in-project true
       - name: Set up cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: cache
         with:
           path: .venv
