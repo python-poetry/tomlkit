@@ -170,7 +170,9 @@ def item(
     elif isinstance(value, float):
         return Float(value, Trivia(), str(value))
     elif isinstance(value, dict):
-        table_constructor = InlineTable if isinstance(_parent, Array) else Table
+        table_constructor = (
+            InlineTable if isinstance(_parent, (Array, InlineTable)) else Table
+        )
         val = table_constructor(Container(), Trivia(), False)
         for k, v in sorted(
             value.items(),
@@ -1517,7 +1519,7 @@ class AbstractTable(Item, _CustomDict):
 
     def __setitem__(self, key: Union[Key, str], value: Any) -> None:
         if not isinstance(value, Item):
-            value = item(value)
+            value = item(value, _parent=self)
 
         is_replace = key in self
         self._value[key] = value
@@ -1581,7 +1583,7 @@ class Table(AbstractTable):
         Appends a (key, item) to the table.
         """
         if not isinstance(_item, Item):
-            _item = item(_item)
+            _item = item(_item, _parent=self)
 
         self._value.append(key, _item)
 
@@ -1692,7 +1694,7 @@ class InlineTable(AbstractTable):
         Appends a (key, item) to the table.
         """
         if not isinstance(_item, Item):
-            _item = item(_item)
+            _item = item(_item, _parent=self)
 
         if not isinstance(_item, (Whitespace, Comment)):
             if not _item.trivia.indent and len(self._value) > 0 and not self._new:
