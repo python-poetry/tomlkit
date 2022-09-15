@@ -184,7 +184,11 @@ def item(
 
         return val
     elif isinstance(value, (list, tuple)):
-        if value and all(isinstance(v, dict) for v in value):
+        if (
+            value
+            and all(isinstance(v, dict) for v in value)
+            and (_parent is None or isinstance(_parent, Table))
+        ):
             a = AoT([])
             table_constructor = Table
         else:
