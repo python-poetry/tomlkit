@@ -1001,3 +1001,32 @@ def test_remove_item_from_super_table():
 
     """
     assert doc.as_string() == dedent(expected)
+
+
+def test_nested_table_update_display_name():
+    content = """\
+    [parent]
+
+    [parent.foo]
+    x = 1
+    """
+
+    doc = parse(dedent(content))
+    sub = """\
+    [foo]
+    y = 2
+
+    [bar]
+    z = 3
+    """
+    doc["parent"].update(parse(dedent(sub)))
+    expected = """\
+    [parent]
+
+    [parent.foo]
+    y = 2
+
+    [parent.bar]
+    z = 3
+    """
+    assert doc.as_string() == dedent(expected)

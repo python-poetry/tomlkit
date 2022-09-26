@@ -194,7 +194,7 @@ class Container(_CustomDict):
         prev = self._previous_item()
         prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
         if isinstance(item, Table):
-            if item.name != key.key:
+            if not self._parsed:
                 item.invalidate_display_name()
             if self._body and not (self._parsed or item.trivia.indent or prev_ws):
                 item.trivia.indent = "\n"
