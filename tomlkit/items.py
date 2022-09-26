@@ -205,7 +205,7 @@ def item(
                     v.items(),
                     key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
                 ):
-                    i = item(_v, _parent=a, _sort_keys=_sort_keys)
+                    i = item(_v, _parent=table, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
 
