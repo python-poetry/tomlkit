@@ -47,7 +47,7 @@ jobs:
       - name: Install Poetry
         shell: bash
         run: |
-          curl -fsSL https://install.python-poetry.org | python - -y --version 1.1.15
+          curl -fsSL https://install.python-poetry.org | python - -y --version 1.2.1
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
