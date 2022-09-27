@@ -27,7 +27,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [Ubuntu, MacOS, Windows]
-        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11.0-rc - 3.11"]
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11.0-rc - 3.11.0"]
+        exclude:
+          - python-version: "3.11.0-rc - 3.11.0"
+            os: MacOS
 
     steps:
       - uses: actions/checkout@v3
@@ -47,10 +50,12 @@ jobs:
 
       - name: Install Poetry
         shell: bash
-        if: !startsWith(matrix.python-version, '3.11')
+        if: ${{ !startsWith(matrix.python-version, '3.11') }}
         run: |
           curl -fsSL https://install.python-poetry.org | python - -y --version 1.1.15
-      - if: startsWith(matrix.python-version, '3.11')
+      - name: Install Poetry 1.2
+        shell: bash
+        if: startsWith(matrix.python-version, '3.11')
         run: curl -fsSL https://install.python-poetry.org | python - -y --version 1.2.1
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}
@@ -85,3 +90,4 @@ jobs:
         shell: bash
         run: |
           poetry run pytest -q tests
+        continue-on-error: ${{ startsWith(matrix.python-version, '3.11') }}
