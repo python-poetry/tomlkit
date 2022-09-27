@@ -87,3 +87,4 @@ jobs:
         shell: bash
         run: |
           poetry run pytest -q tests
+        continue-on-error: ${{ startsWith(matrix.python-version, '3.11') }}
