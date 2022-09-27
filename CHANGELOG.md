@@ -2,9 +2,14 @@
 
 ## [Unreleased]
 
+## [0.11.5] - 2022-09-28
+
 ### Fixed
 
+- Fix the type annotation of `unwrap()` and datetime parsing. ([#229](https://github.com/sdispater/tomlkit/issues/229))
 - Clear the existing table header when it is adding to another table. ([#230](https://github.com/sdispater/tomlkit/issues/230))
+- Fix a bug that escape chars are lost after concat with another string. ([#235](https://github.com/sdispater/tomlkit/issues/235))
+- Fix a rendering issue of tables inside arrays or inline tables. ([#236](https://github.com/sdispater/tomlkit/issues/236))
 
 ## [0.11.4] - 2022-08-12
 
@@ -317,7 +322,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.4...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.5...master
+[0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
 [0.11.4]: https://github.com/sdispater/tomlkit/releases/tag/0.11.4
 [0.11.3]: https://github.com/sdispater/tomlkit/releases/tag/0.11.3
 [0.11.2]: https://github.com/sdispater/tomlkit/releases/tag/0.11.2
