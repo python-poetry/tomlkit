@@ -1,8 +1,17 @@
 import os
 import re
 
+from typing import TYPE_CHECKING
+from typing import Union
+
 from tomlkit.api import loads
 from tomlkit.toml_document import TOMLDocument
+
+
+if TYPE_CHECKING:
+    _StrPath = Union[str, os.PathLike[str]]
+else:
+    _StrPath = Union[str, os.PathLike]
 
 
 class TOMLFile:
@@ -12,7 +21,7 @@ class TOMLFile:
     :param path: path to the TOML file
     """
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: _StrPath) -> None:
         self._path = path
         self._linesep = os.linesep
 
