@@ -2,15 +2,16 @@ import os
 import re
 
 from typing import TYPE_CHECKING
-from typing import Union
 
 from tomlkit.api import loads
 from tomlkit.toml_document import TOMLDocument
 
 
 if TYPE_CHECKING:
-    _StrPath = Union[str, os.PathLike[str]]
+    from _typeshed import StrPath as _StrPath
 else:
+    from typing import Union
+
     _StrPath = Union[str, os.PathLike]
 
 
