@@ -948,6 +948,7 @@ class Parser:
             is_aot,
             name=name_parts[0].key if name_parts else key.key,
             display_name=full_key.as_string(),
+            is_super_table=False,
         )
 
         if len(name_parts) > 1:

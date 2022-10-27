@@ -1,7 +1,7 @@
 import datetime as _datetime
 
 from collections.abc import Mapping
-from typing import IO
+from typing import IO, Optional
 from typing import Iterable
 from typing import Tuple
 from typing import Union
@@ -174,7 +174,7 @@ def array(raw: str = None) -> Array:
     return value(raw)
 
 
-def table(is_super_table: bool = False) -> Table:
+def table(is_super_table: Optional[bool] = None) -> Table:
     """Create an empty table.
 
     :param is_super_table: if true, the table is a super table
