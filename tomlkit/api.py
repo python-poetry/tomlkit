@@ -1,8 +1,9 @@
 import datetime as _datetime
 
 from collections.abc import Mapping
-from typing import IO, Optional
+from typing import IO
 from typing import Iterable
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
