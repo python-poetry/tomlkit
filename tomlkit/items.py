@@ -179,10 +179,6 @@ def item(
             key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
         ):
             val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
-        only_child = val[next(iter(value))] if len(value) == 1 else None
-        if table_constructor is Table and isinstance(only_child, (AoT, Table)):
-            # The table becomes super table if the only child is a table or AoT.
-            val._is_super_table = True
 
         return val
     elif isinstance(value, (list, tuple)):
@@ -1553,7 +1549,7 @@ class Table(AbstractTable):
         value: "container.Container",
         trivia: Trivia,
         is_aot_element: bool,
-        is_super_table: bool = False,
+        is_super_table: Optional[bool] = None,
         name: Optional[str] = None,
         display_name: Optional[str] = None,
     ) -> None:
@@ -1632,7 +1628,13 @@ class Table(AbstractTable):
     def is_super_table(self) -> bool:
         """A super table is the intermediate parent of a nested table as in [a.b.c].
         If true, it won't appear in the TOML representation."""
-        return self._is_super_table
+        if self._is_super_table is not None:
+            return self._is_super_table
+        # If the table has only one child and that child is a table, then it is a super table.
+        if len(self) != 1:
+            return False
+        only_child = next(iter(self.values()))
+        return isinstance(only_child, (Table, AoT))
 
     def as_string(self) -> str:
         return self._value.as_string()
