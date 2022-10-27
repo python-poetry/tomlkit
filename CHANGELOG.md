@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.11.6] - 2022-10-27
+
+### Fixed
+
+- Allow broader type for toml file path value ([#243](https://github.com/sdispater/tomlkit/issues/243))
+- Auto-determine if a table is a super table if not specified explicitly. ([#245](https://github.com/sdispater/tomlkit/issues/245))
+
 ## [0.11.5] - 2022-09-28
 
 ### Fixed
@@ -322,7 +329,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.5...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.6...master
+[0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
 [0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
 [0.11.4]: https://github.com/sdispater/tomlkit/releases/tag/0.11.4
 [0.11.3]: https://github.com/sdispater/tomlkit/releases/tag/0.11.3
