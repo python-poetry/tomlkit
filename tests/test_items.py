@@ -887,3 +887,11 @@ def test_copy_copy():
     classifiers = result["tool"]["poetry"]["classifiers"]
     new = copy.copy(classifiers)
     assert new == classifiers
+
+
+@pytest.mark.parametrize(
+    "key_str,escaped",
+    [("\\", '"\\\\"'), ('"', '"\\""'), ("\t", '"\\t"'), ("\x10", '"\\u0010"')],
+)
+def test_escape_key(key_str, escaped):
+    assert api.key(key_str).as_string() == escaped

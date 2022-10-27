@@ -113,7 +113,7 @@ _compact_escapes = {
     **{v: f"\\{k}" for k, v in _escaped.items()},
     '"""': '""\\"',
 }
-_basic_escapes = CONTROL_CHARS | {'"'}
+_basic_escapes = CONTROL_CHARS | {'"', "\\"}
 
 
 def _unicode_escape(seq: str) -> str:
