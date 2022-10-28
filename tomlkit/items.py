@@ -1130,7 +1130,7 @@ class Array(Item, _CustomList):
         super().__init__(trivia)
         list.__init__(
             self,
-            [v.value for v in value if not isinstance(v, (Whitespace, Comment, Null))],
+            [v for v in value if not isinstance(v, (Whitespace, Comment, Null))],
         )
         self._index_map: Dict[int, int] = {}
         self._value = self._group_values(value)
@@ -1321,7 +1321,7 @@ class Array(Item, _CustomList):
 
     def __setitem__(self, key: Union[int, slice], value: Any) -> Any:
         it = item(value, _parent=self)
-        list.__setitem__(self, key, it.value)
+        list.__setitem__(self, key, it)
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
         if key < 0:
@@ -1332,7 +1332,7 @@ class Array(Item, _CustomList):
         it = item(value, _parent=self)
         length = len(self)
         if not isinstance(it, (Comment, Whitespace)):
-            list.insert(self, pos, it.value)
+            list.insert(self, pos, it)
         if pos < 0:
             pos += length
             if pos < 0:
