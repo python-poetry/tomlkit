@@ -35,8 +35,6 @@ TOML File
 TOML Items
 ----------
 
-.. module:: tomlkit.items
-
 .. automodule:: tomlkit.items
    :show-inheritance:
    :members:
