@@ -119,7 +119,7 @@ def string(
     boolean flags (e.g. ``literal=True`` and/or ``multiline=True``)
     can be used for personalization.
 
-    For more information, please check the spec: `https://toml.io/en/v1.0.0#string`_.
+    For more information, please check the spec: `<https://toml.io/en/v1.0.0#string>`__.
 
     Common escaping rules will be applied for basic strings.
     This can be controlled by explicitly setting ``escape=False``.
