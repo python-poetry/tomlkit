@@ -18,16 +18,16 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6"
+python = ">=3.7"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.5"
-pytest-cov = "^3.0.0"
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
 PyYAML = "^6.0"
-pre-commit = {version = "^2.1.0", python = "^3.6.1"}
-mypy = "^0.920"
+pre-commit = "^2.20.0"
+mypy = "^0.990"
 Sphinx = "^4.3.2"
-furo = "^2021.11.23"
+furo = "^2022.9.29"
 
 [tool.black]
 line-length = 88
