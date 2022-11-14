@@ -1,5 +1,5 @@
 [flake8]
-min_python_version = 3.6.0
+min_python_version = 3.7.0
 max-line-length = 88
 ignore = E501, E203, W503
 per-file-ignores =
