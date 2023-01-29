@@ -21,6 +21,6 @@ def test_escape_special_characters_in_key():
 
 def test_write_inline_table_in_nested_arrays():
     d = {"foo": [[{"a": 1}]]}
-    expected = "foo = [[{a = 1}]]\n"  # noqa: FS003
+    expected = "foo = [[{a = 1}]]\n"
     assert expected == dumps(d)
     assert loads(dumps(d))["foo"] == [[{"a": 1}]]
