@@ -55,7 +55,7 @@ class Container(_CustomDict):
             if isinstance(k, Key):
                 k = k.key
 
-            if isinstance(v, Item):
+            if hasattr(v, "unwrap"):
                 v = v.unwrap()
 
             if k in unwrapped:

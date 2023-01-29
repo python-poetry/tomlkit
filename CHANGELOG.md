@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+
+### Fixed
+
+- Parse empty table name if it is quoted. ([#258](https://github.com/sdispater/tomlkit/issues/258))
+- Fix the `unwrap()` method for `Container` children values which sometimes returns an internal object if the table is an out-of-order table. ([#264](https://github.com/sdispater/tomlkit/issues/264))
+
 ## [0.11.6] - 2022-10-27
 
 ### Fixed
