@@ -1166,7 +1166,7 @@ class Array(Item, _CustomList):
     def unwrap(self) -> List[Any]:
         unwrapped = []
         for v in self:
-            if isinstance(v, Item):
+            if hasattr(v, "unwrap"):
                 unwrapped.append(v.unwrap())
             else:
                 unwrapped.append(v)
@@ -1317,7 +1317,10 @@ class Array(Item, _CustomList):
         return list.__len__(self)
 
     def __getitem__(self, key: Union[int, slice]) -> Any:
-        return list.__getitem__(self, key)
+        rv = cast(Item, list.__getitem__(self, key))
+        if rv.is_boolean():
+            return bool(rv)
+        return rv
 
     def __setitem__(self, key: Union[int, slice], value: Any) -> Any:
         it = item(value, _parent=self)
@@ -1438,7 +1441,7 @@ class AbstractTable(Item, _CustomDict):
         for k, v in self.items():
             if isinstance(k, Key):
                 k = k.key
-            if isinstance(v, Item):
+            if hasattr(v, "unwrap"):
                 v = v.unwrap()
             unwrapped[k] = v
 
@@ -1835,7 +1838,7 @@ class AoT(Item, _CustomList):
     def unwrap(self) -> List[Dict[str, Any]]:
         unwrapped = []
         for t in self._body:
-            if isinstance(t, Item):
+            if hasattr(t, "unwrap"):
                 unwrapped.append(t.unwrap())
             else:
                 unwrapped.append(t)
