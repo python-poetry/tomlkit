@@ -910,8 +910,6 @@ class Parser:
             raise self.parse_error(UnexpectedEofError)
         elif self._current != "]":
             raise self.parse_error(UnexpectedCharError, self._current)
-        elif not key.key.strip():
-            raise self.parse_error(EmptyTableNameError)
 
         key.sep = ""
         full_key = key
