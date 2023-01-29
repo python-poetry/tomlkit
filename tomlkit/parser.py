@@ -497,11 +497,12 @@ class Parser:
                             pass
 
                         time_raw = self.extract()
-                        if not time_raw.strip():
-                            trivia.comment_ws = time_raw
+                        time_part = time_raw.rstrip()
+                        trivia.comment_ws = time_raw[len(time_part) :]
+                        if not time_part:
                             return date
 
-                        dt = parse_rfc3339(raw + time_raw)
+                        dt = parse_rfc3339(raw + time_part)
                         assert isinstance(dt, datetime.datetime)
                         return DateTime(
                             dt.year,
@@ -513,7 +514,7 @@ class Parser:
                             dt.microsecond,
                             dt.tzinfo,
                             trivia,
-                            raw + time_raw,
+                            raw + time_part,
                         )
                     except ValueError:
                         raise self.parse_error(InvalidDateError)

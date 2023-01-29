@@ -677,6 +677,17 @@ def test_dates_behave_like_dates():
     assert doc.as_string() == "dt = 2018-07-23 # Comment"
 
 
+def test_parse_datetime_followed_by_space():
+    # issue #260
+    doc = parse("dt = 2018-07-22 ")
+    assert doc["dt"] == date(2018, 7, 22)
+    assert doc.as_string() == "dt = 2018-07-22 "
+
+    doc = parse("dt = 2013-01-24 13:48:01.123456 ")
+    assert doc["dt"] == datetime(2013, 1, 24, 13, 48, 1, 123456)
+    assert doc.as_string() == "dt = 2013-01-24 13:48:01.123456 "
+
+
 def test_times_behave_like_times():
     i = item(time(12, 34, 56))
 
