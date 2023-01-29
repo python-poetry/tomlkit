@@ -1719,6 +1719,14 @@ class InlineTable(AbstractTable):
 
     def as_string(self) -> str:
         buf = "{"
+        last_item_idx = next(
+            (
+                i
+                for i in range(len(self._value.body) - 1, -1, -1)
+                if self._value.body[i][0] is not None
+            ),
+            None,
+        )
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
                 if i == len(self._value.body) - 1:
@@ -1741,7 +1749,7 @@ class InlineTable(AbstractTable):
                 f"{v_trivia_trail}"
             )
 
-            if i != len(self._value.body) - 1:
+            if last_item_idx is not None and i < last_item_idx:
                 buf += ","
                 if self._new:
                     buf += " "

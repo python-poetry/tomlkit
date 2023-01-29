@@ -824,7 +824,7 @@ def test_trim_comments_when_building_inline_table():
     assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
 
 
-def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
+def test_deleting_inline_table_element_does_not_leave_trailing_separator():
     table = api.inline_table()
     table["foo"] = "bar"
     table["baz"] = "boom"
@@ -843,6 +843,22 @@ def test_deleting_inline_table_elemeent_does_not_leave_trailing_separator():
     table["baz"] = "boom"
 
     assert table.as_string() == '{baz = "boom"}'
+
+
+def test_deleting_inline_table_element_does_not_leave_trailing_separator2():
+    doc = parse('a = {foo = "bar", baz = "boom"}')
+    table = doc["a"]
+    assert table.as_string() == '{foo = "bar", baz = "boom"}'
+
+    del table["baz"]
+    assert table.as_string() == '{foo = "bar" }'
+
+    del table["foo"]
+    assert table.as_string() == "{ }"
+
+    table["baz"] = "boom"
+
+    assert table.as_string() == '{ baz = "boom"}'
 
 
 def test_booleans_comparison():
