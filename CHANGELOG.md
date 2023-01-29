@@ -6,6 +6,7 @@
 ### Fixed
 
 - Parse empty table name if it is quoted. ([#258](https://github.com/sdispater/tomlkit/issues/258))
+- Fix a bug that remove last element of an Inline Table leaves a comma. ([#259](https://github.com/sdispater/tomlkit/issues/259))
 - Fix the `unwrap()` method for `Container` children values which sometimes returns an internal object if the table is an out-of-order table. ([#264](https://github.com/sdispater/tomlkit/issues/264))
 
 ## [0.11.6] - 2022-10-27
