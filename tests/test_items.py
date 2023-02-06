@@ -585,6 +585,20 @@ def test_add_sum_int_with_float():
     assert doc["table"]["my_int"] == 2053.3
 
 
+def test_sub_float_from_int():
+    content = "[table]\nmy_int = 2048"
+    doc = parse(content)
+    doc["table"]["my_int"] -= 5.0
+    assert doc["table"]["my_int"] == 2043.0
+
+
+def test_sub_int_from_float():
+    content = "[table]\nmy_int = 2048.0"
+    doc = parse(content)
+    doc["table"]["my_int"] -= 5
+    assert doc["table"]["my_int"] == 2043.0
+
+
 def test_integers_behave_like_ints():
     i = item(34)
 

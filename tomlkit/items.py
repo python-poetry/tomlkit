@@ -658,9 +658,7 @@ class Integer(int, Item):
         return result
 
     def __sub__(self, other):
-        result = super().__sub__(other)
-
-        return self._new(result)
+        return self._new(int(self._raw) - other)
 
     def __rsub__(self, other):
         result = super().__rsub__(other)
