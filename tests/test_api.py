@@ -311,6 +311,14 @@ def test_add_dotted_key():
     table.add(tomlkit.key(["foo", "bar"]), 1)
     assert table.as_string() == "foo.bar = 1\n"
 
+# See https://github.com/sdispater/tomlkit/issues/273
+def test_dotted_and_not_dotted_keys():
+    table = tomlkit.table()
+    table.add("foo", 1)
+    table.add(tomlkit.key(["bar", "baz"]), 2)
+    table.add(tomlkit.key(["bar", "qux"]), 3)
+    assert table.as_string() == "foo = 1\nbar.baz = 2\nbar.qux = 3\n"
+
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
