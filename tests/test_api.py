@@ -458,3 +458,10 @@ def test_create_string(kwargs, example, expected):
 def test_create_string_with_invalid_characters(kwargs, example):
     with pytest.raises(InvalidStringError):
         tomlkit.string(example, **kwargs)
+
+
+def test_parse_empty_quoted_table_name():
+    content = "['']\nx = 1\n"
+    parsed = loads(content)
+    assert parsed == {"": {"x": 1}}
+    assert dumps(parsed) == content

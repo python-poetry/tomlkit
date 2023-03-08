@@ -59,7 +59,7 @@ def dumps(data: Mapping, sort_keys: bool = False) -> str:
         raise TypeError(msg) from ex
 
 
-def load(fp: IO) -> TOMLDocument:
+def load(fp: Union[IO[str], IO[bytes]]) -> TOMLDocument:
     """
     Load toml document from a file-like object.
     """
