@@ -1414,9 +1414,6 @@ class Array(Item, _CustomList):
 
         self._reindex()
 
-    def __str__(self):
-        return str([v.value.value for v in self._iter_items() if v.value is not None])
-
     def _getstate(self, protocol=3):
         return list(self._iter_items()), self._trivia, self._multiline
 
