@@ -48,7 +48,7 @@ jobs:
 
       - name: Install Poetry
         shell: bash
-        run: curl -fsSL https://install.python-poetry.org | python - -y
+        run: curl -fsSL https://install.python-poetry.org | python - -y --version 1.4.0
 
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}

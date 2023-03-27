@@ -579,6 +579,29 @@ bar = "baz"
     )
 
 
+def test_add_float_to_int():
+    content = "[table]\nmy_int = 2043"
+    doc = parse(content)
+    doc["table"]["my_int"] += 5.0
+    assert doc["table"]["my_int"] == 2048.0
+    assert isinstance(doc["table"]["my_int"], float)
+
+
+def test_sub_float_from_int():
+    content = "[table]\nmy_int = 2048"
+    doc = parse(content)
+    doc["table"]["my_int"] -= 5.0
+    assert doc["table"]["my_int"] == 2043.0
+    assert isinstance(doc["table"]["my_int"], float)
+
+
+def test_sub_int_from_float():
+    content = "[table]\nmy_int = 2048.0"
+    doc = parse(content)
+    doc["table"]["my_int"] -= 5
+    assert doc["table"]["my_int"] == 2043.0
+
+
 def test_add_sum_int_with_float():
     content = "[table]\nmy_int = 2048.3"
     doc = parse(content)
