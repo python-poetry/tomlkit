@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+## [0.11.7] - 2023-03-27
 
 ### Fixed
 
@@ -9,6 +10,7 @@
 - Fix a bug that remove last element of an Inline Table leaves a comma. ([#259](https://github.com/sdispater/tomlkit/issues/259))
 - Parse datetime when it is followed by a space. ([#260](https://github.com/sdispater/tomlkit/issues/260))
 - Fix the `unwrap()` method for `Container` children values which sometimes returns an internal object if the table is an out-of-order table. ([#264](https://github.com/sdispater/tomlkit/issues/264))
+- Fix the wrong return type when doing arithmetic operations between integers and floats. ([#270](https://github.com/sdispater/tomlkit/issues/270))
 
 ## [0.11.6] - 2022-10-27
 
@@ -337,7 +339,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.6...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.7...master
+[0.11.7]: https://github.com/sdispater/tomlkit/releases/tag/0.11.7
 [0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
 [0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
 [0.11.4]: https://github.com/sdispater/tomlkit/releases/tag/0.11.4

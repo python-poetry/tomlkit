@@ -25,7 +25,7 @@ from tomlkit.api import value
 from tomlkit.api import ws
 
 
-__version__ = "0.11.6"
+__version__ = "0.11.7"
 __all__ = [
     "aot",
     "array",
