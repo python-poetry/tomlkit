@@ -647,28 +647,28 @@ class Integer(int, Item):
         return self._raw
 
     def __add__(self, other):
-        return self._new(int(self._raw) + other)
+        result = super().__add__(other)
+        if result is NotImplemented:
+            return result
+        return self._new(result)
 
     def __radd__(self, other):
         result = super().__radd__(other)
-
-        if isinstance(other, Integer):
-            return self._new(result)
-
-        return result
+        if result is NotImplemented:
+            return result
+        return self._new(result)
 
     def __sub__(self, other):
         result = super().__sub__(other)
-
+        if result is NotImplemented:
+            return result
         return self._new(result)
 
     def __rsub__(self, other):
         result = super().__rsub__(other)
-
-        if isinstance(other, Integer):
-            return self._new(result)
-
-        return result
+        if result is NotImplemented:
+            return result
+        return self._new(result)
 
     def _new(self, result):
         raw = str(result)
