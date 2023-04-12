@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import time
 from datetime import tzinfo
 from enum import Enum
+from pathlib import PurePath
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Collection
@@ -239,6 +240,8 @@ def item(
             Trivia(),
             value.isoformat(),
         )
+    elif isinstance(value, PurePath):
+        return String.from_raw(str(value))
 
     raise ValueError(f"Invalid type {type(value)}")
 
