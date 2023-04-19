@@ -1574,7 +1574,7 @@ class Table(AbstractTable):
             self.display_name,
         )
 
-    def append(self, key, _item):
+    def append(self, key: Union[Key, str], _item: Any) -> "Table":
         """
         Appends a (key, item) to the table.
         """
@@ -1691,7 +1691,7 @@ class InlineTable(AbstractTable):
     def discriminant(self) -> int:
         return 10
 
-    def append(self, key, _item):
+    def append(self, key: Union[Key, str], _item: Any) -> "InlineTable":
         """
         Appends a (key, item) to the table.
         """
