@@ -1104,7 +1104,8 @@ class Array(Item, _CustomList):
         )
         self._index_map: dict[int, int] = {}
         self._value = self._group_values(value)
-        self._multiline = multiline
+        self._multiline: bool = multiline
+        self._multiline_indent: str = " "*4
         self._reindex()
 
     def _group_values(self, value: list[Item]) -> list[_ArrayItemGroup]:
@@ -1154,7 +1155,12 @@ class Array(Item, _CustomList):
         for v in self._value:
             yield from v
 
-    def multiline(self, multiline: bool) -> Array:
+    def multiline(
+        self,
+        multiline: bool,
+        indent: str = " "*4,
+
+    ) -> Array:
         """Change the array to display in multiline or not.
 
         :Example:
@@ -1170,6 +1176,7 @@ class Array(Item, _CustomList):
         ]
         """
         self._multiline = multiline
+        self._multiline_indent = indent
 
         return self
 
@@ -1180,7 +1187,7 @@ class Array(Item, _CustomList):
         s = "[\n"
         s += "".join(
             self.trivia.indent
-            + " " * 4
+            + self._multiline_indent
             + v.value.as_string()
             + ("," if not isinstance(v.value, Null) else "")
             + (v.comment.as_string() if v.comment is not None else "")
