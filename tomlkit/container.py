@@ -549,21 +549,18 @@ class Container(_CustomDict):
 
     def _render_aot_table(self, table: Table, prefix: str | None = None) -> str:
         cur = ""
-
         _key = prefix or ""
+        open_, close = "[[", "]]"
 
-        if not table.is_super_table():
-            open_, close = "[[", "]]"
-
-            cur += (
-                f"{table.trivia.indent}"
-                f"{open_}"
-                f"{decode(_key)}"
-                f"{close}"
-                f"{table.trivia.comment_ws}"
-                f"{decode(table.trivia.comment)}"
-                f"{table.trivia.trail}"
-            )
+        cur += (
+            f"{table.trivia.indent}"
+            f"{open_}"
+            f"{decode(_key)}"
+            f"{close}"
+            f"{table.trivia.comment_ws}"
+            f"{decode(table.trivia.comment)}"
+            f"{table.trivia.trail}"
+        )
 
         for k, v in table.value.body:
             if isinstance(v, Table):

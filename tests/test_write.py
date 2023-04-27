@@ -24,3 +24,14 @@ def test_write_inline_table_in_nested_arrays():
     expected = "foo = [[{a = 1}]]\n"
     assert expected == dumps(d)
     assert loads(dumps(d))["foo"] == [[{"a": 1}]]
+
+
+def test_serialize_aot_with_nested_tables():
+    doc = {"a": [{"b": {"c": 1}}]}
+    expected = """\
+[[a]]
+[a.b]
+c = 1
+"""
+    assert dumps(doc) == expected
+    assert loads(expected) == doc
