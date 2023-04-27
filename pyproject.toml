@@ -2,7 +2,10 @@
 name = "tomlkit"
 version = "0.11.7"
 description = "Style preserving TOML library"
-authors = ["Sébastien Eustace <sebastien@eustace.io>"]
+authors = [
+    "Sébastien Eustace <sebastien@eustace.io>",
+    "Frost Ming <me@frostming.com>"
+]
 license = "MIT"
 
 readme = "README.md"

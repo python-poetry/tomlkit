@@ -1030,3 +1030,32 @@ def test_nested_table_update_display_name():
     z = 3
     """
     assert doc.as_string() == dedent(expected)
+
+
+def test_build_table_with_dotted_key():
+    doc = tomlkit.document()
+    data = {
+        "a.b.c": 1,
+        "a.b.d": 2,
+        "a": {"c": {"foo": "bar"}},
+        "a.d.e": 3,
+    }
+
+    for key, value in data.items():
+        if "." not in key:
+            doc.append(key, value)
+        else:
+            doc.append(tomlkit.key(key.split(".")), value)
+
+    expected = """\
+a.b.c = 1
+a.b.d = 2
+a.d.e = 3
+
+[a.c]
+foo = "bar"
+"""
+    assert doc.as_string() == expected
+    assert json.loads(json.dumps(doc)) == {
+        "a": {"b": {"c": 1, "d": 2}, "d": {"e": 3}, "c": {"foo": "bar"}}
+    }
