@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import copy
 import re
@@ -11,14 +13,10 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Collection
-from typing import Dict
 from typing import Iterable
 from typing import Iterator
-from typing import List
-from typing import Optional
 from typing import Sequence
 from typing import TypeVar
-from typing import Union
 from typing import cast
 from typing import overload
 
@@ -61,90 +59,70 @@ ItemT = TypeVar("ItemT", bound="Item")
 
 
 @overload
-def item(
-    value: bool, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Bool":
+def item(value: bool, _parent: Item | None = ..., _sort_keys: bool = ...) -> Bool:
+    ...
+
+
+@overload
+def item(value: int, _parent: Item | None = ..., _sort_keys: bool = ...) -> Integer:
+    ...
+
+
+@overload
+def item(value: float, _parent: Item | None = ..., _sort_keys: bool = ...) -> Float:
+    ...
+
+
+@overload
+def item(value: str, _parent: Item | None = ..., _sort_keys: bool = ...) -> String:
     ...
 
 
 @overload
 def item(
-    value: int, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Integer":
+    value: datetime, _parent: Item | None = ..., _sort_keys: bool = ...
+) -> DateTime:
+    ...
+
+
+@overload
+def item(value: date, _parent: Item | None = ..., _sort_keys: bool = ...) -> Date:
+    ...
+
+
+@overload
+def item(value: time, _parent: Item | None = ..., _sort_keys: bool = ...) -> Time:
     ...
 
 
 @overload
 def item(
-    value: float, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Float":
+    value: Sequence[dict], _parent: Item | None = ..., _sort_keys: bool = ...
+) -> AoT:
     ...
 
 
 @overload
-def item(
-    value: str, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "String":
+def item(value: Sequence, _parent: Item | None = ..., _sort_keys: bool = ...) -> Array:
     ...
 
 
 @overload
-def item(
-    value: datetime, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "DateTime":
+def item(value: dict, _parent: Array = ..., _sort_keys: bool = ...) -> InlineTable:
     ...
 
 
 @overload
-def item(
-    value: date, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Date":
+def item(value: dict, _parent: Item | None = ..., _sort_keys: bool = ...) -> Table:
     ...
 
 
 @overload
-def item(
-    value: time, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Time":
+def item(value: ItemT, _parent: Item | None = ..., _sort_keys: bool = ...) -> ItemT:
     ...
 
 
-@overload
-def item(
-    value: Sequence[dict], _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "AoT":
-    ...
-
-
-@overload
-def item(
-    value: Sequence, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Array":
-    ...
-
-
-@overload
-def item(value: dict, _parent: "Array" = ..., _sort_keys: bool = ...) -> "InlineTable":
-    ...
-
-
-@overload
-def item(
-    value: dict, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> "Table":
-    ...
-
-
-@overload
-def item(
-    value: ItemT, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
-) -> ItemT:
-    ...
-
-
-def item(
-    value: Any, _parent: Optional["Item"] = None, _sort_keys: bool = False
-) -> "Item":
+def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
     """Create a TOML item from a Python object.
 
     :Example:
@@ -254,7 +232,7 @@ class StringType(Enum):
     MLL = "'''"
 
     @classmethod
-    def select(cls, literal=False, multiline=False) -> "StringType":
+    def select(cls, literal=False, multiline=False) -> StringType:
         return {
             (False, False): cls.SLB,
             (False, True): cls.MLB,
@@ -302,7 +280,7 @@ class StringType(Enum):
     def is_multiline(self) -> bool:
         return self in {StringType.MLB, StringType.MLL}
 
-    def toggle(self) -> "StringType":
+    def toggle(self) -> StringType:
         return {
             StringType.SLB: StringType.MLB,
             StringType.MLB: StringType.SLB,
@@ -349,7 +327,7 @@ class Trivia:
 
         self.trail = trail
 
-    def copy(self) -> "Trivia":
+    def copy(self) -> Trivia:
         return type(self)(self.indent, self.comment_ws, self.comment, self.trail)
 
 
@@ -371,7 +349,7 @@ class Key(abc.ABC):
 
     sep: str
     _original: str
-    _keys: List["SingleKey"]
+    _keys: list[SingleKey]
     _dotted: bool
     key: str
 
@@ -387,10 +365,10 @@ class Key(abc.ABC):
         """If the key is followed by other keys"""
         return self._dotted
 
-    def __iter__(self) -> Iterator["SingleKey"]:
+    def __iter__(self) -> Iterator[SingleKey]:
         return iter(self._keys)
 
-    def concat(self, other: "Key") -> "DottedKey":
+    def concat(self, other: Key) -> DottedKey:
         """Concatenate keys into a dotted key"""
         keys = self._keys + other._keys
         return DottedKey(keys, sep=self.sep)
@@ -416,9 +394,9 @@ class SingleKey(Key):
     def __init__(
         self,
         k: str,
-        t: Optional[KeyType] = None,
-        sep: Optional[str] = None,
-        original: Optional[str] = None,
+        t: KeyType | None = None,
+        sep: str | None = None,
+        original: str | None = None,
     ) -> None:
         if t is None:
             if not k or any(
@@ -465,8 +443,8 @@ class DottedKey(Key):
     def __init__(
         self,
         keys: Iterable[Key],
-        sep: Optional[str] = None,
-        original: Optional[str] = None,
+        sep: str | None = None,
+        original: str | None = None,
     ) -> None:
         self._keys = list(keys)
         if original is None:
@@ -515,7 +493,7 @@ class Item:
 
     # Helpers
 
-    def comment(self, comment: str) -> "Item":
+    def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
         if not comment.strip().startswith("#"):
             comment = "# " + comment
@@ -525,7 +503,7 @@ class Item:
 
         return self
 
-    def indent(self, indent: int) -> "Item":
+    def indent(self, indent: int) -> Item:
         """Indent this item with given number of spaces"""
         if self._trivia.indent.startswith("\n"):
             self._trivia.indent = "\n" + " " * indent
@@ -619,7 +597,7 @@ class Integer(int, Item):
     An integer literal.
     """
 
-    def __new__(cls, value: int, trivia: Trivia, raw: str) -> "Integer":
+    def __new__(cls, value: int, trivia: Trivia, raw: str) -> Integer:
         return super().__new__(cls, value)
 
     def __init__(self, _: int, trivia: Trivia, raw: str) -> None:
@@ -813,7 +791,7 @@ class DateTime(Item, datetime):
         minute: int,
         second: int,
         microsecond: int,
-        tzinfo: Optional[tzinfo],
+        tzinfo: tzinfo | None,
         *_: Any,
         **kwargs: Any,
     ) -> datetime:
@@ -839,9 +817,9 @@ class DateTime(Item, datetime):
         minute: int,
         second: int,
         microsecond: int,
-        tzinfo: Optional[tzinfo],
-        trivia: Optional[Trivia] = None,
-        raw: Optional[str] = None,
+        tzinfo: tzinfo | None,
+        trivia: Trivia | None = None,
+        raw: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(trivia or Trivia())
@@ -920,7 +898,7 @@ class DateTime(Item, datetime):
             return result
         return self._new(result)
 
-    def _new(self, result) -> "DateTime":
+    def _new(self, result) -> DateTime:
         raw = result.isoformat()
 
         return DateTime(
@@ -1023,7 +1001,7 @@ class Time(Item, time):
         minute: int,
         second: int,
         microsecond: int,
-        tzinfo: Optional[tzinfo],
+        tzinfo: tzinfo | None,
         *_: Any,
     ) -> time:
         return time.__new__(cls, hour, minute, second, microsecond, tzinfo)
@@ -1034,7 +1012,7 @@ class Time(Item, time):
         minute: int,
         second: int,
         microsecond: int,
-        tzinfo: Optional[tzinfo],
+        tzinfo: tzinfo | None,
         trivia: Trivia,
         raw: str,
     ) -> None:
@@ -1090,10 +1068,10 @@ class _ArrayItemGroup:
 
     def __init__(
         self,
-        value: Optional[Item] = None,
-        indent: Optional[Whitespace] = None,
-        comma: Optional[Whitespace] = None,
-        comment: Optional[Comment] = None,
+        value: Item | None = None,
+        indent: Whitespace | None = None,
+        comma: Whitespace | None = None,
+        comment: Comment | None = None,
     ) -> None:
         self.value = value
         self.indent = indent
@@ -1125,19 +1103,19 @@ class Array(Item, _CustomList):
     """
 
     def __init__(
-        self, value: List[Item], trivia: Trivia, multiline: bool = False
+        self, value: list[Item], trivia: Trivia, multiline: bool = False
     ) -> None:
         super().__init__(trivia)
         list.__init__(
             self,
             [v for v in value if not isinstance(v, (Whitespace, Comment, Null))],
         )
-        self._index_map: Dict[int, int] = {}
+        self._index_map: dict[int, int] = {}
         self._value = self._group_values(value)
         self._multiline = multiline
         self._reindex()
 
-    def _group_values(self, value: List[Item]) -> List[_ArrayItemGroup]:
+    def _group_values(self, value: list[Item]) -> list[_ArrayItemGroup]:
         """Group the values into (indent, value, comma, comment) tuples"""
         groups = []
         this_group = _ArrayItemGroup()
@@ -1163,7 +1141,7 @@ class Array(Item, _CustomList):
         groups.append(this_group)
         return [group for group in groups if group]
 
-    def unwrap(self) -> List[Any]:
+    def unwrap(self) -> list[Any]:
         unwrapped = []
         for v in self:
             if hasattr(v, "unwrap"):
@@ -1184,7 +1162,7 @@ class Array(Item, _CustomList):
         for v in self._value:
             yield from v
 
-    def multiline(self, multiline: bool) -> "Array":
+    def multiline(self, multiline: bool) -> Array:
         """Change the array to display in multiline or not.
 
         :Example:
@@ -1235,7 +1213,7 @@ class Array(Item, _CustomList):
         self,
         *items: Any,
         indent: str = "    ",
-        comment: Optional[str] = None,
+        comment: str | None = None,
         add_comma: bool = True,
         newline: bool = True,
     ) -> None:
@@ -1255,7 +1233,7 @@ class Array(Item, _CustomList):
             4, 5, 6,
         ]
         """
-        new_values: List[Item] = []
+        new_values: list[Item] = []
         first_indent = f"\n{indent}" if newline else indent
         if first_indent:
             new_values.append(Whitespace(first_indent))
@@ -1316,13 +1294,13 @@ class Array(Item, _CustomList):
     def __len__(self) -> int:
         return list.__len__(self)
 
-    def __getitem__(self, key: Union[int, slice]) -> Any:
+    def __getitem__(self, key: int | slice) -> Any:
         rv = cast(Item, list.__getitem__(self, key))
         if rv.is_boolean():
             return bool(rv)
         return rv
 
-    def __setitem__(self, key: Union[int, slice], value: Any) -> Any:
+    def __setitem__(self, key: int | slice, value: Any) -> Any:
         it = item(value, _parent=self)
         list.__setitem__(self, key, it)
         if isinstance(key, slice):
@@ -1358,8 +1336,8 @@ class Array(Item, _CustomList):
                     and "\n" in self._value[idx].indent.s
                 ):
                     default_indent = "\n    "
-        indent: Optional[Item] = None
-        comma: Optional[Item] = Whitespace(",") if pos < length else None
+        indent: Item | None = None
+        comma: Item | None = Whitespace(",") if pos < length else None
         if idx < len(self._value) and not self._value[idx].is_whitespace():
             # Prefer to copy the indentation from the item after
             indent = self._value[idx].indent
@@ -1381,7 +1359,7 @@ class Array(Item, _CustomList):
         self._value.insert(idx, new_item)
         self._reindex()
 
-    def __delitem__(self, key: Union[int, slice]):
+    def __delitem__(self, key: int | slice):
         length = len(self)
         list.__delitem__(self, key)
 
@@ -1424,7 +1402,7 @@ AT = TypeVar("AT", bound="AbstractTable")
 class AbstractTable(Item, _CustomDict):
     """Common behaviour of both :class:`Table` and :class:`InlineTable`"""
 
-    def __init__(self, value: "container.Container", trivia: Trivia):
+    def __init__(self, value: container.Container, trivia: Trivia):
         Item.__init__(self, trivia)
 
         self._value = value
@@ -1433,7 +1411,7 @@ class AbstractTable(Item, _CustomDict):
             if k is not None:
                 dict.__setitem__(self, k.key, v)
 
-    def unwrap(self) -> Dict[str, Any]:
+    def unwrap(self) -> dict[str, Any]:
         unwrapped = {}
         for k, v in self.items():
             if isinstance(k, Key):
@@ -1445,26 +1423,26 @@ class AbstractTable(Item, _CustomDict):
         return unwrapped
 
     @property
-    def value(self) -> "container.Container":
+    def value(self) -> container.Container:
         return self._value
 
     @overload
-    def append(self: AT, key: None, value: Union[Comment, Whitespace]) -> AT:
+    def append(self: AT, key: None, value: Comment | Whitespace) -> AT:
         ...
 
     @overload
-    def append(self: AT, key: Union[Key, str], value: Any) -> AT:
+    def append(self: AT, key: Key | str, value: Any) -> AT:
         ...
 
     def append(self, key, value):
         raise NotImplementedError
 
     @overload
-    def add(self: AT, value: Union[Comment, Whitespace]) -> AT:
+    def add(self: AT, value: Comment | Whitespace) -> AT:
         ...
 
     @overload
-    def add(self: AT, key: Union[Key, str], value: Any) -> AT:
+    def add(self: AT, key: Key | str, value: Any) -> AT:
         ...
 
     def add(self, key, value=None):
@@ -1477,7 +1455,7 @@ class AbstractTable(Item, _CustomDict):
 
         return self.append(key, value)
 
-    def remove(self: AT, key: Union[Key, str]) -> AT:
+    def remove(self: AT, key: Key | str) -> AT:
         self._value.remove(key)
 
         if isinstance(key, Key):
@@ -1488,7 +1466,7 @@ class AbstractTable(Item, _CustomDict):
 
         return self
 
-    def setdefault(self, key: Union[Key, str], default: Any) -> Any:
+    def setdefault(self, key: Key | str, default: Any) -> Any:
         super().setdefault(key, default)
         return self[key]
 
@@ -1507,13 +1485,13 @@ class AbstractTable(Item, _CustomDict):
     def __len__(self) -> int:
         return len(self._value)
 
-    def __delitem__(self, key: Union[Key, str]) -> None:
+    def __delitem__(self, key: Key | str) -> None:
         self.remove(key)
 
-    def __getitem__(self, key: Union[Key, str]) -> Item:
+    def __getitem__(self, key: Key | str) -> Item:
         return cast(Item, self._value[key])
 
-    def __setitem__(self, key: Union[Key, str], value: Any) -> None:
+    def __setitem__(self, key: Key | str, value: Any) -> None:
         if not isinstance(value, Item):
             value = item(value, _parent=self)
 
@@ -1546,12 +1524,12 @@ class Table(AbstractTable):
 
     def __init__(
         self,
-        value: "container.Container",
+        value: container.Container,
         trivia: Trivia,
         is_aot_element: bool,
-        is_super_table: Optional[bool] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
+        is_super_table: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
     ) -> None:
         super().__init__(value, trivia)
 
@@ -1564,7 +1542,7 @@ class Table(AbstractTable):
     def discriminant(self) -> int:
         return 9
 
-    def __copy__(self) -> "Table":
+    def __copy__(self) -> Table:
         return type(self)(
             self._value.copy(),
             self._trivia.copy(),
@@ -1574,7 +1552,7 @@ class Table(AbstractTable):
             self.display_name,
         )
 
-    def append(self, key: Union[Key, str, None], _item: Any) -> "Table":
+    def append(self, key: Key | str | None, _item: Any) -> "Table":
         """
         Appends a (key, item) to the table.
         """
@@ -1605,7 +1583,7 @@ class Table(AbstractTable):
 
         return self
 
-    def raw_append(self, key: Union[Key, str, None], _item: Any) -> "Table":
+    def raw_append(self, key: Key | str | None, _item: Any) -> Table:
         """Similar to :meth:`append` but does not copy indentation."""
         if not isinstance(_item, Item):
             _item = item(_item)
@@ -1641,7 +1619,7 @@ class Table(AbstractTable):
 
     # Helpers
 
-    def indent(self, indent: int) -> "Table":
+    def indent(self, indent: int) -> Table:
         """Indent the table with given number of spaces."""
         super().indent(indent)
 
@@ -1681,7 +1659,7 @@ class InlineTable(AbstractTable):
     """
 
     def __init__(
-        self, value: "container.Container", trivia: Trivia, new: bool = False
+        self, value: container.Container, trivia: Trivia, new: bool = False
     ) -> None:
         super().__init__(value, trivia)
 
@@ -1691,7 +1669,7 @@ class InlineTable(AbstractTable):
     def discriminant(self) -> int:
         return 10
 
-    def append(self, key: Union[Key, str, None], _item: Any) -> "InlineTable":
+    def append(self, key: Key | str | None, _item: Any) -> InlineTable:
         """
         Appends a (key, item) to the table.
         """
@@ -1755,12 +1733,12 @@ class InlineTable(AbstractTable):
 
         return buf
 
-    def __setitem__(self, key: Union[Key, str], value: Any) -> None:
+    def __setitem__(self, key: Key | str, value: Any) -> None:
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         super().__setitem__(key, value)
 
-    def __copy__(self) -> "InlineTable":
+    def __copy__(self) -> InlineTable:
         return type(self)(self._value.copy(), self._trivia.copy(), self._new)
 
     def _getstate(self, protocol: int = 3) -> tuple:
@@ -1803,14 +1781,14 @@ class String(str, Item):
 
         return self._new(result, original)
 
-    def _new(self, result: str, original: str) -> "String":
+    def _new(self, result: str, original: str) -> String:
         return String(self._t, result, original, self._trivia)
 
     def _getstate(self, protocol=3):
         return self._t, str(self), self._original, self._trivia
 
     @classmethod
-    def from_raw(cls, value: str, type_=StringType.SLB, escape=True) -> "String":
+    def from_raw(cls, value: str, type_=StringType.SLB, escape=True) -> String:
         value = decode(value)
 
         invalid = type_.invalid_sequences
@@ -1829,10 +1807,10 @@ class AoT(Item, _CustomList):
     """
 
     def __init__(
-        self, body: List[Table], name: Optional[str] = None, parsed: bool = False
+        self, body: list[Table], name: str | None = None, parsed: bool = False
     ) -> None:
         self.name = name
-        self._body: List[Table] = []
+        self._body: list[Table] = []
         self._parsed = parsed
 
         super().__init__(Trivia(trail=""))
@@ -1840,7 +1818,7 @@ class AoT(Item, _CustomList):
         for table in body:
             self.append(table)
 
-    def unwrap(self) -> List[Dict[str, Any]]:
+    def unwrap(self) -> list[dict[str, Any]]:
         unwrapped = []
         for t in self._body:
             if hasattr(t, "unwrap"):
@@ -1850,7 +1828,7 @@ class AoT(Item, _CustomList):
         return unwrapped
 
     @property
-    def body(self) -> List[Table]:
+    def body(self) -> list[Table]:
         return self._body
 
     @property
@@ -1858,14 +1836,14 @@ class AoT(Item, _CustomList):
         return 12
 
     @property
-    def value(self) -> List[Dict[Any, Any]]:
+    def value(self) -> list[dict[Any, Any]]:
         return [v.value for v in self._body]
 
     def __len__(self) -> int:
         return len(self._body)
 
     @overload
-    def __getitem__(self, key: slice) -> List[Table]:
+    def __getitem__(self, key: slice) -> list[Table]:
         ...
 
     @overload
@@ -1875,10 +1853,10 @@ class AoT(Item, _CustomList):
     def __getitem__(self, key):
         return self._body[key]
 
-    def __setitem__(self, key: Union[slice, int], value: Any) -> None:
+    def __setitem__(self, key: slice | int, value: Any) -> None:
         raise NotImplementedError
 
-    def __delitem__(self, key: Union[slice, int]) -> None:
+    def __delitem__(self, key: slice | int) -> None:
         del self._body[key]
         list.__delitem__(self, key)
 

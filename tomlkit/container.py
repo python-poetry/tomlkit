@@ -1,12 +1,9 @@
+from __future__ import annotations
+
 import copy
 
 from typing import Any
-from typing import Dict
 from typing import Iterator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 from tomlkit._compat import decode
 from tomlkit._utils import merge_dicts
@@ -37,16 +34,16 @@ class Container(_CustomDict):
     """
 
     def __init__(self, parsed: bool = False) -> None:
-        self._map: Dict[SingleKey, Union[int, Tuple[int, ...]]] = {}
-        self._body: List[Tuple[Optional[Key], Item]] = []
+        self._map: dict[SingleKey, int | tuple[int, ...]] = {}
+        self._body: list[tuple[Key | None, Item]] = []
         self._parsed = parsed
         self._table_keys = []
 
     @property
-    def body(self) -> List[Tuple[Optional[Key], Item]]:
+    def body(self) -> list[tuple[Key | None, Item]]:
         return self._body
 
-    def unwrap(self) -> Dict[str, Any]:
+    def unwrap(self) -> dict[str, Any]:
         unwrapped = {}
         for k, v in self.items():
             if k is None:
@@ -66,7 +63,7 @@ class Container(_CustomDict):
         return unwrapped
 
     @property
-    def value(self) -> Dict[str, Any]:
+    def value(self) -> dict[str, Any]:
         d = {}
         for k, v in self._body:
             if k is None:
@@ -95,9 +92,7 @@ class Container(_CustomDict):
                 for t in v.body:
                     t.value.parsing(parsing)
 
-    def add(
-        self, key: Union[Key, Item, str], item: Optional[Item] = None
-    ) -> "Container":
+    def add(self, key: Key | Item | str, item: Item | None = None) -> Container:
         """
         Adds an item to the current Container.
 
@@ -150,7 +145,7 @@ class Container(_CustomDict):
             last_index = i
         return last_index + 1
 
-    def append(self, key: Union[Key, str, None], item: Item) -> "Container":
+    def append(self, key: Key | str | None, item: Item) -> Container:
         """Similar to :meth:`add` but both key and value must be given."""
         if not isinstance(key, Key) and key is not None:
             key = SingleKey(key)
@@ -333,7 +328,7 @@ class Container(_CustomDict):
             dict.__delitem__(self, key.key)
             self._map.pop(key)
 
-    def remove(self, key: Union[Key, str]) -> "Container":
+    def remove(self, key: Key | str) -> Container:
         """Remove a key from the container."""
         if not isinstance(key, Key):
             key = SingleKey(key)
@@ -353,8 +348,8 @@ class Container(_CustomDict):
         return self
 
     def _insert_after(
-        self, key: Union[Key, str], other_key: Union[Key, str], item: Any
-    ) -> "Container":
+        self, key: Key | str, other_key: Key | str, item: Any
+    ) -> Container:
         if key is None:
             raise ValueError("Key cannot be null in insert_after()")
 
@@ -399,7 +394,7 @@ class Container(_CustomDict):
 
         return self
 
-    def _insert_at(self, idx: int, key: Union[Key, str], item: Any) -> "Container":
+    def _insert_at(self, idx: int, key: Key | str, item: Any) -> Container:
         if idx > len(self._body) - 1:
             raise ValueError(f"Unable to insert at position {idx}")
 
@@ -445,7 +440,7 @@ class Container(_CustomDict):
 
         return self
 
-    def item(self, key: Union[Key, str]) -> Item:
+    def item(self, key: Key | str) -> Item:
         """Get an item for the given key."""
         if not isinstance(key, Key):
             key = SingleKey(key)
@@ -462,7 +457,7 @@ class Container(_CustomDict):
 
         return self._body[idx][1]
 
-    def last_item(self) -> Optional[Item]:
+    def last_item(self) -> Item | None:
         """Get the last item."""
         if self._body:
             return self._body[-1][1]
@@ -483,9 +478,7 @@ class Container(_CustomDict):
 
         return s
 
-    def _render_table(
-        self, key: Key, table: Table, prefix: Optional[str] = None
-    ) -> str:
+    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
         cur = ""
 
         if table.display_name is not None:
@@ -554,7 +547,7 @@ class Container(_CustomDict):
 
         return cur
 
-    def _render_aot_table(self, table: Table, prefix: Optional[str] = None) -> str:
+    def _render_aot_table(self, table: Table, prefix: str | None = None) -> str:
         cur = ""
 
         _key = prefix or ""
@@ -614,7 +607,7 @@ class Container(_CustomDict):
         return iter(dict.keys(self))
 
     # Dictionary methods
-    def __getitem__(self, key: Union[Key, str]) -> Union[Item, "Container"]:
+    def __getitem__(self, key: Key | str) -> Item | Container:
         if not isinstance(key, Key):
             key = SingleKey(key)
 
@@ -634,23 +627,21 @@ class Container(_CustomDict):
 
         return item
 
-    def __setitem__(self, key: Union[Key, str], value: Any) -> None:
+    def __setitem__(self, key: Key | str, value: Any) -> None:
         if key is not None and key in self:
             old_key = next(filter(lambda k: k == key, self._map))
             self._replace(old_key, key, value)
         else:
             self.append(key, value)
 
-    def __delitem__(self, key: Union[Key, str]) -> None:
+    def __delitem__(self, key: Key | str) -> None:
         self.remove(key)
 
-    def setdefault(self, key: Union[Key, str], default: Any) -> Any:
+    def setdefault(self, key: Key | str, default: Any) -> Any:
         super().setdefault(key, default=default)
         return self[key]
 
-    def _replace(
-        self, key: Union[Key, str], new_key: Union[Key, str], value: Item
-    ) -> None:
+    def _replace(self, key: Key | str, new_key: Key | str, value: Item) -> None:
         if not isinstance(key, Key):
             key = SingleKey(key)
 
@@ -661,7 +652,7 @@ class Container(_CustomDict):
         self._replace_at(idx, new_key, value)
 
     def _replace_at(
-        self, idx: Union[int, Tuple[int]], new_key: Union[Key, str], value: Item
+        self, idx: int | tuple[int], new_key: Key | str, value: Item
     ) -> None:
         value = _item(value)
 
@@ -757,10 +748,10 @@ class Container(_CustomDict):
             if key is not None:
                 dict.__setitem__(self, key.key, item.value)
 
-    def copy(self) -> "Container":
+    def copy(self) -> Container:
         return copy.copy(self)
 
-    def __copy__(self) -> "Container":
+    def __copy__(self) -> Container:
         c = self.__class__(self._parsed)
         for k, v in dict.items(self):
             dict.__setitem__(c, k, v)
@@ -771,8 +762,8 @@ class Container(_CustomDict):
         return c
 
     def _previous_item_with_index(
-        self, idx: Optional[int] = None, ignore=(Null,)
-    ) -> Optional[Tuple[int, Item]]:
+        self, idx: int | None = None, ignore=(Null,)
+    ) -> tuple[int, Item] | None:
         """Find the immediate previous item before index ``idx``"""
         if idx is None or idx > len(self._body):
             idx = len(self._body)
@@ -782,9 +773,7 @@ class Container(_CustomDict):
                 return i, v
         return None
 
-    def _previous_item(
-        self, idx: Optional[int] = None, ignore=(Null,)
-    ) -> Optional[Item]:
+    def _previous_item(self, idx: int | None = None, ignore=(Null,)) -> Item | None:
         """Find the immediate previous item before index ``idx``.
         If ``idx`` is not given, the last item is returned.
         """
@@ -793,7 +782,7 @@ class Container(_CustomDict):
 
 
 class OutOfOrderTableProxy(_CustomDict):
-    def __init__(self, container: Container, indices: Tuple[int]) -> None:
+    def __init__(self, container: Container, indices: tuple[int]) -> None:
         self._container = container
         self._internal_container = Container(True)
         self._tables = []
@@ -818,13 +807,13 @@ class OutOfOrderTableProxy(_CustomDict):
     def value(self):
         return self._internal_container.value
 
-    def __getitem__(self, key: Union[Key, str]) -> Any:
+    def __getitem__(self, key: Key | str) -> Any:
         if key not in self._internal_container:
             raise NonExistentKey(key)
 
         return self._internal_container[key]
 
-    def __setitem__(self, key: Union[Key, str], item: Any) -> None:
+    def __setitem__(self, key: Key | str, item: Any) -> None:
         if key in self._tables_map:
             table = self._tables[self._tables_map[key]]
             table[key] = item
@@ -846,7 +835,7 @@ class OutOfOrderTableProxy(_CustomDict):
                 self._container._remove_at(idx)
                 break
 
-    def __delitem__(self, key: Union[Key, str]) -> None:
+    def __delitem__(self, key: Key | str) -> None:
         if key in self._tables_map:
             table = self._tables[self._tables_map[key]]
             del table[key]
@@ -866,7 +855,7 @@ class OutOfOrderTableProxy(_CustomDict):
     def __len__(self) -> int:
         return dict.__len__(self)
 
-    def setdefault(self, key: Union[Key, str], default: Any) -> Any:
+    def setdefault(self, key: Key | str, default: Any) -> Any:
         super().setdefault(key, default=default)
         return self[key]
 

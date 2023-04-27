@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from typing import Collection
-from typing import Optional
 
 
 class TOMLKitError(Exception):
@@ -13,7 +14,7 @@ class ParseError(ValueError, TOMLKitError):
     location within the line where the error was encountered.
     """
 
-    def __init__(self, line: int, col: int, message: Optional[str] = None) -> None:
+    def __init__(self, line: int, col: int, message: str | None = None) -> None:
         self._line = line
         self._col = col
 
@@ -168,7 +169,7 @@ class InternalParserError(ParseError):
     An error that indicates a bug in the parser.
     """
 
-    def __init__(self, line: int, col: int, message: Optional[str] = None) -> None:
+    def __init__(self, line: int, col: int, message: str | None = None) -> None:
         msg = "Internal parser error"
         if message:
             msg += f" ({message})"
