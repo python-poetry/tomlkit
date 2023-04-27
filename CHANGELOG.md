@@ -1,6 +1,13 @@
 # Change Log
 
-## [Unreleased]
+## [0.11.8] - 2023-04-27
+
+### Fixed
+
+- Remove the extra indentations added when parsing nested sub-tables. ([#256](https://github.com/sdispater/tomlkit/issues/256))
+- Ignore the CRLF immediately following a multiple basic string opening. ([#262](https://github.com/sdispater/tomlkit/issues/262))
+- Stringifying subtables and nested tables in arrays of tables. ([#283](https://github.com/sdispater/tomlkit/issues/283))
+- Messed table structure when building a table with dotted keys. ([#284](https://github.com/sdispater/tomlkit/issues/284))
 
 ## [0.11.7] - 2023-03-27
 
@@ -339,7 +346,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.7...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.8...master
+[0.11.8]: https://github.com/sdispater/tomlkit/releases/tag/0.11.8
 [0.11.7]: https://github.com/sdispater/tomlkit/releases/tag/0.11.7
 [0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
 [0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
