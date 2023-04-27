@@ -1059,3 +1059,16 @@ foo = "bar"
     assert json.loads(json.dumps(doc)) == {
         "a": {"b": {"c": 1, "d": 2}, "d": {"e": 3}, "c": {"foo": "bar"}}
     }
+
+
+def test_parse_subtables_no_extra_indent():
+    expected = """\
+[a]
+    [a.b.c]
+        foo = 1
+
+    [a.b.d]
+        bar = 2
+"""
+    doc = parse(expected)
+    assert doc.as_string() == expected

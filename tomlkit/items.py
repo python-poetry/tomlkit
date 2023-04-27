@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import copy
+import dataclasses
 import re
 import string
 
@@ -303,32 +304,23 @@ class BoolType(Enum):
         return len(self.value)
 
 
+@dataclasses.dataclass
 class Trivia:
     """
     Trivia information (aka metadata).
     """
 
-    def __init__(
-        self,
-        indent: str = None,
-        comment_ws: str = None,
-        comment: str = None,
-        trail: str = None,
-    ) -> None:
-        # Whitespace before a value.
-        self.indent = indent or ""
-        # Whitespace after a value, but before a comment.
-        self.comment_ws = comment_ws or ""
-        # Comment, starting with # character, or empty string if no comment.
-        self.comment = comment or ""
-        # Trailing newline.
-        if trail is None:
-            trail = "\n"
-
-        self.trail = trail
+    # Whitespace before a value.
+    indent: str = ""
+    # Whitespace after a value, but before a comment.
+    comment_ws: str = ""
+    # Comment, starting with # character, or empty string if no comment.
+    comment: str = ""
+    # Trailing newline.
+    trail: str = "\n"
 
     def copy(self) -> Trivia:
-        return type(self)(self.indent, self.comment_ws, self.comment, self.trail)
+        return dataclasses.replace(self)
 
 
 class KeyType(Enum):
