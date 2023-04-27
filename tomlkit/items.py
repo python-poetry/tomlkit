@@ -1574,7 +1574,7 @@ class Table(AbstractTable):
             self.display_name,
         )
 
-    def append(self, key, _item):
+    def append(self, key: Union[Key, str, None], _item: Any) -> "Table":
         """
         Appends a (key, item) to the table.
         """
@@ -1605,7 +1605,7 @@ class Table(AbstractTable):
 
         return self
 
-    def raw_append(self, key: Union[Key, str], _item: Any) -> "Table":
+    def raw_append(self, key: Union[Key, str, None], _item: Any) -> "Table":
         """Similar to :meth:`append` but does not copy indentation."""
         if not isinstance(_item, Item):
             _item = item(_item)
@@ -1691,7 +1691,7 @@ class InlineTable(AbstractTable):
     def discriminant(self) -> int:
         return 10
 
-    def append(self, key, _item):
+    def append(self, key: Union[Key, str, None], _item: Any) -> "InlineTable":
         """
         Appends a (key, item) to the table.
         """

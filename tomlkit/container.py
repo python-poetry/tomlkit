@@ -477,7 +477,7 @@ class Container(_CustomDict):
         if not isinstance(key, Key):
             key = SingleKey(key)
 
-        idx = self._map.get(key, None)
+        idx = self._map.get(key)
         if idx is None:
             raise NonExistentKey(key)
 
@@ -645,7 +645,7 @@ class Container(_CustomDict):
         if not isinstance(key, Key):
             key = SingleKey(key)
 
-        idx = self._map.get(key, None)
+        idx = self._map.get(key)
         if idx is None:
             raise NonExistentKey(key)
 
@@ -681,7 +681,7 @@ class Container(_CustomDict):
         if not isinstance(key, Key):
             key = SingleKey(key)
 
-        idx = self._map.get(key, None)
+        idx = self._map.get(key)
         if idx is None:
             raise NonExistentKey(key)
 
