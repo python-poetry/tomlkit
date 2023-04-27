@@ -39,3 +39,13 @@ a {c = 1, d = 2}
     parser = Parser(content)
     with pytest.raises(UnexpectedCharError):
         parser.parse()
+
+
+def test_parse_multiline_string_ignore_the_first_newline():
+    content = 'a = """\nfoo\n"""'
+    parser = Parser(content)
+    assert parser.parse() == {"a": "foo\n"}
+
+    content = 'a = """\r\nfoo\n"""'
+    parser = Parser(content)
+    assert parser.parse() == {"a": "foo\n"}

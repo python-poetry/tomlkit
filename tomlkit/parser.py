@@ -799,9 +799,17 @@ class Parser:
         value = ""
 
         # A newline immediately following the opening delimiter will be trimmed.
-        if delim.is_multiline() and self._current == "\n":
-            # consume the newline, EOF here is an issue (middle of string)
-            self.inc(exception=UnexpectedEofError)
+        if delim.is_multiline():
+            if self._current == "\n":
+                # consume the newline, EOF here is an issue (middle of string)
+                self.inc(exception=UnexpectedEofError)
+            else:
+                cur = self._current
+                with self._state(restore=True):
+                    if self.inc():
+                        cur += self._current
+                if cur == "\r\n":
+                    self.inc_n(2, exception=UnexpectedEofError)
 
         escaped = False  # whether the previous key was ESCAPE
         while True:
