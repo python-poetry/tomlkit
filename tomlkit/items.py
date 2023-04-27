@@ -1552,7 +1552,7 @@ class Table(AbstractTable):
             self.display_name,
         )
 
-    def append(self, key: Key | str | None, _item: Any) -> "Table":
+    def append(self, key: Key | str | None, _item: Any) -> Table:
         """
         Appends a (key, item) to the table.
         """
