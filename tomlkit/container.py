@@ -37,7 +37,7 @@ class Container(_CustomDict):
     """
 
     def __init__(self, parsed: bool = False) -> None:
-        self._map: Dict[Key, int] = {}
+        self._map: Dict[SingleKey, Union[int, Tuple[int, ...]]] = {}
         self._body: List[Tuple[Optional[Key], Item]] = []
         self._parsed = parsed
         self._table_keys = []
@@ -119,62 +119,36 @@ class Container(_CustomDict):
         return self.append(key, item)
 
     def _handle_dotted_key(self, key: Key, value: Item) -> None:
-        names = tuple(iter(key))
-        name = names[0]
+        if isinstance(value, (Table, AoT)):
+            raise TOMLKitError("Can't add a table to a dotted key")
+        name, *mid, last = key
         name._dotted = True
-        if name in self:
-            if not isinstance(value, Table):
-                table = Table(Container(True), Trivia(), False, is_super_table=True)
-                _table = table
-                for i, _name in enumerate(names[1:]):
-                    if i == len(names) - 2:
-                        _name.sep = key.sep
+        table = current = Table(Container(True), Trivia(), False, is_super_table=True)
+        for _name in mid:
+            _name._dotted = True
+            new_table = Table(Container(True), Trivia(), False, is_super_table=True)
+            current.append(_name, new_table)
+            current = new_table
 
-                        _table.append(_name, value)
-                    else:
-                        _name._dotted = True
-                        _table.append(
-                            _name,
-                            Table(
-                                Container(True),
-                                Trivia(),
-                                False,
-                                is_super_table=i < len(names) - 2,
-                            ),
-                        )
+        last.sep = key.sep
+        current.append(last, value)
 
-                        _table = _table[_name]
+        self.append(name, table)
+        return
 
-                value = table
+    def _get_last_index_before_table(self) -> int:
+        last_index = -1
+        for i, (k, v) in enumerate(self._body):
+            if isinstance(v, Null):
+                continue  # Null elements are inserted after deletion
 
-            self.append(name, value)
+            if isinstance(v, Whitespace) and not v.is_fixed():
+                continue
 
-            return
-        else:
-            table = Table(Container(True), Trivia(), False, is_super_table=True)
-            self.append(name, table)
-
-        for i, _name in enumerate(names[1:]):
-            if i == len(names) - 2:
-                _name.sep = key.sep
-
-                table.append(_name, value)
-            else:
-                _name._dotted = True
-                if _name in table.value:
-                    table = table.value[_name]
-                else:
-                    table.append(
-                        _name,
-                        Table(
-                            Container(True),
-                            Trivia(),
-                            False,
-                            is_super_table=i < len(names) - 2,
-                        ),
-                    )
-
-                    table = table[_name]
+            if isinstance(v, (Table, AoT)) and not k.is_dotted():
+                break
+            last_index = i
+        return last_index + 1
 
     def append(self, key: Union[Key, str, None], item: Item) -> "Container":
         """Similar to :meth:`add` but both key and value must be given."""
@@ -196,7 +170,11 @@ class Container(_CustomDict):
         if isinstance(item, Table):
             if not self._parsed:
                 item.invalidate_display_name()
-            if self._body and not (self._parsed or item.trivia.indent or prev_ws):
+            if (
+                self._body
+                and not (self._parsed or item.trivia.indent or prev_ws)
+                and not key.is_dotted()
+            ):
                 item.trivia.indent = "\n"
 
         if isinstance(item, AoT) and self._body and not self._parsed:
@@ -244,12 +222,15 @@ class Container(_CustomDict):
                             or key.is_dotted()
                             or current_body_element[0].is_dotted()
                         ):
-                            if not isinstance(current_idx, tuple):
-                                current_idx = (current_idx,)
+                            if key.is_dotted() and not self._parsed:
+                                idx = self._get_last_index_before_table()
+                            else:
+                                idx = len(self._body)
 
-                            self._map[key] = current_idx + (len(self._body),)
-                            self._body.append((key, item))
-                            self._table_keys.append(key)
+                            if idx < len(self._body):
+                                self._insert_at(idx, key, item)
+                            else:
+                                self._raw_append(key, item)
 
                             # Building a temporary proxy to check for errors
                             OutOfOrderTableProxy(self, self._map[key])
@@ -284,54 +265,41 @@ class Container(_CustomDict):
                 raise KeyAlreadyPresent(key)
 
         is_table = isinstance(item, (Table, AoT))
-        if key is not None and self._body and not self._parsed:
+        if (
+            key is not None
+            and self._body
+            and not self._parsed
+            and (not is_table or key.is_dotted())
+        ):
             # If there is already at least one table in the current container
             # and the given item is not a table, we need to find the last
             # item that is not a table and insert after it
             # If no such item exists, insert at the top of the table
-            key_after = None
-            for i, (k, v) in enumerate(self._body):
-                if isinstance(v, Null):
-                    continue  # Null elements are inserted after deletion
+            last_index = self._get_last_index_before_table()
 
-                if isinstance(v, Whitespace) and not v.is_fixed():
-                    continue
-
-                if not is_table and isinstance(v, (Table, AoT)):
-                    break
-
-                key_after = k or i  # last scalar, Array or InlineTable value
-
-            if key_after is not None:
-                if isinstance(key_after, int):
-                    if key_after + 1 < len(self._body):
-                        return self._insert_at(key_after + 1, key, item)
-                    else:
-                        previous_item = self._body[-1][1]
-                        if not (
-                            isinstance(previous_item, Whitespace)
-                            or ends_with_whitespace(previous_item)
-                            or is_table
-                            or "\n" in previous_item.trivia.trail
-                        ):
-                            previous_item.trivia.trail += "\n"
-                else:
-                    return self._insert_after(key_after, key, item)
+            if last_index < len(self._body):
+                return self._insert_at(last_index, key, item)
             else:
-                return self._insert_at(0, key, item)
+                previous_item = self._body[-1][1]
+                if not (
+                    isinstance(previous_item, Whitespace)
+                    or ends_with_whitespace(previous_item)
+                    or "\n" in previous_item.trivia.trail
+                ):
+                    previous_item.trivia.trail += "\n"
 
+        self._raw_append(key, item)
+        return self
+
+    def _raw_append(self, key: Key, item: Item) -> None:
         if key in self._map:
             current_idx = self._map[key]
-            if isinstance(current_idx, tuple):
-                current_idx = current_idx[-1]
-
-            current = self._body[current_idx][1]
-            if key is not None and not isinstance(current, Table):
-                raise KeyAlreadyPresent(key)
-
-            # Adding sub tables to a currently existing table
             if not isinstance(current_idx, tuple):
                 current_idx = (current_idx,)
+
+            current = self._body[current_idx[-1]][1]
+            if key is not None and not isinstance(current, Table):
+                raise KeyAlreadyPresent(key)
 
             self._map[key] = current_idx + (len(self._body),)
         else:
@@ -464,11 +432,16 @@ class Container(_CustomDict):
             elif v >= idx:
                 self._map[k] = v + 1
 
-        self._map[key] = idx
+        if key in self._map:
+            current_idx = self._map[key]
+            if not isinstance(current_idx, tuple):
+                current_idx = (current_idx,)
+            self._map[key] = current_idx + (idx,)
+        else:
+            self._map[key] = idx
         self._body.insert(idx, (key, item))
 
-        if key is not None:
-            dict.__setitem__(self, key.key, item.value)
+        dict.__setitem__(self, key.key, item.value)
 
         return self
 

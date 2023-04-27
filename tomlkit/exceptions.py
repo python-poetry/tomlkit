@@ -3,7 +3,6 @@ from typing import Optional
 
 
 class TOMLKitError(Exception):
-
     pass
 
 
