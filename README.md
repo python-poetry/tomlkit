@@ -32,6 +32,7 @@ If you are using [Poetry](https://poetry.eustace.io),
 add `tomlkit` to your `pyproject.toml` file by using:
 
 ```bash
+pip install poetry
 poetry add tomlkit
 ```
 
