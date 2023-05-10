@@ -1072,3 +1072,15 @@ def test_parse_subtables_no_extra_indent():
 """
     doc = parse(expected)
     assert doc.as_string() == expected
+
+
+def test_item_preserves_the_order():
+    t = tomlkit.inline_table()
+    t.update({"a": 1, "b": 2})
+    doc = {"name": "foo", "table": t, "age": 42}
+    expected = """\
+name = "foo"
+table = {a = 1, b = 2}
+age = 42
+"""
+    assert tomlkit.dumps(doc) == expected

@@ -155,7 +155,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
         val = table_constructor(Container(), Trivia(), False)
         for k, v in sorted(
             value.items(),
-            key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
+            key=lambda i: (isinstance(i[1], dict), i[0]) if _sort_keys else 1,
         ):
             val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
 
