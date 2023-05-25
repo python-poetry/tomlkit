@@ -187,6 +187,12 @@ def test_integer():
     assert isinstance(i, Integer)
 
 
+def test_decimal():
+    d = tomlkit.decimal("34.56")
+
+    assert isinstance(d, String)
+
+
 def test_float():
     i = tomlkit.float_("34.56")
 

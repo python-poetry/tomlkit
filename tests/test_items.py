@@ -2,6 +2,7 @@ import copy
 import math
 import pickle
 
+from decimal import Decimal
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -88,6 +89,16 @@ def test_item_base_has_no_unwrap():
 
 def test_integer_unwrap():
     elementary_test(item(666), int)
+
+
+def test_decimal_unwrap():
+    """Ensure a decimal unwraps as a string
+    after TOML encode.
+    """
+    elementary_test(
+        item(Decimal("0.001")),
+        str,
+    )
 
 
 def test_float_unwrap():
