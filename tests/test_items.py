@@ -946,3 +946,17 @@ def test_copy_copy():
 )
 def test_escape_key(key_str, escaped):
     assert api.key(key_str).as_string() == escaped
+
+
+def test_custom_encoders():
+    import decimal
+
+    @api.register_encoder
+    def encode_decimal(obj):
+        if isinstance(obj, decimal.Decimal):
+            return api.float_(str(obj))
+        raise TypeError
+
+    assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"
+    assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
+    api.unregister_encoder(encode_decimal)
