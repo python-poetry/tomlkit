@@ -958,5 +958,9 @@ def test_custom_encoders():
         raise TypeError
 
     assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"
+
+    with pytest.raises(TypeError):
+        api.item(object())
+
     assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
     api.unregister_encoder(encode_decimal)
