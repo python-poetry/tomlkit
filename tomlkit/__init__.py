@@ -18,9 +18,11 @@ from tomlkit.api import load
 from tomlkit.api import loads
 from tomlkit.api import nl
 from tomlkit.api import parse
+from tomlkit.api import register_encoder
 from tomlkit.api import string
 from tomlkit.api import table
 from tomlkit.api import time
+from tomlkit.api import unregister_encoder
 from tomlkit.api import value
 from tomlkit.api import ws
 
@@ -52,4 +54,6 @@ __all__ = [
     "TOMLDocument",
     "value",
     "ws",
+    "register_encoder",
+    "unregister_encoder",
 ]

@@ -13,6 +13,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Callable
 from typing import Collection
 from typing import Iterable
 from typing import Iterator
@@ -57,6 +58,15 @@ else:
 
 
 ItemT = TypeVar("ItemT", bound="Item")
+Encoder = Callable[[Any], "Item"]
+CUSTOM_ENCODERS: list[Encoder] = []
+
+
+class _ConvertError(TypeError, ValueError):
+    """An internal error raised when item() fails to convert a value.
+    It should be a TypeError, but due to historical reasons
+    it needs to subclass ValueError as well.
+    """
 
 
 @overload
@@ -218,8 +228,20 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             Trivia(),
             value.isoformat(),
         )
+    else:
+        for encoder in CUSTOM_ENCODERS:
+            try:
+                rv = encoder(value)
+            except TypeError:
+                pass
+            else:
+                if not isinstance(rv, Item):
+                    raise _ConvertError(
+                        f"Custom encoder returned {type(rv)}, not a subclass of Item"
+                    )
+                return rv
 
-    raise ValueError(f"Invalid type {type(value)}")
+    raise _ConvertError(f"Invalid type {type(value)}")
 
 
 class StringType(Enum):
