@@ -62,8 +62,8 @@ Encoder = Callable[[Any], "Item"]
 CUSTOM_ENCODERS: list[Encoder] = []
 
 
-class _EncodeError(TypeError, ValueError):
-    """An internal error raised when item() fails to encode a value.
+class _ConvertError(TypeError, ValueError):
+    """An internal error raised when item() fails to convert a value.
     It should be a TypeError, but due to historical reasons
     it needs to subclass ValueError as well.
     """
@@ -236,13 +236,13 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
                 pass
             else:
                 if not isinstance(rv, Item):
-                    raise _EncodeError(
+                    raise _ConvertError(
                         f"Custom encoder {encoder} returned {type(rv)}, "
                         f"expected Item"
                     )
                 return rv
 
-    raise _EncodeError(f"Invalid type {type(value)}")
+    raise _ConvertError(f"Invalid type {type(value)}")
 
 
 class StringType(Enum):
