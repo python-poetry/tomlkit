@@ -237,8 +237,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             else:
                 if not isinstance(rv, Item):
                     raise _ConvertError(
-                        f"Custom encoder {encoder} returned {type(rv)}, "
-                        f"expected Item"
+                        f"Custom encoder returned {type(rv)}, not a subclass of Item"
                     )
                 return rv
 
