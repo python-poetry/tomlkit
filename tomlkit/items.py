@@ -24,42 +24,24 @@ from typing import overload
 
 from tomlkit._compat import PY38
 from tomlkit._compat import decode
+from tomlkit._types import _CustomDict
+from tomlkit._types import _CustomFloat
+from tomlkit._types import _CustomInt
+from tomlkit._types import _CustomList
+from tomlkit._types import wrap_method
 from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
 from tomlkit.exceptions import InvalidStringError
 
 
-if TYPE_CHECKING:  # pragma: no cover
-    # Define _CustomList and _CustomDict as a workaround for:
-    # https://github.com/python/mypy/issues/11427
-    #
-    # According to this issue, the typeshed contains a "lie"
-    # (it adds MutableSequence to the ancestry of list and MutableMapping to
-    # the ancestry of dict) which completely messes with the type inference for
-    # Table, InlineTable, Array and Container.
-    #
-    # Importing from builtins is preferred over simple assignment, see issues:
-    # https://github.com/python/mypy/issues/8715
-    # https://github.com/python/mypy/issues/10068
-    from builtins import dict as _CustomDict  # noqa: N812, TC004
-    from builtins import list as _CustomList  # noqa: N812, TC004
-
-    # Allow type annotations but break circular imports
+if TYPE_CHECKING:
     from tomlkit import container
-else:
-    from collections.abc import MutableMapping
-    from collections.abc import MutableSequence
-
-    class _CustomList(MutableSequence, list):
-        """Adds MutableSequence mixin while pretending to be a builtin list"""
-
-    class _CustomDict(MutableMapping, dict):
-        """Adds MutableMapping mixin while pretending to be a builtin dict"""
 
 
 ItemT = TypeVar("ItemT", bound="Item")
 Encoder = Callable[[Any], "Item"]
 CUSTOM_ENCODERS: list[Encoder] = []
+AT = TypeVar("AT", bound="AbstractTable")
 
 
 class _ConvertError(TypeError, ValueError):
@@ -456,7 +438,7 @@ class SingleKey(Key):
 class DottedKey(Key):
     def __init__(
         self,
-        keys: Iterable[Key],
+        keys: Iterable[SingleKey],
         sep: str | None = None,
         original: str | None = None,
     ) -> None:
@@ -606,17 +588,17 @@ class Comment(Item):
         return f"{self._trivia.indent}{decode(self._trivia.comment)}"
 
 
-class Integer(int, Item):
+class Integer(Item, _CustomInt):
     """
     An integer literal.
     """
 
     def __new__(cls, value: int, trivia: Trivia, raw: str) -> Integer:
-        return super().__new__(cls, value)
+        return int.__new__(cls, value)
 
-    def __init__(self, _: int, trivia: Trivia, raw: str) -> None:
+    def __init__(self, value: int, trivia: Trivia, raw: str) -> None:
         super().__init__(trivia)
-
+        self._original = value
         self._raw = raw
         self._sign = False
 
@@ -624,7 +606,9 @@ class Integer(int, Item):
             self._sign = True
 
     def unwrap(self) -> int:
-        return int(self)
+        return self._original
+
+    __int__ = unwrap
 
     @property
     def discriminant(self) -> int:
@@ -638,30 +622,6 @@ class Integer(int, Item):
     def as_string(self) -> str:
         return self._raw
 
-    def __add__(self, other):
-        result = super().__add__(other)
-        if result is NotImplemented:
-            return result
-        return self._new(result)
-
-    def __radd__(self, other):
-        result = super().__radd__(other)
-        if result is NotImplemented:
-            return result
-        return self._new(result)
-
-    def __sub__(self, other):
-        result = super().__sub__(other)
-        if result is NotImplemented:
-            return result
-        return self._new(result)
-
-    def __rsub__(self, other):
-        result = super().__rsub__(other)
-        if result is NotImplemented:
-            return result
-        return self._new(result)
-
     def _new(self, result):
         raw = str(result)
         if self._sign:
@@ -673,18 +633,53 @@ class Integer(int, Item):
     def _getstate(self, protocol=3):
         return int(self), self._trivia, self._raw
 
+    # int methods
+    __abs__ = wrap_method(int.__abs__)
+    __add__ = wrap_method(int.__add__)
+    __and__ = wrap_method(int.__and__)
+    __ceil__ = wrap_method(int.__ceil__)
+    __eq__ = wrap_method(int.__eq__)
+    __floor__ = wrap_method(int.__floor__)
+    __floordiv__ = wrap_method(int.__floordiv__)
+    __invert__ = wrap_method(int.__invert__)
+    __le__ = wrap_method(int.__le__)
+    __lshift__ = wrap_method(int.__lshift__)
+    __lt__ = wrap_method(int.__lt__)
+    __mod__ = wrap_method(int.__mod__)
+    __mul__ = wrap_method(int.__mul__)
+    __neg__ = wrap_method(int.__neg__)
+    __or__ = wrap_method(int.__or__)
+    __pos__ = wrap_method(int.__pos__)
+    __pow__ = wrap_method(int.__pow__)
+    __radd__ = wrap_method(int.__radd__)
+    __rand__ = wrap_method(int.__rand__)
+    __rfloordiv__ = wrap_method(int.__rfloordiv__)
+    __rlshift__ = wrap_method(int.__rlshift__)
+    __rmod__ = wrap_method(int.__rmod__)
+    __rmul__ = wrap_method(int.__rmul__)
+    __ror__ = wrap_method(int.__ror__)
+    __round__ = wrap_method(int.__round__)
+    __rpow__ = wrap_method(int.__rpow__)
+    __rrshift__ = wrap_method(int.__rrshift__)
+    __rshift__ = wrap_method(int.__rshift__)
+    __rtruediv__ = wrap_method(int.__rtruediv__)
+    __rxor__ = wrap_method(int.__rxor__)
+    __truediv__ = wrap_method(int.__truediv__)
+    __trunc__ = wrap_method(int.__trunc__)
+    __xor__ = wrap_method(int.__xor__)
 
-class Float(float, Item):
+
+class Float(Item, _CustomFloat):
     """
     A float literal.
     """
 
-    def __new__(cls, value: float, trivia: Trivia, raw: str) -> Integer:
-        return super().__new__(cls, value)
+    def __new__(cls, value: float, trivia: Trivia, raw: str) -> Float:
+        return float.__new__(cls, value)
 
-    def __init__(self, _: float, trivia: Trivia, raw: str) -> None:
+    def __init__(self, value: float, trivia: Trivia, raw: str) -> None:
         super().__init__(trivia)
-
+        self._original = value
         self._raw = raw
         self._sign = False
 
@@ -692,7 +687,9 @@ class Float(float, Item):
             self._sign = True
 
     def unwrap(self) -> float:
-        return float(self)
+        return self._original
+
+    __float__ = unwrap
 
     @property
     def discriminant(self) -> int:
@@ -706,32 +703,6 @@ class Float(float, Item):
     def as_string(self) -> str:
         return self._raw
 
-    def __add__(self, other):
-        result = super().__add__(other)
-
-        return self._new(result)
-
-    def __radd__(self, other):
-        result = super().__radd__(other)
-
-        if isinstance(other, Float):
-            return self._new(result)
-
-        return result
-
-    def __sub__(self, other):
-        result = super().__sub__(other)
-
-        return self._new(result)
-
-    def __rsub__(self, other):
-        result = super().__rsub__(other)
-
-        if isinstance(other, Float):
-            return self._new(result)
-
-        return result
-
     def _new(self, result):
         raw = str(result)
 
@@ -743,6 +714,30 @@ class Float(float, Item):
 
     def _getstate(self, protocol=3):
         return float(self), self._trivia, self._raw
+
+    # float methods
+    __abs__ = wrap_method(float.__abs__)
+    __add__ = wrap_method(float.__add__)
+    __ceil__ = wrap_method(float.__ceil__)
+    __eq__ = wrap_method(float.__eq__)
+    __floor__ = wrap_method(float.__floor__)
+    __floordiv__ = wrap_method(float.__floordiv__)
+    __le__ = wrap_method(float.__le__)
+    __lt__ = wrap_method(float.__lt__)
+    __mod__ = wrap_method(float.__mod__)
+    __mul__ = wrap_method(float.__mul__)
+    __neg__ = wrap_method(float.__neg__)
+    __pos__ = wrap_method(float.__pos__)
+    __pow__ = wrap_method(float.__pow__)
+    __radd__ = wrap_method(float.__radd__)
+    __rfloordiv__ = wrap_method(float.__rfloordiv__)
+    __rmod__ = wrap_method(float.__rmod__)
+    __rmul__ = wrap_method(float.__rmul__)
+    __round__ = wrap_method(float.__round__)
+    __rpow__ = wrap_method(float.__rpow__)
+    __rtruediv__ = wrap_method(float.__rtruediv__)
+    __truediv__ = wrap_method(float.__truediv__)
+    __trunc__ = wrap_method(float.__trunc__)
 
 
 class Bool(Item):
@@ -1410,9 +1405,6 @@ class Array(Item, _CustomList):
         return list(self._iter_items()), self._trivia, self._multiline
 
 
-AT = TypeVar("AT", bound="AbstractTable")
-
-
 class AbstractTable(Item, _CustomDict):
     """Common behaviour of both :class:`Table` and :class:`InlineTable`"""
 
@@ -1452,11 +1444,11 @@ class AbstractTable(Item, _CustomDict):
         raise NotImplementedError
 
     @overload
-    def add(self: AT, value: Comment | Whitespace) -> AT:
+    def add(self: AT, key: Comment | Whitespace) -> AT:
         ...
 
     @overload
-    def add(self: AT, key: Key | str, value: Any) -> AT:
+    def add(self: AT, key: Key | str, value: Any = ...) -> AT:
         ...
 
     def add(self, key, value=None):

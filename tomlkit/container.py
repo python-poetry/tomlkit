@@ -6,6 +6,7 @@ from typing import Any
 from typing import Iterator
 
 from tomlkit._compat import decode
+from tomlkit._types import _CustomDict
 from tomlkit._utils import merge_dicts
 from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
@@ -19,7 +20,6 @@ from tomlkit.items import SingleKey
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
-from tomlkit.items import _CustomDict
 from tomlkit.items import item as _item
 
 

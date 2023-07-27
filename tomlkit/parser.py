@@ -60,7 +60,7 @@ class Parser:
     Parser for TOML documents.
     """
 
-    def __init__(self, string: str) -> None:
+    def __init__(self, string: str | bytes) -> None:
         # Input to parse
         self._src = Source(decode(string))
 
