@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from datetime import timezone
 
 import pytest
 
@@ -103,7 +104,7 @@ def test_true_unwrap():
 
 
 def test_datetime_unwrap():
-    dt = datetime.utcnow()
+    dt = datetime.now(tz=timezone.utc)
     elementary_test(item(dt), datetime)
 
 
