@@ -19,10 +19,10 @@ jobs:
         id: tag
         run: echo ::set-output name=tag::${GITHUB_REF#refs/tags/}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.11"
 
       - name: Install and set up Poetry
         run: |
@@ -44,8 +44,9 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*"
-          token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
+          allowUpdates: true
+          generateReleaseNotes: true
           prerelease: steps.check-version.outputs.prerelease == 'true'
 
       - name: Publish to PyPI
