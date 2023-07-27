@@ -1,5 +1,18 @@
 # Change Log
 
+## [0.12.0] - 2023-07-27
+
+### Added
+
+- Allow users to specify encoders for custom types. ([#296](https://github.com/sdispater/tomlkit/issues/296))
+
+### Fixed
+
+- Fix the incorrect sort when building a table with dotted keys.
+- Complete the methods required for integer and float items. ([#307](https://github.com/sdispater/tomlkit/issues/307))
+- Replace the deprecated usage of `datetime.utcnow()`. ([#308](https://github.com/sdispater/tomlkit/issues/308))
+- Minor performance improvements when iterating over the escape sequences. ([#304](https://github.com/sdispater/tomlkit/issues/304))
+
 ## [0.11.8] - 2023-04-27
 
 ### Fixed
@@ -346,7 +359,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.8...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.12.0...master
+[0.12.0]: https://github.com/sdispater/tomlkit/releases/tag/0.12.0
 [0.11.8]: https://github.com/sdispater/tomlkit/releases/tag/0.11.8
 [0.11.7]: https://github.com/sdispater/tomlkit/releases/tag/0.11.7
 [0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
