@@ -3,8 +3,10 @@ from __future__ import annotations
 import abc
 import copy
 import dataclasses
+import math
 import re
 import string
+import sys
 
 from datetime import date
 from datetime import datetime
@@ -638,13 +640,13 @@ class Integer(Item, _CustomInt):
     __add__ = wrap_method(int.__add__)
     __and__ = wrap_method(int.__and__)
     __ceil__ = wrap_method(int.__ceil__)
-    __eq__ = wrap_method(int.__eq__)
+    __eq__ = int.__eq__
     __floor__ = wrap_method(int.__floor__)
     __floordiv__ = wrap_method(int.__floordiv__)
     __invert__ = wrap_method(int.__invert__)
-    __le__ = wrap_method(int.__le__)
+    __le__ = int.__le__
     __lshift__ = wrap_method(int.__lshift__)
-    __lt__ = wrap_method(int.__lt__)
+    __lt__ = int.__lt__
     __mod__ = wrap_method(int.__mod__)
     __mul__ = wrap_method(int.__mul__)
     __neg__ = wrap_method(int.__neg__)
@@ -718,12 +720,10 @@ class Float(Item, _CustomFloat):
     # float methods
     __abs__ = wrap_method(float.__abs__)
     __add__ = wrap_method(float.__add__)
-    __ceil__ = wrap_method(float.__ceil__)
-    __eq__ = wrap_method(float.__eq__)
-    __floor__ = wrap_method(float.__floor__)
+    __eq__ = float.__eq__
     __floordiv__ = wrap_method(float.__floordiv__)
-    __le__ = wrap_method(float.__le__)
-    __lt__ = wrap_method(float.__lt__)
+    __le__ = float.__le__
+    __lt__ = float.__lt__
     __mod__ = wrap_method(float.__mod__)
     __mul__ = wrap_method(float.__mul__)
     __neg__ = wrap_method(float.__neg__)
@@ -737,7 +737,14 @@ class Float(Item, _CustomFloat):
     __rpow__ = wrap_method(float.__rpow__)
     __rtruediv__ = wrap_method(float.__rtruediv__)
     __truediv__ = wrap_method(float.__truediv__)
-    __trunc__ = wrap_method(float.__trunc__)
+    __trunc__ = float.__trunc__
+
+    if sys.version_info >= (3, 9):
+        __ceil__ = float.__ceil__
+        __floor__ = float.__floor__
+    else:
+        __ceil__ = math.ceil
+        __floor__ = math.floor
 
 
 class Bool(Item):
