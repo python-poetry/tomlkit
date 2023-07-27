@@ -612,6 +612,9 @@ class Integer(Item, _CustomInt):
 
     __int__ = unwrap
 
+    def __hash__(self) -> int:
+        return hash(self.unwrap())
+
     @property
     def discriminant(self) -> int:
         return 2
@@ -692,6 +695,9 @@ class Float(Item, _CustomFloat):
         return self._original
 
     __float__ = unwrap
+
+    def __hash__(self) -> int:
+        return hash(self.unwrap())
 
     @property
     def discriminant(self) -> int:
