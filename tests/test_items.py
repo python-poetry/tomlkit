@@ -2,6 +2,7 @@ import copy
 import math
 import pickle
 
+from datetime import UTC
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -103,7 +104,7 @@ def test_true_unwrap():
 
 
 def test_datetime_unwrap():
-    dt = datetime.utcnow()
+    dt = datetime.now(tz=UTC)
     elementary_test(item(dt), datetime)
 
 
