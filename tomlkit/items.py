@@ -24,7 +24,6 @@ from typing import TypeVar
 from typing import cast
 from typing import overload
 
-from tomlkit._compat import PY38
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
 from tomlkit._types import _CustomFloat
@@ -875,36 +874,30 @@ class DateTime(Item, datetime):
         return self._raw
 
     def __add__(self, other):
-        if PY38:
-            result = datetime(
-                self.year,
-                self.month,
-                self.day,
-                self.hour,
-                self.minute,
-                self.second,
-                self.microsecond,
-                self.tzinfo,
-            ).__add__(other)
-        else:
-            result = super().__add__(other)
+        result = datetime(
+            self.year,
+            self.month,
+            self.day,
+            self.hour,
+            self.minute,
+            self.second,
+            self.microsecond,
+            self.tzinfo,
+        ).__add__(other)
 
         return self._new(result)
 
     def __sub__(self, other):
-        if PY38:
-            result = datetime(
-                self.year,
-                self.month,
-                self.day,
-                self.hour,
-                self.minute,
-                self.second,
-                self.microsecond,
-                self.tzinfo,
-            ).__sub__(other)
-        else:
-            result = super().__sub__(other)
+        result = datetime(
+            self.year,
+            self.month,
+            self.day,
+            self.hour,
+            self.minute,
+            self.second,
+            self.microsecond,
+            self.tzinfo,
+        ).__sub__(other)
 
         if isinstance(result, datetime):
             result = self._new(result)
@@ -915,10 +908,7 @@ class DateTime(Item, datetime):
         return self._new(super().replace(*args, **kwargs))
 
     def astimezone(self, tz: tzinfo) -> datetime:
-        result = super().astimezone(tz)
-        if PY38:
-            return result
-        return self._new(result)
+        return super().astimezone(tz)
 
     def _new(self, result) -> DateTime:
         raw = result.isoformat()
@@ -982,19 +972,10 @@ class Date(Item, date):
         return self._raw
 
     def __add__(self, other):
-        if PY38:
-            result = date(self.year, self.month, self.day).__add__(other)
-        else:
-            result = super().__add__(other)
-
-        return self._new(result)
+        return self._new(date(self.year, self.month, self.day).__add__(other))
 
     def __sub__(self, other):
-        if PY38:
-            result = date(self.year, self.month, self.day).__sub__(other)
-        else:
-            result = super().__sub__(other)
-
+        result = date(self.year, self.month, self.day).__sub__(other)
         if isinstance(result, date):
             result = self._new(result)
 
