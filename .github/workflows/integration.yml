@@ -34,16 +34,16 @@ jobs:
         shell: bash
     steps:
       - name: Checkout Source (${{ matrix.project }})
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: python-poetry/${{ matrix.project }}
 
       - name: Checkout Source (tomlkit)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: tomlkit
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
