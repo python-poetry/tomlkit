@@ -667,11 +667,21 @@ class Integer(Item, _CustomInt):
     __rpow__ = wrap_method(int.__rpow__)
     __rrshift__ = wrap_method(int.__rrshift__)
     __rshift__ = wrap_method(int.__rshift__)
-    __rtruediv__ = wrap_method(int.__rtruediv__)
     __rxor__ = wrap_method(int.__rxor__)
-    __truediv__ = wrap_method(int.__truediv__)
     __trunc__ = wrap_method(int.__trunc__)
     __xor__ = wrap_method(int.__xor__)
+
+    def __rtruediv__(self, other):
+        result = int.__rtruediv__(self, other)
+        if result is NotImplemented:
+            return result
+        return Float._new(self, result)
+
+    def __truediv__(self, other):
+        result = int.__truediv__(self, other)
+        if result is NotImplemented:
+            return result
+        return Float._new(self, result)
 
 
 class Float(Item, _CustomFloat):
