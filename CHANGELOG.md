@@ -1,5 +1,13 @@
 # Change Log
 
+## [Unreleased]
+
+## [0.12.2] - 2023-09-20
+
+### Fixed
+
+- Correct the return type of integer division. ([#312](https://github.com/sdispater/tomlkit/issues/312))
+
 ## [0.12.1] - 2023-07-27
 
 ### Fixed
@@ -365,7 +373,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.12.1...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.12.2...master
+[0.12.2]: https://github.com/sdispater/tomlkit/releases/tag/0.12.2
 [0.12.1]: https://github.com/sdispater/tomlkit/releases/tag/0.12.1
 [0.12.0]: https://github.com/sdispater/tomlkit/releases/tag/0.12.0
 [0.11.8]: https://github.com/sdispater/tomlkit/releases/tag/0.11.8
