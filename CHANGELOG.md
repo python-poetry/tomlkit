@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a bug that overwriting a sub table with a plain value raises an error. ([#313](https://github.com/sdispater/tomlkit/issues/313))
+
 ## [0.12.2] - 2023-09-20
 
 ### Fixed

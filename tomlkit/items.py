@@ -1945,7 +1945,7 @@ class Null(Item):
     """
 
     def __init__(self) -> None:
-        pass
+        super().__init__(Trivia(trail=""))
 
     def unwrap(self) -> None:
         return None
