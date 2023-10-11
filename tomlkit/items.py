@@ -1665,6 +1665,7 @@ class Table(AbstractTable):
         return self
 
     def invalidate_display_name(self):
+        """Call ``invalidate_display_name`` on the contained tables"""
         self.display_name = None
 
         for child in self.values():

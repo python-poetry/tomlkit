@@ -44,6 +44,7 @@ class Container(_CustomDict):
         return self._body
 
     def unwrap(self) -> dict[str, Any]:
+        """Returns as pure python object (ppo)"""
         unwrapped = {}
         for k, v in self.items():
             if k is None:
@@ -64,6 +65,7 @@ class Container(_CustomDict):
 
     @property
     def value(self) -> dict[str, Any]:
+        """The wrapped dict value"""
         d = {}
         for k, v in self._body:
             if k is None:
