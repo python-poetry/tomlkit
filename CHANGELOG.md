@@ -2,14 +2,11 @@
 
 ## [Unreleased]
 
+## [0.12.2] - 2023-11-02
+
 ### Fixed
 
 - Fixed a bug that overwriting a sub table with a plain value raises an error. ([#313](https://github.com/sdispater/tomlkit/issues/313))
-
-## [0.12.2] - 2023-09-20
-
-### Fixed
-
 - Correct the return type of integer division. ([#312](https://github.com/sdispater/tomlkit/issues/312))
 
 ## [0.12.1] - 2023-07-27
