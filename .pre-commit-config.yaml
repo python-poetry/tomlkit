@@ -42,12 +42,6 @@ repos:
       - id: pyupgrade
         args: [--py37-plus]
 
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.3.0
-    hooks:
-      - id: pycln
-        args: [--all]
-
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
