@@ -702,12 +702,18 @@ class Container(_CustomDict):
         if isinstance(value, Table):
             # Insert a cosmetic new line for tables if:
             # - it does not have it yet OR is not followed by one
-            # - it is not the last item
+            # - it is not the last item, or
+            # - The table being replaced has a newline
             last, _ = self._previous_item_with_index()
             idx = last if idx < 0 else idx
             has_ws = ends_with_whitespace(value)
+            replace_has_ws = (
+                isinstance(v, Table)
+                and v.value.body
+                and isinstance(v.value.body[-1][1], Whitespace)
+            )
             next_ws = idx < last and isinstance(self._body[idx + 1][1], Whitespace)
-            if idx < last and not (next_ws or has_ws):
+            if (idx < last or replace_has_ws) and not (next_ws or has_ws):
                 value.append(None, Whitespace("\n"))
 
             dict.__setitem__(self, new_key.key, value.value)
