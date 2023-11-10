@@ -624,6 +624,10 @@ def test_integers_behave_like_ints():
     assert i == 33
     assert i.as_string() == "33"
 
+    i /= 2
+    assert i == 16.5
+    assert i.as_string() == "16.5"
+
     doc = parse("int = +34")
     doc["int"] += 1
 
