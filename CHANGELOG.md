@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.12.3] - 2023-11-15
+
+### Fixed
+
+- Improve the performance when parsing a table with nested dotted keys. ([#193](https://github.com/sdispater/tomlkit/issues/193))
+- Keep the newlines when replacing a table. ([#323](https://github.com/sdispater/tomlkit/issues/323))
+
 ## [0.12.2] - 2023-11-02
 
 ### Fixed
@@ -375,6 +382,7 @@
 - Fixed raw strings escaping.
 
 [unreleased]: https://github.com/sdispater/tomlkit/compare/0.12.2...master
+[0.12.3]: https://github.com/sdispater/tomlkit/releases/tag/0.12.3
 [0.12.2]: https://github.com/sdispater/tomlkit/releases/tag/0.12.2
 [0.12.1]: https://github.com/sdispater/tomlkit/releases/tag/0.12.1
 [0.12.0]: https://github.com/sdispater/tomlkit/releases/tag/0.12.0
