@@ -1617,7 +1617,7 @@ class Table(AbstractTable):
         if not isinstance(_item, Item):
             _item = item(_item)
 
-        self._value.append(key, _item)
+        self._value.append(key, _item, validate=False)
 
         if isinstance(key, Key):
             key = next(iter(key)).key
