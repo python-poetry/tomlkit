@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Support `|` and `|=` operator for tables, and support `+` and `+=` operator for arrays. ([#331](https://github.com/sdispater/tomlkit/issues/331))
+
 ## [0.12.3] - 2023-11-15
 
 ### Fixed
