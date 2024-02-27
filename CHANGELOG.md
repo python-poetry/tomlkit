@@ -5,6 +5,7 @@
 ### Fixed
 
 - Support `|` and `|=` operator for tables, and support `+` and `+=` operator for arrays. ([#331](https://github.com/sdispater/tomlkit/issues/331))
+- Fix an index error when setting dotted keys in a table. ([#332](https://github.com/sdispater/tomlkit/issues/332))
 
 ## [0.12.3] - 2023-11-15
 
