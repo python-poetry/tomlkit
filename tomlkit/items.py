@@ -12,6 +12,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import tzinfo
+from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
@@ -19,6 +20,7 @@ from typing import Callable
 from typing import Collection
 from typing import Iterable
 from typing import Iterator
+from typing import Optional
 from typing import Sequence
 from typing import TypeVar
 from typing import cast
@@ -98,6 +100,20 @@ def item(
 
 
 @overload
+def item(
+    value: Decimal, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
+) -> "String":
+    ...
+
+
+@overload
+def item(
+    value: float, _parent: Optional["Item"] = ..., _sort_keys: bool = ...
+) -> "Float":
+    ...
+
+
+@overload
 def item(value: Sequence, _parent: Item | None = ..., _sort_keys: bool = ...) -> Array:
     ...
 
@@ -140,16 +156,21 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
         return Bool(value, Trivia())
     elif isinstance(value, int):
         return Integer(value, Trivia(), str(value))
+    elif isinstance(value, Decimal):
+        return String.from_raw(str(value))
     elif isinstance(value, float):
         return Float(value, Trivia(), str(value))
-    elif isinstance(value, dict):
+    elif isinstance(value, MutableMapping):
         table_constructor = (
             InlineTable if isinstance(_parent, (Array, InlineTable)) else Table
         )
         val = table_constructor(Container(), Trivia(), False)
         for k, v in sorted(
             value.items(),
-            key=lambda i: (isinstance(i[1], dict), i[0]) if _sort_keys else 1,
+            key=lambda i: (
+                isinstance(i[1], MutableMapping), i[0])
+                if _sort_keys else 1
+            ,
         ):
             val[k] = item(v, _parent=val, _sort_keys=_sort_keys)
 
@@ -157,7 +178,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     elif isinstance(value, (list, tuple)):
         if (
             value
-            and all(isinstance(v, dict) for v in value)
+            and all(isinstance(v, MutableMapping) for v in value)
             and (_parent is None or isinstance(_parent, Table))
         ):
             a = AoT([])
@@ -167,12 +188,15 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             table_constructor = InlineTable
 
         for v in value:
-            if isinstance(v, dict):
+            if isinstance(v, MutableMapping):
                 table = table_constructor(Container(), Trivia(), True)
 
                 for k, _v in sorted(
                     v.items(),
-                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
+                    key=lambda i: (
+                        isinstance(i[1], MutableMapping),
+                        i[0] if _sort_keys else 1
+                    ),
                 ):
                     i = item(_v, _parent=table, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
@@ -1144,7 +1168,8 @@ class Array(Item, _CustomList):
         )
         self._index_map: dict[int, int] = {}
         self._value = self._group_values(value)
-        self._multiline = multiline
+        self._multiline: bool = multiline
+        self._multiline_indent: str = " "*4
         self._reindex()
 
     def _group_values(self, value: list[Item]) -> list[_ArrayItemGroup]:
@@ -1194,7 +1219,12 @@ class Array(Item, _CustomList):
         for v in self._value:
             yield from v
 
-    def multiline(self, multiline: bool) -> Array:
+    def multiline(
+        self,
+        multiline: bool,
+        indent: str = " "*4,
+
+    ) -> Array:
         """Change the array to display in multiline or not.
 
         :Example:
@@ -1210,6 +1240,7 @@ class Array(Item, _CustomList):
         ]
         """
         self._multiline = multiline
+        self._multiline_indent = indent
 
         return self
 
@@ -1220,7 +1251,7 @@ class Array(Item, _CustomList):
         s = "[\n"
         s += "".join(
             self.trivia.indent
-            + " " * 4
+            + self._multiline_indent
             + v.value.as_string()
             + ("," if not isinstance(v.value, Null) else "")
             + (v.comment.as_string() if v.comment is not None else "")

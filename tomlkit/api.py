@@ -4,6 +4,7 @@ import contextlib
 import datetime as _datetime
 
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import IO
 from typing import Iterable
 from typing import TypeVar
@@ -102,6 +103,10 @@ def integer(raw: str | int) -> Integer:
 def float_(raw: str | float) -> Float:
     """Create an float item from a number or string."""
     return item(float(raw))
+
+def decimal(raw: str | Decimal | float) -> String:
+    """Create an string item from a ``decimal.Decimal``."""
+    return item(Decimal(raw))
 
 
 def boolean(raw: str) -> Bool:
