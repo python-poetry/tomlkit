@@ -981,9 +981,9 @@ class Parser:
                         is_aot and i == len(name_parts) - 2,
                         is_super_table=i < len(name_parts) - 2,
                         name=_name.key,
-                        display_name=full_key.as_string()
-                        if i == len(name_parts) - 2
-                        else None,
+                        display_name=(
+                            full_key.as_string() if i == len(name_parts) - 2 else None
+                        ),
                     ),
                 )
 

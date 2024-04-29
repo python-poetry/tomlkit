@@ -251,9 +251,11 @@ class Container(_CustomDict):
                         for k, v in item.value.body:
                             current.append(k, v)
                         self._body[
-                            current_idx[-1]
-                            if isinstance(current_idx, tuple)
-                            else current_idx
+                            (
+                                current_idx[-1]
+                                if isinstance(current_idx, tuple)
+                                else current_idx
+                            )
                         ] = (current_body_element[0], current)
 
                         return self
