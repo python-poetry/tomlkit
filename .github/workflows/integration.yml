@@ -34,7 +34,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout Source (${{ matrix.project }})
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: python-poetry/${{ matrix.project }}
 
@@ -51,7 +51,9 @@ jobs:
         run: pipx install poetry
 
       - name: Configure poetry
-        run: poetry config virtualenvs.in-project true
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry env use ${{ matrix.python-version }}
 
       - name: Get full Python version
         if: matrix.project != 'poetry-core'
