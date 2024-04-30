@@ -10,18 +10,7 @@ on:
       - "**"
 
 jobs:
-  Linting:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-      - uses: pre-commit/action@v2.0.3
-
   Tests:
-    needs: Linting
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -53,7 +42,7 @@ jobs:
         shell: bash
         run: |
           poetry config virtualenvs.in-project true
-          poetry env use ${{ matrix.python-version }}
+          poetry env use python
 
       - name: Set up cache
         uses: actions/cache@v3
