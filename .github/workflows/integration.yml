@@ -39,25 +39,16 @@ jobs:
           repository: python-poetry/${{ matrix.project }}
 
       - name: Checkout Source (tomlkit)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: tomlkit
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Bootstrap poetry
-        run: |
-          curl -sL https://install.python-poetry.org | python - -y ${{ matrix.bootstrap-args }}
-
-      - name: Update PATH
-        if: ${{ matrix.os != 'Windows' }}
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Path for Windows
-        if: ${{ matrix.os == 'Windows' }}
-        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+        run: pipx install poetry
 
       - name: Configure poetry
         run: poetry config virtualenvs.in-project true

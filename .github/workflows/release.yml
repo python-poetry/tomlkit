@@ -25,12 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install and set up Poetry
-        run: |
-          curl -fsSL -o install-poetry.py https://install.python-poetry.org
-          python install-poetry.py -y
-
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: pipx install poetry
 
       - name: Build project for distribution
         run: poetry build

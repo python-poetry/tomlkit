@@ -23,11 +23,11 @@ jobs:
   Tests:
     needs: Linting
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [Ubuntu, MacOS, Windows]
+        os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
 
     steps:
@@ -47,17 +47,7 @@ jobs:
           echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
       - name: Install Poetry
-        shell: bash
-        run: curl -fsSL https://install.python-poetry.org | python - -y --version 1.4.0
-
-      - name: Update PATH
-        if: ${{ matrix.os != 'Windows' }}
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Path for Windows
-        if: ${{ matrix.os == 'Windows' }}
-        shell: bash
-        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+        run: pipx install poetry
 
       - name: Configure Poetry
         shell: bash
