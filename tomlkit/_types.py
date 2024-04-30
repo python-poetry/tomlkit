@@ -31,8 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover
     P = ParamSpec("P")
 
     class WrapperType(Protocol):
-        def _new(self: WT, value: Any) -> WT:
-            ...
+        def _new(self: WT, value: Any) -> WT: ...
 
 else:
     from collections.abc import MutableMapping
