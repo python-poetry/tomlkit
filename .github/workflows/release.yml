@@ -19,18 +19,13 @@ jobs:
         id: tag
         run: echo ::set-output name=tag::${GITHUB_REF#refs/tags/}
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: 3.x
 
       - name: Install and set up Poetry
-        run: |
-          curl -fsSL -o install-poetry.py https://install.python-poetry.org
-          python install-poetry.py -y
-
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: pipx install poetry
 
       - name: Build project for distribution
         run: poetry build
