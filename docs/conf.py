@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from tomlkit import __version__  # noqa: E402
+from tomlkit import __version__
 
 
 # -- Project information -----------------------------------------------------

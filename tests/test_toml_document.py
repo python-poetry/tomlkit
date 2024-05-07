@@ -163,9 +163,9 @@ name = "foo"
     doc = parse(content)
     unwrapped = doc.unwrap()
     assert_is_ppo(unwrapped, dict)
-    assert_is_ppo(list(unwrapped.keys())[0], str)
+    assert_is_ppo(next(iter(unwrapped)), str)
     assert_is_ppo(unwrapped["tool"], dict)
-    assert_is_ppo(list(unwrapped["tool"].keys())[0], str)
+    assert_is_ppo(next(iter(unwrapped["tool"])), str)
     assert_is_ppo(unwrapped["tool"]["poetry"]["name"], str)
 
 

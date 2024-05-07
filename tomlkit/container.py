@@ -312,7 +312,7 @@ class Container(_CustomDict):
             if key is not None and not isinstance(current, Table):
                 raise KeyAlreadyPresent(key)
 
-            self._map[key] = current_idx + (len(self._body),)
+            self._map[key] = (*current_idx, len(self._body))
         elif key is not None:
             self._map[key] = len(self._body)
 
@@ -447,7 +447,7 @@ class Container(_CustomDict):
             current_idx = self._map[key]
             if not isinstance(current_idx, tuple):
                 current_idx = (current_idx,)
-            self._map[key] = current_idx + (idx,)
+            self._map[key] = (*current_idx, idx)
         else:
             self._map[key] = idx
         self._body.insert(idx, (key, item))
