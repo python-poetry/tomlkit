@@ -619,9 +619,8 @@ class Integer(Item, _CustomInt):
 
     def _new(self, result):
         raw = str(result)
-        if self._sign:
-            sign = "+" if result >= 0 else "-"
-            raw = sign + raw
+        if self._sign and result >= 0:
+            raw = f"+{raw}"
 
         return Integer(result, self._trivia, raw)
 
