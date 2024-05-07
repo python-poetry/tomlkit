@@ -1,5 +1,11 @@
 # Change Log
 
+## [unreleased]
+
+### Fixed
+
+- Remove the extra minus sign added to the float value after calculation. ([#341](https://github.com/python-poetry/tomlkit/issues/341))
+
 ## [0.12.4] - 2024-02-27
 
 ### Fixed
