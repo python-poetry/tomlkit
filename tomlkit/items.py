@@ -958,9 +958,14 @@ class Date(Item, date):
         return date.__new__(cls, year, month, day)
 
     def __init__(
-        self, year: int, month: int, day: int, trivia: Trivia, raw: str
+        self,
+        year: int,
+        month: int,
+        day: int,
+        trivia: Trivia | None = None,
+        raw: str = "",
     ) -> None:
-        super().__init__(trivia)
+        super().__init__(trivia or Trivia())
 
         self._raw = raw
 
@@ -1033,10 +1038,10 @@ class Time(Item, time):
         second: int,
         microsecond: int,
         tzinfo: tzinfo | None,
-        trivia: Trivia,
-        raw: str,
+        trivia: Trivia | None = None,
+        raw: str = "",
     ) -> None:
-        super().__init__(trivia)
+        super().__init__(trivia or Trivia())
 
         self._raw = raw
 

@@ -689,7 +689,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-22"
 
     i += timedelta(days=1)
-    assert i == datetime(2018, 7, 23)
+    assert i == date(2018, 7, 23)
     assert i.as_string() == "2018-07-23"
 
     i -= timedelta(days=2)
@@ -697,7 +697,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-21"
 
     i = i.replace(year=2019)
-    assert i == datetime(2019, 7, 21)
+    assert i == date(2019, 7, 21)
     assert i.as_string() == "2019-07-21"
 
     doc = parse("dt = 2018-07-22 # Comment")
