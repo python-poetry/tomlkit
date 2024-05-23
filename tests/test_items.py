@@ -969,3 +969,19 @@ def test_custom_encoders():
 
     assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
     api.unregister_encoder(encode_decimal)
+
+
+def test_no_extra_minus_sign():
+    doc = parse("a = -1")
+    assert doc.as_string() == "a = -1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1"
+
+    doc = parse("a = -1.5")
+    assert doc.as_string() == "a = -1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1.5"
