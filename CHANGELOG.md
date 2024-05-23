@@ -5,12 +5,14 @@
 ### Fixed
 
 - Fix the incompatiblity with 3.13 because of the `datetime.replace()` change. ([#333](https://github.com/python-poetry/tomlkit/issues/333))
+- Revert the change of parsing out-of-order tables. ([#347](https://github.com/python-poetry/tomlkit/issues/347))
 
 ## [0.12.5] - 2024-05-08
 
 ### Fixed
 
 - Remove the extra minus sign added to the float value after calculation. ([#341](https://github.com/python-poetry/tomlkit/issues/341))
+- Fix unexpected newline added after accessing the out-of-order table. ([#343](https://github.com/python-poetry/tomlkit/issues/343))
 
 ## [0.12.4] - 2024-02-27
 
