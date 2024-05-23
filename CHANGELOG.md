@@ -6,7 +6,7 @@
 
 - Fix the incompatiblity with 3.13 because of the `datetime.replace()` change. ([#333](https://github.com/python-poetry/tomlkit/issues/333))
 
-## [0.12.4] - 2024-05-08
+## [0.12.5] - 2024-05-08
 
 ### Fixed
 

@@ -323,8 +323,6 @@ class Container(_CustomDict):
         if key is not None:
             dict.__setitem__(self, key.key, item.value)
 
-        return self
-
     def _remove_at(self, idx: int) -> None:
         key = self._body[idx][0]
         index = self._map.get(key)
