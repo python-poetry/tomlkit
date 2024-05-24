@@ -985,14 +985,3 @@ def test_no_extra_minus_sign():
     assert doc.as_string() == "a = +1.5"
     doc["a"] *= -1
     assert doc.as_string() == "a = -1.5"
-
-
-def test_no_newline_after_visit_oo_table():
-    content = """\
-[a.b.c.d]
-[unrelated]
-[a.b.e]
-"""
-    doc = parse(content)
-    doc["a"]
-    assert doc.as_string() == content

@@ -323,8 +323,6 @@ class Container(_CustomDict):
         if key is not None:
             dict.__setitem__(self, key.key, item.value)
 
-        return self
-
     def _remove_at(self, idx: int) -> None:
         key = self._body[idx][0]
         index = self._map.get(key)
@@ -794,8 +792,6 @@ class OutOfOrderTableProxy(_CustomDict):
         self._tables = []
         self._tables_map = {}
 
-        original_parsing = container._parsed
-        container.parsing(True)
         for i in indices:
             _, item = self._container._body[i]
 
@@ -807,7 +803,7 @@ class OutOfOrderTableProxy(_CustomDict):
                     self._tables_map[k] = table_idx
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
-        container.parsing(original_parsing)
+
         self._internal_container._validate_out_of_order_table()
 
     def unwrap(self) -> str:
