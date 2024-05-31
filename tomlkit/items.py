@@ -521,6 +521,15 @@ class Item:
     def __reduce_ex__(self, protocol):
         return self.__class__, self._getstate(protocol)
 
+    # Leave it here to improve type hint for `tomlkit.parse`
+    # For example: `tomlkit.parse('pyproject.toml')['tool']['poetry']`
+    def __getitem__(self, key) -> Any:
+        raise NotImplementedError()
+
+    # Improve type hint for document modify, ex: `doc['tool']['poetry']={}`
+    def __setitem__(self, key, value) -> None:
+        raise NotImplementedError()
+
 
 class Whitespace(Item):
     """
