@@ -522,7 +522,9 @@ class Item:
         return self.__class__, self._getstate(protocol)
 
     # Leave it here to improve type hint for `tomlkit.parse`
-    # For example: `tomlkit.parse('pyproject.toml')['tool']['poetry']`
+    # For example:
+    #   doc = tomlkit.parse(Path('pyproject.toml').read_text())
+    #   print(doc['tool']['poetry'])
     def __getitem__(self, key) -> Any:
         raise NotImplementedError()
 

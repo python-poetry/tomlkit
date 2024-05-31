@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fix mypy errors when using tomlkit to modify toml document. ([#326](https://github.com/python-poetry/tomlkit/issues/326))
 - Fix the incompatiblity with 3.13 because of the `datetime.replace()` change. ([#333](https://github.com/python-poetry/tomlkit/issues/333))
 - Revert the change of parsing out-of-order tables. ([#347](https://github.com/python-poetry/tomlkit/issues/347))
 
