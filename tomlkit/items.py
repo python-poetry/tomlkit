@@ -33,6 +33,7 @@ from tomlkit._types import _CustomList
 from tomlkit._types import wrap_method
 from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
+from tomlkit.exceptions import ConvertError
 from tomlkit.exceptions import InvalidStringError
 
 
@@ -44,13 +45,6 @@ ItemT = TypeVar("ItemT", bound="Item")
 Encoder = Callable[[Any], "Item"]
 CUSTOM_ENCODERS: list[Encoder] = []
 AT = TypeVar("AT", bound="AbstractTable")
-
-
-class _ConvertError(TypeError, ValueError):
-    """An internal error raised when item() fails to convert a value.
-    It should be a TypeError, but due to historical reasons
-    it needs to subclass ValueError as well.
-    """
 
 
 @overload
@@ -206,16 +200,16 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
         for encoder in CUSTOM_ENCODERS:
             try:
                 rv = encoder(value)
-            except TypeError:
+            except ConvertError:
                 pass
             else:
                 if not isinstance(rv, Item):
-                    raise _ConvertError(
-                        f"Custom encoder returned {type(rv)}, not a subclass of Item"
+                    raise ConvertError(
+                        f"Custom encoder is expected to return an instance of Item, got {type(rv)}"
                     )
                 return rv
 
-    raise _ConvertError(f"Invalid type {type(value)}")
+    raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
 
 
 class StringType(Enum):
