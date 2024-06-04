@@ -225,3 +225,10 @@ class InvalidStringError(ValueError, TOMLKitError):
             f"Invalid string: {delimiter}{repr_}{delimiter}. "
             f"The character sequences {invalid_sequences} are invalid."
         )
+
+
+class ConvertError(TypeError, ValueError, TOMLKitError):
+    """Raised when item() fails to convert a value.
+    It should be a TypeError, but due to historical reasons
+    it needs to subclass ValueError as well.
+    """
