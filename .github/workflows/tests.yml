@@ -34,7 +34,7 @@ jobs:
         id: full-python-version
         shell: bash
         run: |
-          echo ::set-output name=version::$(python -c "import sys; print('-'.join(map(str, sys.version_info)))")
+          echo name=version::$(python -c "import sys; print('-'.join(map(str, sys.version_info)))") >> "$GITHUB_OUTPUT"
 
       - name: Install Poetry
         run: pipx install poetry
