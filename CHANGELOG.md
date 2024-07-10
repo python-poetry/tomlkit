@@ -5,6 +5,7 @@
 ### Changed
 
 - Expect a tomlkit-specific error instead of `TypeError` from a custom encoder. ([#355](https://github.com/python-poetry/tomlkit/issues/355))
+- Remove 3.7 from the CI matrix.
 
 ### Fixed
 
