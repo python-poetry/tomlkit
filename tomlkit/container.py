@@ -155,7 +155,7 @@ class Container(_CustomDict):
             return
         if key not in self._map or not isinstance(self._map[key], tuple):
             return
-        OutOfOrderTableProxy(self, self._map[key])
+        OutOfOrderTableProxy.validate(self, self._map[key])
 
     def append(
         self, key: Key | str | None, item: Item, validate: bool = True
@@ -786,7 +786,21 @@ class Container(_CustomDict):
 
 
 class OutOfOrderTableProxy(_CustomDict):
-    def __init__(self, container: Container, indices: tuple[int]) -> None:
+    @staticmethod
+    def validate(container: Container, indices: tuple[int, ...]) -> None:
+        """Validate out of order tables in the given container"""
+        # Append all items to a temp container to see if there is any error
+        temp_container = Container(True)
+        for i in indices:
+            _, item = container._body[i]
+
+            if isinstance(item, Table):
+                for k, v in item.value.body:
+                    temp_container.append(k, v, validate=False)
+
+        temp_container._validate_out_of_order_table()
+
+    def __init__(self, container: Container, indices: tuple[int, ...]) -> None:
         self._container = container
         self._internal_container = Container(True)
         self._tables = []
@@ -799,7 +813,7 @@ class OutOfOrderTableProxy(_CustomDict):
                 self._tables.append(item)
                 table_idx = len(self._tables) - 1
                 for k, v in item.value.body:
-                    self._internal_container.append(k, v, validate=False)
+                    self._internal_container._raw_append(k, v)
                     self._tables_map[k] = table_idx
                     if k is not None:
                         dict.__setitem__(self, k.key, v)

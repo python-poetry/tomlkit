@@ -676,6 +676,31 @@ z = 3
     assert json.dumps(document) == '{"a": {"x": 1}, "c": {"z": 3}}'
 
 
+def test_update_nested_out_of_order_table():
+    doc = parse("""\
+[root1.root2.a.b.c]
+  value = 2
+[WALRUS]
+  goo = "gjob"
+[root1.root2.x]
+  value = 4
+""")
+    doc["root1"]["root2"]["a"].add("tmp", "hi")
+    assert (
+        doc.as_string()
+        == """\
+[root1.root2.a]
+tmp = "hi"
+[root1.root2.a.b.c]
+  value = 2
+[WALRUS]
+  goo = "gjob"
+[root1.root2.x]
+  value = 4
+"""
+    )
+
+
 def test_updating_nested_value_keeps_correct_indent():
     content = """
 [Key1]
