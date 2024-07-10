@@ -2,10 +2,12 @@
 
 ## [unreleased]
 
+## [0.13.0] - 2024-07-10
+
 ### Changed
 
 - Expect a tomlkit-specific error instead of `TypeError` from a custom encoder. ([#355](https://github.com/python-poetry/tomlkit/issues/355))
-- Remove 3.7 from the CI matrix.
+- Drop support for Python older than 3.8. Remove 3.7 from the CI matrix.
 
 ### Fixed
 
@@ -407,7 +409,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.12.5...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.13.0...master
+[0.13.0]: https://github.com/sdispater/tomlkit/releases/tag/0.13.0
 [0.12.5]: https://github.com/sdispater/tomlkit/releases/tag/0.12.5
 [0.12.4]: https://github.com/sdispater/tomlkit/releases/tag/0.12.4
 [0.12.3]: https://github.com/sdispater/tomlkit/releases/tag/0.12.3
