@@ -75,6 +75,11 @@ def dump(data: Mapping, fp: IO[str], *, sort_keys: bool = False) -> None:
 
     :param data: a dict-like object to dump
     :param sort_keys: if true, sort the keys in alphabetic order
+
+    :Example:
+
+    >>> with open("output.toml", "w") as fp:
+    ...     tomlkit.dump(data, fp)
     """
     fp.write(dumps(data, sort_keys=sort_keys))
 
