@@ -1624,8 +1624,18 @@ class Table(AbstractTable):
         # If the table has only one child and that child is a table, then it is a super table.
         if len(self) != 1:
             return False
-        only_child = next(iter(self.values()))
-        return isinstance(only_child, (Table, AoT))
+        k, only_child = next(iter(self.items()))
+        if not isinstance(k, Key):
+            k = SingleKey(k)
+        index = self.value._map[k]
+        if isinstance(index, tuple):
+            return False
+        real_key = self.value.body[index][0]
+        return (
+            isinstance(only_child, (Table, AoT))
+            and real_key is not None
+            and not real_key.is_dotted()
+        )
 
     def as_string(self) -> str:
         return self._value.as_string()
