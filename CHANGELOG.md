@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Fixed
+
+- Fix the `Table.is_super_table()` check for tables with dotted key as the only child. ([#374](https://github.com/python-poetry/tomlkit/issues/374))
+
 ## [0.13.0] - 2024-07-10
 
 ### Changed

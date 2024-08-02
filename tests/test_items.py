@@ -985,3 +985,11 @@ def test_no_extra_minus_sign():
     assert doc.as_string() == "a = +1.5"
     doc["a"] *= -1
     assert doc.as_string() == "a = -1.5"
+
+
+def test_serialize_table_with_dotted_key():
+    child = api.table()
+    child.add(api.key(("b", "c")), 1)
+    parent = api.table()
+    parent.add("a", child)
+    assert parent.as_string() == "[a]\nb.c = 1\n"
