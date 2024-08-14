@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix the `Table.is_super_table()` check for tables with dotted key as the only child. ([#374](https://github.com/python-poetry/tomlkit/issues/374))
+- Count table as a super table if it has children and all children are either tables or arrays of tables. ([#377](https://github.com/python-poetry/tomlkit/issues/377))
 
 ## [0.13.0] - 2024-07-10
 

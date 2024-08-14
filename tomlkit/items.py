@@ -1621,21 +1621,23 @@ class Table(AbstractTable):
         If true, it won't appear in the TOML representation."""
         if self._is_super_table is not None:
             return self._is_super_table
-        # If the table has only one child and that child is a table, then it is a super table.
-        if len(self) != 1:
+        if not self:
             return False
-        k, only_child = next(iter(self.items()))
-        if not isinstance(k, Key):
-            k = SingleKey(k)
-        index = self.value._map[k]
-        if isinstance(index, tuple):
-            return False
-        real_key = self.value.body[index][0]
-        return (
-            isinstance(only_child, (Table, AoT))
-            and real_key is not None
-            and not real_key.is_dotted()
-        )
+        # If the table has children and all children are tables, then it is a super table.
+        for k, child in self.items():
+            if not isinstance(k, Key):
+                k = SingleKey(k)
+            index = self.value._map[k]
+            if isinstance(index, tuple):
+                return False
+            real_key = self.value.body[index][0]
+            if (
+                not isinstance(child, (Table, AoT))
+                or real_key is None
+                or real_key.is_dotted()
+            ):
+                return False
+        return True
 
     def as_string(self) -> str:
         return self._value.as_string()

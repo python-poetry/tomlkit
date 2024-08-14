@@ -993,3 +993,16 @@ def test_serialize_table_with_dotted_key():
     parent = api.table()
     parent.add("a", child)
     assert parent.as_string() == "[a]\nb.c = 1\n"
+
+
+def test_not_showing_parent_header_for_super_table():
+    doc = api.document()
+
+    def add_table(parent, name):
+        parent.add(name, api.table())
+        return parent[name]
+
+    root = add_table(doc, "root")
+    add_table(root, "first")
+    add_table(root, "second")
+    assert doc.as_string() == "[root.first]\n\n[root.second]\n"
