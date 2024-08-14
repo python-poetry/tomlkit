@@ -1147,3 +1147,43 @@ name = "baz"
 
 """
     )
+
+
+def test_overwrite_out_of_order_table_key():
+    content = """\
+[foo]
+name = "foo"
+
+[bar.a.b]
+name = "bar-a-b"
+
+[foo.a]
+name = "foo-a"
+
+[bar.a]
+name = "bar-a"
+
+[baz]
+name = "baz"
+
+[bar.a.c]
+name = "bar-a-c"
+"""
+    doc = parse(content)
+    doc["bar"]["a"] = {"name": "bar-a-updated"}
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+name = "foo"
+
+[bar.a]
+name = "bar-a-updated"
+[foo.a]
+name = "foo-a"
+
+[baz]
+name = "baz"
+
+"""
+    )

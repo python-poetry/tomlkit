@@ -835,8 +835,12 @@ class OutOfOrderTableProxy(_CustomDict):
 
     def __setitem__(self, key: Key | str, item: Any) -> None:
         if key in self._tables_map:
-            table = self._tables[self._tables_map[key][-1]]
-            table[key] = item
+            # Overwrite the first table and remove others
+            indices = self._tables_map[key]
+            while len(indices) > 1:
+                table = self._tables[indices.pop()]
+                self._remove_table(table)
+            self._tables[indices[0]][key] = item
         elif self._tables:
             table = self._tables[0]
             table[key] = item
