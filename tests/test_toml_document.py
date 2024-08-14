@@ -1109,3 +1109,41 @@ table = {a = 1, b = 2}
 age = 42
 """
     assert tomlkit.dumps(doc) == expected
+
+
+def test_delete_out_of_order_table_key():
+    content = """\
+[foo]
+name = "foo"
+
+[bar.a.b]
+name = "bar-a-b"
+
+[foo.a]
+name = "foo-a"
+
+[bar.a]
+name = "bar-a"
+
+[baz]
+name = "baz"
+
+[bar.a.c]
+name = "bar-a-c"
+"""
+    doc = parse(content)
+    del doc["bar"]["a"]
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+name = "foo"
+
+[foo.a]
+name = "foo-a"
+
+[baz]
+name = "baz"
+
+"""
+    )
