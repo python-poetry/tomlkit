@@ -298,7 +298,7 @@ E = TypeVar("E", bound=Encoder)
 def register_encoder(encoder: E) -> E:
     """Add a custom encoder, which should be a function that will be called
     if the value can't otherwise be converted. It should takes a single value
-    and return a TOMLKit item or raise a ``TypeError``.
+    and return a TOMLKit item or raise a ``ConvertError``.
     """
     CUSTOM_ENCODERS.append(encoder)
     return encoder
