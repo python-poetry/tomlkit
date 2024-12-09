@@ -1083,7 +1083,7 @@ class Time(Item, time):
 
 
 class _ArrayItemGroup:
-    __slots__ = ("value", "indent", "comma", "comment")
+    __slots__ = ("comma", "comment", "indent", "value")
 
     def __init__(
         self,
@@ -1260,7 +1260,7 @@ class Array(Item, _CustomList):
         data_values = []
         for i, el in enumerate(items):
             it = item(el, _parent=self)
-            if isinstance(it, Comment) or add_comma and isinstance(el, Whitespace):
+            if isinstance(it, Comment) or (add_comma and isinstance(el, Whitespace)):
                 raise ValueError(f"item type {type(it)} is not allowed in add_line")
             if not isinstance(it, Whitespace):
                 if whitespace:
