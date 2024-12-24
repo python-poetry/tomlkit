@@ -13,12 +13,12 @@ charset-normalizer==3.3.2
 docutils==0.21.2
     # via sphinx
 furo==2024.7.18
-    # via -r docs/requirements.in
+    # via -r requirements.in
 idna==3.7
     # via requests
 imagesize==1.4.1
     # via sphinx
-jinja2==3.1.4
+jinja2==3.1.5
     # via sphinx
 markupsafe==2.1.5
     # via jinja2
@@ -36,7 +36,7 @@ soupsieve==2.5
     # via beautifulsoup4
 sphinx==7.4.7
     # via
-    #   -r docs/requirements.in
+    #   -r requirements.in
     #   furo
     #   sphinx-basic-ng
 sphinx-basic-ng==1.0.0b2
