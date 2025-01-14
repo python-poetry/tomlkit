@@ -58,5 +58,5 @@ def test_invalid_decode(invalid_decode_case):
 
 def test_invalid_encode(invalid_encode_case):
     with open(invalid_encode_case, encoding="utf-8") as f:
-        with pytest.raises(TOMLKitError, UnicodeDecodeError):
+        with pytest.raises((TOMLKitError, UnicodeDecodeError)):
             load(f)
