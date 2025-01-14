@@ -38,7 +38,7 @@ def untag(value):
         elif value["type"] == "array":
             return [untag(i) for i in value["value"]]
         else:
-            raise Exception(f'Unsupported type {value["type"]}')
+            raise Exception(f"Unsupported type {value['type']}")
     else:
         return {k: untag(v) for k, v in value.items()}
 
@@ -57,7 +57,6 @@ def test_invalid_decode(invalid_decode_case):
 
 
 def test_invalid_encode(invalid_encode_case):
-    with pytest.raises((TOMLKitError, UnicodeDecodeError)), open(
-        invalid_encode_case, encoding="utf-8"
-    ) as f:
-        load(f)
+    with open(invalid_encode_case, encoding="utf-8") as f:
+        with pytest.raises((TOMLKitError, UnicodeDecodeError)):
+            load(f)
