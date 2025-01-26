@@ -1,5 +1,11 @@
 # Change Log
 
+[Unreleased]:
+
+### Added
+
+- Add `.item()` method to array and tables to retrieve an item by key. ([#390](https://github.com/python-poetry/tomlkit/issues/390))
+
 ## [0.13.2] - 2024-08-14
 
 ### Fixed
