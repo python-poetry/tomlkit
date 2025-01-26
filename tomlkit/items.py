@@ -1313,10 +1313,14 @@ class Array(Item, _CustomList):
     def __len__(self) -> int:
         return list.__len__(self)
 
+    def item(self, index: int) -> Item:
+        rv = list.__getitem__(self, index)
+        return cast(Item, rv)
+
     def __getitem__(self, key: int | slice) -> Any:
-        rv = cast(Item, list.__getitem__(self, key))
-        if rv.is_boolean():
-            return bool(rv)
+        rv = list.__getitem__(self, key)
+        if isinstance(rv, Bool):
+            return rv.value
         return rv
 
     def __setitem__(self, key: int | slice, value: Any) -> Any:
@@ -1478,6 +1482,9 @@ class AbstractTable(Item, _CustomDict):
             dict.__delitem__(self, key)
 
         return self
+
+    def item(self, key: Key | str) -> Item:
+        return self._value.item(key)
 
     def setdefault(self, key: Key | str, default: Any) -> Any:
         super().setdefault(key, default)
