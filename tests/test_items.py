@@ -915,6 +915,8 @@ value = false
 """
 
     content = parse(s)
+    assert content["foo"]["value"] is False
+    assert isinstance(content["foo"].item("value"), Bool)
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
