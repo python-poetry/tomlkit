@@ -39,3 +39,10 @@ TOML Items
    :show-inheritance:
    :members:
    :exclude-members: item, AbstractTable
+
+TOML Exceptions
+---------------
+
+.. automodule:: tomlkit.exceptions
+   :members:
+   :show-inheritance:
