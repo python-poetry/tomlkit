@@ -106,6 +106,7 @@ def test_default_eol_is_os_linesep(tmpdir):
     with open(toml_path, "rb") as f:
         assert f.read() == b"a = 1" + linesep + b"b = 2" + linesep
 
+
 def test_readwrite_eol_windows(tmpdir):
     toml_path = str(tmpdir / "pyproject.toml")
     doc = TOMLDocument()
