@@ -43,8 +43,13 @@ pip install tomlkit
 
 ## Running tests
 
-Please clone the repo with submodules with the following command
-`git clone --recurse-submodules https://github.com/sdispater/tomlkit.git`.
-We need the submodule - `toml-test` for running the tests.
+Please clone the repo with submodules with the following command:
+```bash
+git clone --recurse-submodules https://github.com/python-poetry/tomlkit.git
+```
+The `toml-test` submodule is required for running the tests.
 
-You can run the tests with `poetry run pytest -q tests`
+You can then run the tests with
+```bash
+poetry run pytest -q tests
+```
