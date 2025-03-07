@@ -24,8 +24,8 @@ def test_toml_file(example):
             assert f.write(original_content)
 
 
-def test_keep_old_eol(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_keep_old_eol(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     with open(toml_path, "wb+") as f:
         f.write(b"a = 1\r\nb = 2\r\n")
 
@@ -38,8 +38,8 @@ def test_keep_old_eol(tmpdir):
         assert f.read() == b"a = 1\r\nb = 3\r\n"
 
 
-def test_keep_old_eol_2(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_keep_old_eol_2(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     with open(toml_path, "wb+") as f:
         f.write(b"a = 1\nb = 2\n")
 
@@ -52,8 +52,8 @@ def test_keep_old_eol_2(tmpdir):
         assert f.read() == b"a = 1\nb = 3\n"
 
 
-def test_mixed_eol(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_mixed_eol(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     with open(toml_path, "wb+") as f:
         f.write(b"a = 1\r\nrb = 2\n")
 
@@ -64,8 +64,8 @@ def test_mixed_eol(tmpdir):
         assert f.read() == b"a = 1\r\nrb = 2\n"
 
 
-def test_consistent_eol(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_consistent_eol(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     with open(toml_path, "wb+") as f:
         f.write(b"a = 1\r\nb = 2\r\n")
 
@@ -78,8 +78,8 @@ def test_consistent_eol(tmpdir):
         assert f.read() == b"a = 1\r\nb = 2\r\nc = 3\r\n"
 
 
-def test_consistent_eol_2(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_consistent_eol_2(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     with open(toml_path, "wb+") as f:
         f.write(b"a = 1\nb = 2\n")
 
@@ -93,8 +93,8 @@ def test_consistent_eol_2(tmpdir):
         assert f.read() == b"a = 1\nb = 2\nc = 3\n"
 
 
-def test_default_eol_is_os_linesep(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_default_eol_is_os_linesep(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     f = TOMLFile(toml_path)
     content = TOMLDocument()
     content.append("a", 1)
@@ -107,8 +107,8 @@ def test_default_eol_is_os_linesep(tmpdir):
         assert f.read() == b"a = 1" + linesep + b"b = 2" + linesep
 
 
-def test_readwrite_eol_windows(tmpdir):
-    toml_path = str(tmpdir / "pyproject.toml")
+def test_readwrite_eol_windows(tmp_path):
+    toml_path = tmp_path / "pyproject.toml"
     doc = TOMLDocument()
     doc.add("a", 1)
     f = TOMLFile(toml_path)
