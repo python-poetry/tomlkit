@@ -1013,9 +1013,9 @@ def test_not_showing_parent_header_for_super_table():
 def test_removal_of_arrayitem_with_extra_whitespace():
     expected = 'x = [\n    "bar",\n]'
     doc = parse('x = [\n    "foo" ,#spam\n    "bar",\n]')
-    x = doc['x']
+    x = doc["x"]
     assert isinstance(x, Array)
-    x.remove('foo')
+    x.remove("foo")
     docstr = doc.as_string()
     parse(docstr)
     assert docstr == expected
