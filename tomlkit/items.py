@@ -574,7 +574,7 @@ class Comment(Item):
         return f"{self._trivia.indent}{decode(self._trivia.comment)}"
 
     def unwrap(self):
-        return decode(self._trivia.comment).lstrip().lstrip('#').lstrip()
+        return decode(self._trivia.comment).lstrip().lstrip("#").lstrip()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.unwrap()!r}>"
