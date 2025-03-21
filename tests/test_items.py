@@ -1008,3 +1008,14 @@ def test_not_showing_parent_header_for_super_table():
     add_table(root, "first")
     add_table(root, "second")
     assert doc.as_string() == "[root.first]\n\n[root.second]\n"
+
+
+def test_removal_of_arrayitem_with_extra_whitespace():
+    expected = 'x = [\n    "bar",\n]'
+    doc = parse('x = [\n    "foo" ,#spam\n    "bar",\n]')
+    x = doc["x"]
+    assert isinstance(x, Array)
+    x.remove("foo")
+    docstr = doc.as_string()
+    parse(docstr)
+    assert docstr == expected

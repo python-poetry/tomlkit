@@ -595,7 +595,15 @@ class Parser:
             # consume comma
             if prev_value and self._current == ",":
                 self.inc(exception=UnexpectedEofError)
-                elems.append(Whitespace(","))
+                # Check if the previous item is Whitespace
+                if isinstance(elems[-1], Whitespace) and " " in elems[-1].s:
+                    # Preserve the previous whitespace
+                    comma = Whitespace(elems[-1].s + ",")
+                    # Remove the replaced item
+                    del elems[-1]
+                else:
+                    comma = Whitespace(",")
+                elems.append(comma)
                 prev_value = False
                 continue
 
