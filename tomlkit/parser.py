@@ -62,7 +62,21 @@ class Parser:
 
     def __init__(self, string: str | bytes) -> None:
         # Input to parse
-        self._src = Source(decode(string))
+        string = decode(string)
+
+        # Add correct final line-ending if needed
+        num_newline = string.count("\n")
+        self._newline_added = ""
+        if num_newline and string[-1] != "\n":
+            num_win_eol = string.count("\r\n")
+
+            if num_win_eol == num_newline:
+                self._newline_added = "\r\n"
+            else:
+                self._newline_added = "\n"
+        string += self._newline_added
+
+        self._src = Source(string)
 
         self._aot_stack: list[Key] = []
 
@@ -127,7 +141,7 @@ class Parser:
         return self._src.parse_error(exception, *args, **kwargs)
 
     def parse(self) -> TOMLDocument:
-        body = TOMLDocument(True)
+        body = TOMLDocument(True, self._newline_added)
 
         # Take all keyvals outside of tables/AoT's.
         while not self.end():
