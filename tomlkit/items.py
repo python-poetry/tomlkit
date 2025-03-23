@@ -1425,12 +1425,6 @@ class Array(Item, _CustomList):
     def _getstate(self, protocol=3):
         return list(self._iter_items()), self._trivia, self._multiline
 
-    def __repr__(self) -> str:
-        return repr(self._value)
-
-    def __str__(self) -> str:
-        return str(self.unwrap())
-
 
 class AbstractTable(Item, _CustomDict):
     """Common behaviour of both :class:`Table` and :class:`InlineTable`"""
