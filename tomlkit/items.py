@@ -1138,11 +1138,13 @@ class Array(Item, _CustomList):
         """Group the values into (indent, value, comma, comment) tuples"""
         groups = []
         this_group = _ArrayItemGroup()
+        start_new_group = False
         for item in value:
             if isinstance(item, Whitespace):
-                if "," not in item.s:
+                if "," not in item.s or start_new_group:
                     groups.append(this_group)
                     this_group = _ArrayItemGroup(indent=item)
+                    start_new_group = False
                 else:
                     if this_group.value is None:
                         # when comma is met and no value is provided, add a dummy Null
@@ -1152,6 +1154,8 @@ class Array(Item, _CustomList):
                 if this_group.value is None:
                     this_group.value = Null()
                 this_group.comment = item
+                # Comments are the last item in a group.
+                start_new_group = True
             elif this_group.value is None:
                 this_group.value = item
             else:
@@ -1399,6 +1403,7 @@ class Array(Item, _CustomList):
                 if not isinstance(key, slice):
                     raise IndexError("list index out of range") from e
             else:
+                group_rm = self._value[idx]
                 del self._value[idx]
                 if (
                     idx == 0
@@ -1408,6 +1413,44 @@ class Array(Item, _CustomList):
                 ):
                     # Remove the indentation of the first item if not newline
                     self._value[idx].indent = None
+                comma_in_indent = (
+                    group_rm.indent is not None and "," in group_rm.indent.s
+                )
+                comma_in_comma = group_rm.comma is not None and "," in group_rm.comma.s
+                if comma_in_indent and comma_in_comma:
+                    # Removed group had both commas. Add one to the next group.
+                    group = self._value[idx] if len(self._value) > idx else None
+                    if group is not None:
+                        if group.indent is None:
+                            group.indent = Whitespace(",")
+                        elif "," not in group.indent.s:
+                            # Insert the comma after the newline
+                            try:
+                                newline_index = group.indent.s.index("\n")
+                                group.indent._s = (
+                                    group.indent.s[: newline_index + 1]
+                                    + ","
+                                    + group.indent.s[newline_index + 1 :]
+                                )
+                            except ValueError:
+                                group.indent._s = "," + group.indent.s
+                elif not comma_in_indent and not comma_in_comma:
+                    # Removed group had no commas. Remove the next comma found.
+                    for j in range(idx, len(self._value)):
+                        group = self._value[j]
+                        if group.indent is not None and "," in group.indent.s:
+                            group.indent._s = group.indent.s.replace(",", "", 1)
+                            break
+                if group_rm.indent is not None and "\n" in group_rm.indent.s:
+                    # Restore the removed group's newline onto the next group
+                    # if the next group does not have a newline.
+                    # i.e. the two were on the same line
+                    group = self._value[idx] if len(self._value) > idx else None
+                    if group is not None and (
+                        group.indent is None or "\n" not in group.indent.s
+                    ):
+                        group.indent = group_rm.indent
+
         if len(self._value) > 0:
             v = self._value[-1]
             if not v.is_whitespace():
