@@ -12,7 +12,7 @@ import pytest
 
 from tests.util import assert_is_ppo
 from tests.util import elementary_test
-from tomlkit import api
+from tomlkit import api, value
 from tomlkit import parse
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
@@ -129,13 +129,16 @@ def test_aot_unwrap():
             assert_is_ppo(vu, str)
 
 def test_aot_set_item():
-    d = item(["A", {"b": "B"}])
+    d = item(["A", {"b": "B"}, ["c", "D"]])
     d[0] = "C"
+    assert isinstance(d[0], String)
     assert d[0] == "C"
     d[1]["b"] = "D"
+    assert isinstance(d[1], InlineTable)
     assert d[1]["b"] == "D"
-    d[0] =  {"c": "C"}
-    assert d[0]["c"] == "C"
+    d[0] =  ["c", "C"]
+    assert isinstance(d[0], Array)
+    assert d[0][1] == "C"
 
 def test_time_unwrap():
     t = time(3, 8, 14)
