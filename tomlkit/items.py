@@ -1885,7 +1885,7 @@ class AoT(Item, _CustomList):
         return self._body[key]
 
     def __setitem__(self, key: slice | int, value: Any) -> None:
-        raise NotImplementedError
+        self._body[key] = item(value, _parent=self)
 
     def __delitem__(self, key: slice | int) -> None:
         del self._body[key]

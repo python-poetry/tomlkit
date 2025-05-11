@@ -128,6 +128,14 @@ def test_aot_unwrap():
             assert_is_ppo(ku, str)
             assert_is_ppo(vu, str)
 
+def test_aot_set_item():
+    d = item(["A", {"b": "B"}])
+    d[0] = "C"
+    assert d[0] == "C"
+    d[1]["b"] = "D"
+    assert d[1]["b"] == "D"
+    d[0] =  {"c": "C"}
+    assert d[0]["c"] == "C"
 
 def test_time_unwrap():
     t = time(3, 8, 14)
@@ -1019,3 +1027,5 @@ def test_removal_of_arrayitem_with_extra_whitespace():
     docstr = doc.as_string()
     parse(docstr)
     assert docstr == expected
+
+
