@@ -129,6 +129,19 @@ def test_aot_unwrap():
             assert_is_ppo(vu, str)
 
 
+def test_aot_set_item():
+    d = item(["A", {"b": "B"}, ["c", "D"]])
+    d[0] = "C"
+    assert isinstance(d[0], String)
+    assert d[0] == "C"
+    d[1]["b"] = "D"
+    assert isinstance(d[1], InlineTable)
+    assert d[1]["b"] == "D"
+    d[0] = ["c", "C"]
+    assert isinstance(d[0], Array)
+    assert d[0][1] == "C"
+
+
 def test_time_unwrap():
     t = time(3, 8, 14)
     elementary_test(item(t), time)
