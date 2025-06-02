@@ -15,6 +15,7 @@ from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.toml_document import TOMLDocument
 
 
 def test_document_is_a_dict(example):
@@ -1187,3 +1188,7 @@ name = "baz"
 
 """
     )
+
+
+def test_set_default_int():
+    TOMLDocument().setdefault(4, 5)

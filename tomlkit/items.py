@@ -375,11 +375,15 @@ class SingleKey(Key):
 
     def __init__(
         self,
-        k: str,
+        k: str | int,
         t: KeyType | None = None,
         sep: str | None = None,
         original: str | None = None,
     ) -> None:
+        # keys are allowed to be ints but should be interpreted as strings
+        if not isinstance(k, str):
+            k = str(k)
+
         if t is None:
             if not k or any(
                 c not in string.ascii_letters + string.digits + "-" + "_" for c in k
