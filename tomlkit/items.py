@@ -375,14 +375,13 @@ class SingleKey(Key):
 
     def __init__(
         self,
-        k: str | int,
+        k: str,
         t: KeyType | None = None,
         sep: str | None = None,
         original: str | None = None,
     ) -> None:
-        # keys are allowed to be ints but should be interpreted as strings
         if not isinstance(k, str):
-            k = str(k)
+            raise TypeError("Keys must be strings")
 
         if t is None:
             if not k or any(

@@ -1191,4 +1191,5 @@ name = "baz"
 
 
 def test_set_default_int():
-    TOMLDocument().setdefault(4, 5)
+    with pytest.raises(TypeError):
+        TOMLDocument().setdefault(4, 5)
