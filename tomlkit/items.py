@@ -380,6 +380,9 @@ class SingleKey(Key):
         sep: str | None = None,
         original: str | None = None,
     ) -> None:
+        if not isinstance(k, str):
+            raise TypeError("Keys must be strings")
+
         if t is None:
             if not k or any(
                 c not in string.ascii_letters + string.digits + "-" + "_" for c in k
