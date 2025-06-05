@@ -6,6 +6,13 @@
 
 - Add `.item()` method to array and tables to retrieve an item by key. ([#390](https://github.com/python-poetry/tomlkit/issues/390))
 
+### Fixed
+
+- Fix repeated whitespace when removing an array item. ([#405](https://github.com/python-poetry/tomlkit/issues/405))
+- Fix invalid serialization after removing array item if the comma is on its own line. ([#408](https://github.com/python-poetry/tomlkit/issues/408))
+- Refine the error message when use non-string as single key. ([#412](https://github.com/python-poetry/tomlkit/issues/412))
+- Fix invalid serialization after overwriting a key of a out-of-order table. ([#414](https://github.com/python-poetry/tomlkit/issues/414))
+
 ## [0.13.2] - 2024-08-14
 
 ### Fixed

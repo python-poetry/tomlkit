@@ -803,8 +803,8 @@ class OutOfOrderTableProxy(_CustomDict):
     def __init__(self, container: Container, indices: tuple[int, ...]) -> None:
         self._container = container
         self._internal_container = Container(True)
-        self._tables = []
-        self._tables_map = {}
+        self._tables: list[Table] = []
+        self._tables_map: dict[Key, list[int]] = {}
 
         for i in indices:
             _, item = self._container._body[i]
@@ -833,23 +833,43 @@ class OutOfOrderTableProxy(_CustomDict):
 
         return self._internal_container[key]
 
-    def __setitem__(self, key: Key | str, item: Any) -> None:
+    def __setitem__(self, key: Key | str, value: Any) -> None:
+        from .items import item
+
+        def _is_table_or_aot(it: Any) -> bool:
+            return isinstance(item(it), (Table, AoT))
+
         if key in self._tables_map:
             # Overwrite the first table and remove others
             indices = self._tables_map[key]
             while len(indices) > 1:
                 table = self._tables[indices.pop()]
                 self._remove_table(table)
-            self._tables[indices[0]][key] = item
+            old_value = self._tables[indices[0]][key]
+            if _is_table_or_aot(old_value) and not _is_table_or_aot(value):
+                # Remove the entry from the map and set value again.
+                del self._tables[indices[0]][key]
+                del self._tables_map[key]
+                self[key] = value
+                return
+            self._tables[indices[0]][key] = value
         elif self._tables:
-            table = self._tables[0]
-            table[key] = item
+            if not _is_table_or_aot(value):  # if the value is a plain value
+                for table in self._tables:
+                    # find the first table that allows plain values
+                    if any(not _is_table_or_aot(v) for _, v in table.items()):
+                        table[key] = value
+                        break
+                else:
+                    self._tables[0][key] = value
+            else:
+                self._tables[0][key] = value
         else:
-            self._container[key] = item
+            self._container[key] = value
 
-        self._internal_container[key] = item
+        self._internal_container[key] = value
         if key is not None:
-            dict.__setitem__(self, key, item)
+            dict.__setitem__(self, key, value)
 
     def _remove_table(self, table: Table) -> None:
         """Remove table from the parent container"""
