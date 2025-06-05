@@ -1193,3 +1193,41 @@ name = "baz"
 def test_set_default_int():
     with pytest.raises(TypeError):
         TOMLDocument().setdefault(4, 5)
+
+
+def test_overwriting_out_of_order_table():
+    content = """\
+[foo.bar]
+open = false
+
+[foo]
+x = 1
+y = 2
+"""
+    doc = parse(content)
+    doc["foo"]["z"] = 3
+    assert (
+        doc.as_string()
+        == """\
+[foo.bar]
+open = false
+
+[foo]
+x = 1
+y = 2
+z = 3
+"""
+    )
+
+    doc["foo"]["bar"] = tomlkit.inline_table()
+    doc["foo"]["bar"]["open"] = True
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+x = 1
+y = 2
+z = 3
+bar = {open = true}
+"""
+    )
