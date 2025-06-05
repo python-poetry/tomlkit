@@ -692,6 +692,7 @@ def test_update_nested_out_of_order_table():
         == """\
 [root1.root2.a]
 tmp = "hi"
+
 [root1.root2.a.b.c]
   value = 2
 [WALRUS]
@@ -814,6 +815,7 @@ b = 2
     assert (
         doc.as_string()
         == """bar = 42
+
 [foo]
 a = 1
 
