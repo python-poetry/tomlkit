@@ -1231,3 +1231,27 @@ z = 3
 bar = {open = true}
 """
     )
+
+
+def test_delete_key_from_out_of_order_table():
+    content = """\
+[foo.bar.baz]
+a = 1
+[foo.bar]
+b = 2
+[other]
+c = 3
+[foo.tee]
+d = 4
+"""
+    doc = parse(content)
+    del doc["foo"]["bar"]
+    assert (
+        doc.as_string()
+        == """\
+[other]
+c = 3
+[foo.tee]
+d = 4
+"""
+    )
