@@ -50,7 +50,9 @@ def dumps(data: Mapping, sort_keys: bool = False) -> str:
     """
     Dumps a TOMLDocument into a string.
     """
-    if not isinstance(data, Container) and isinstance(data, Mapping):
+    if not isinstance(data, (Table, InlineTable, Container)) and isinstance(
+        data, Mapping
+    ):
         data = item(dict(data), _sort_keys=sort_keys)
 
     try:
@@ -58,7 +60,7 @@ def dumps(data: Mapping, sort_keys: bool = False) -> str:
         # for all type safe invocations of this function
         return data.as_string()  # type: ignore[attr-defined]
     except AttributeError as ex:
-        msg = f"Expecting Mapping or TOML Container, {type(data)} given"
+        msg = f"Expecting Mapping or TOML Table or Container, {type(data)} given"
         raise TypeError(msg) from ex
 
 

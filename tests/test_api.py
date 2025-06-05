@@ -181,6 +181,12 @@ def test_dump_to_file_object():
     assert fp.getvalue() == 'foo = "bar"\n'
 
 
+def test_dump_nested_dotted_table():
+    a = tomlkit.parse("a.b.c.d='e'")["a"]
+    assert a == {"b": {"c": {"d": "e"}}}
+    assert dumps(a) == "b.c.d='e'"
+
+
 def test_integer():
     i = tomlkit.integer("34")
 
