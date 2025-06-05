@@ -1257,3 +1257,39 @@ c = 3
 d = 4
 """
     )
+
+
+def test_parse_aot_without_ending_newline():
+    content = '''\
+[[products]]
+name = "Hammer"
+
+[foo]
+
+[bar]
+
+[[products]]
+name = "Nail"'''
+    doc = parse(content)
+    assert (
+        doc.as_string()
+        == """\
+[[products]]
+name = "Hammer"
+
+[[products]]
+name = "Nail"
+[foo]
+
+[bar]
+
+"""
+    )
+    assert doc == {
+        "products": [
+            {"name": "Hammer"},
+            {"name": "Nail"},
+        ],
+        "foo": {},
+        "bar": {},
+    }
