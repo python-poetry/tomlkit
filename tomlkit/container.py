@@ -814,7 +814,9 @@ class OutOfOrderTableProxy(_CustomDict):
                 table_idx = len(self._tables) - 1
                 for k, v in item.value.body:
                     self._internal_container._raw_append(k, v)
-                    self._tables_map.setdefault(k, []).append(table_idx)
+                    indices = self._tables_map.setdefault(k, [])
+                    if table_idx not in indices:
+                        indices.append(table_idx)
                     if k is not None:
                         dict.__setitem__(self, k.key, v)
 

@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Fix non-existing key error when deleting an item from an out-of-order table. ([#383](https://github.com/python-poetry/tomlkit/issues/383))
 - Fix repeated whitespace when removing an array item. ([#405](https://github.com/python-poetry/tomlkit/issues/405))
 - Fix invalid serialization after removing array item if the comma is on its own line. ([#408](https://github.com/python-poetry/tomlkit/issues/408))
 - Fix serialization of a nested dotted key table. ([#411](https://github.com/python-poetry/tomlkit/issues/411))
