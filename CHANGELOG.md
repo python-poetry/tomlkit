@@ -10,6 +10,7 @@
 
 - Fix repeated whitespace when removing an array item. ([#405](https://github.com/python-poetry/tomlkit/issues/405))
 - Fix invalid serialization after removing array item if the comma is on its own line. ([#408](https://github.com/python-poetry/tomlkit/issues/408))
+- Fix serialization of a nested dotted key table. ([#411](https://github.com/python-poetry/tomlkit/issues/411))
 - Refine the error message when use non-string as single key. ([#412](https://github.com/python-poetry/tomlkit/issues/412))
 - Fix invalid serialization after overwriting a key of a out-of-order table. ([#414](https://github.com/python-poetry/tomlkit/issues/414))
 
