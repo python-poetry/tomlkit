@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Fix missing newline when parsing a separated array of tables without trailing new line. ([#381](https://github.com/python-poetry/tomlkit/issues/381))
 - Fix non-existing key error when deleting an item from an out-of-order table. ([#383](https://github.com/python-poetry/tomlkit/issues/383))
 - Ensure newline is added between the plain values and the first table. ([#387](https://github.com/python-poetry/tomlkit/issues/387))
 - Fix repeated whitespace when removing an array item. ([#405](https://github.com/python-poetry/tomlkit/issues/405))

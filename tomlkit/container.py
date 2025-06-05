@@ -488,8 +488,20 @@ class Container(_CustomDict):
         for k, v in self._body:
             if k is not None:
                 if isinstance(v, Table):
+                    if (
+                        s.strip(" ")
+                        and not s.strip(" ").endswith("\n")
+                        and "\n" not in v.trivia.indent
+                    ):
+                        s += "\n"
                     s += self._render_table(k, v)
                 elif isinstance(v, AoT):
+                    if (
+                        s.strip(" ")
+                        and not s.strip(" ").endswith("\n")
+                        and "\n" not in v.trivia.indent
+                    ):
+                        s += "\n"
                     s += self._render_aot(k, v)
                 else:
                     s += self._render_simple_item(k, v)
@@ -538,6 +550,12 @@ class Container(_CustomDict):
 
         for k, v in table.value.body:
             if isinstance(v, Table):
+                if (
+                    cur.strip(" ")
+                    and not cur.strip(" ").endswith("\n")
+                    and "\n" not in v.trivia.indent
+                ):
+                    cur += "\n"
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
@@ -547,6 +565,12 @@ class Container(_CustomDict):
                 else:
                     cur += self._render_table(k, v, prefix=_key)
             elif isinstance(v, AoT):
+                if (
+                    cur.strip(" ")
+                    and not cur.strip(" ").endswith("\n")
+                    and "\n" not in v.trivia.indent
+                ):
+                    cur += "\n"
                 cur += self._render_aot(k, v, prefix=_key)
             else:
                 cur += self._render_simple_item(
