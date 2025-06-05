@@ -289,6 +289,12 @@ class Container(_CustomDict):
             last_index = self._get_last_index_before_table()
 
             if last_index < len(self._body):
+                after_item = self._body[last_index][1]
+                if not (
+                    isinstance(after_item, Whitespace)
+                    or "\n" in after_item.trivia.indent
+                ):
+                    after_item.trivia.indent = "\n" + after_item.trivia.indent
                 return self._insert_at(last_index, key, item)
             else:
                 previous_item = self._body[-1][1]
