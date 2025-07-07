@@ -1293,3 +1293,24 @@ name = "Nail"
         "foo": {},
         "bar": {},
     }
+
+
+def test_appending_to_super_table():
+    content = """\
+[a.b]
+value = 5
+"""
+
+    doc = parse(content)
+    table_a = doc["a"]
+    table_a.append(tomlkit.key(["c", "d"]), "foo")
+
+    expected = """\
+[a]
+c.d = "foo"
+
+[a.b]
+value = 5
+"""
+
+    assert doc.as_string() == expected
