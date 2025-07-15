@@ -986,6 +986,120 @@ def test_custom_encoders():
     api.unregister_encoder(encode_decimal)
 
 
+def test_custom_encoders_with_parent_and_sort_keys():
+    """Test that custom encoders can receive _parent and _sort_keys parameters."""
+    import decimal
+
+    parent_captured = None
+    sort_keys_captured = None
+
+    @api.register_encoder
+    def encode_decimal_with_context(obj, _parent=None, _sort_keys=False):
+        nonlocal parent_captured, sort_keys_captured
+        if isinstance(obj, decimal.Decimal):
+            parent_captured = _parent
+            sort_keys_captured = _sort_keys
+            return api.float_(str(obj))
+        raise TypeError
+
+    # Test with default parameters
+    result = api.item(decimal.Decimal("1.23"))
+    assert result.as_string() == "1.23"
+    assert parent_captured is None
+    assert sort_keys_captured is False
+
+    # Test with custom parent and sort_keys
+    parent_captured = None
+    sort_keys_captured = None
+    table = api.table()
+    result = item(decimal.Decimal("4.56"), _parent=table, _sort_keys=True)
+    assert result.as_string() == "4.56"
+    assert parent_captured is table
+    assert sort_keys_captured is True
+
+    api.unregister_encoder(encode_decimal_with_context)
+
+
+def test_custom_encoders_backward_compatibility():
+    """Test that old-style custom encoders still work without modification."""
+    import decimal
+
+    @api.register_encoder
+    def encode_decimal_old_style(obj):
+        # Old style encoder - only accepts obj parameter
+        if isinstance(obj, decimal.Decimal):
+            return api.float_(str(obj))
+        raise TypeError
+
+    # Should work exactly as before
+    result = api.item(decimal.Decimal("2.34"))
+    assert result.as_string() == "2.34"
+
+    # Should work when called from item() with extra parameters
+    table = api.table()
+    result = item(decimal.Decimal("5.67"), _parent=table, _sort_keys=True)
+    assert result.as_string() == "5.67"
+
+    api.unregister_encoder(encode_decimal_old_style)
+
+
+def test_custom_encoders_with_kwargs():
+    """Test that custom encoders can use **kwargs to accept additional parameters."""
+    import decimal
+
+    kwargs_captured = None
+
+    @api.register_encoder
+    def encode_decimal_with_kwargs(obj, **kwargs):
+        nonlocal kwargs_captured
+        if isinstance(obj, decimal.Decimal):
+            kwargs_captured = kwargs
+            return api.float_(str(obj))
+        raise TypeError
+
+    # Test with parent and sort_keys passed as kwargs
+    table = api.table()
+    result = item(decimal.Decimal("7.89"), _parent=table, _sort_keys=True)
+    assert result.as_string() == "7.89"
+    assert kwargs_captured == {"_parent": table, "_sort_keys": True}
+
+    api.unregister_encoder(encode_decimal_with_kwargs)
+
+
+def test_custom_encoders_for_complex_objects():
+    """Test custom encoders that need to encode nested structures."""
+
+    class CustomDict:
+        def __init__(self, data):
+            self.data = data
+
+    @api.register_encoder
+    def encode_custom_dict(obj, _parent=None, _sort_keys=False):
+        if isinstance(obj, CustomDict):
+            # Create a table and use item() to convert nested values
+            table = api.table()
+            for key, value in obj.data.items():
+                # Pass along _parent and _sort_keys when converting nested values
+                table[key] = item(value, _parent=table, _sort_keys=_sort_keys)
+            return table
+        raise TypeError
+
+    # Test with nested structure
+    custom_obj = CustomDict({"a": 1, "b": {"c": 2, "d": 3}})
+    result = item(custom_obj, _sort_keys=True)
+
+    # Should properly format as a table with sorted keys
+    expected = """a = 1
+
+[b]
+c = 2
+d = 3
+"""
+    assert result.as_string() == expected
+
+    api.unregister_encoder(encode_custom_dict)
+
+
 def test_no_extra_minus_sign():
     doc = parse("a = -1")
     assert doc.as_string() == "a = -1"
