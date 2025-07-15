@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import copy
 import dataclasses
+import inspect
 import math
 import re
 import string
@@ -15,7 +16,6 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Callable
 from typing import Collection
 from typing import Iterable
 from typing import Iterator
@@ -38,11 +38,17 @@ from tomlkit.exceptions import InvalidStringError
 
 
 if TYPE_CHECKING:
+    from typing import Protocol
+
     from tomlkit import container
+
+    class Encoder(Protocol):
+        def __call__(
+            self, __value: Any, _parent: Item | None = None, _sort_keys: bool = False
+        ) -> Item: ...
 
 
 ItemT = TypeVar("ItemT", bound="Item")
-Encoder = Callable[[Any], "Item"]
 CUSTOM_ENCODERS: list[Encoder] = []
 AT = TypeVar("AT", bound="AbstractTable")
 
@@ -199,7 +205,16 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     else:
         for encoder in CUSTOM_ENCODERS:
             try:
-                rv = encoder(value)
+                # Check if encoder accepts keyword arguments for backward compatibility
+                sig = inspect.signature(encoder)
+                if "_parent" in sig.parameters or any(
+                    p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
+                ):
+                    # New style encoder that can accept additional parameters
+                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)
+                else:
+                    # Old style encoder that only accepts value
+                    rv = encoder(value)
             except ConvertError:
                 pass
             else:

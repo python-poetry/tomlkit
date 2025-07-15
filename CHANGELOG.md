@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Custom encoders can now receive `_parent` and `_sort_keys` parameters to enable proper encoding of nested structures. ([#429](https://github.com/python-poetry/tomlkit/issues/429))
+
 ## [0.13.3] - 2025-06-05
 
 ### Added

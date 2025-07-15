@@ -5,6 +5,7 @@ import datetime as _datetime
 
 from collections.abc import Mapping
 from typing import IO
+from typing import TYPE_CHECKING
 from typing import Iterable
 from typing import TypeVar
 
@@ -19,7 +20,6 @@ from tomlkit.items import Comment
 from tomlkit.items import Date
 from tomlkit.items import DateTime
 from tomlkit.items import DottedKey
-from tomlkit.items import Encoder
 from tomlkit.items import Float
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
@@ -35,6 +35,12 @@ from tomlkit.items import Whitespace
 from tomlkit.items import item
 from tomlkit.parser import Parser
 from tomlkit.toml_document import TOMLDocument
+
+
+if TYPE_CHECKING:
+    from tomlkit.items import Encoder
+
+    E = TypeVar("E", bound=Encoder)
 
 
 def loads(string: str | bytes) -> TOMLDocument:
@@ -294,13 +300,22 @@ def comment(string: str) -> Comment:
     return Comment(Trivia(comment_ws="  ", comment="# " + string))
 
 
-E = TypeVar("E", bound=Encoder)
-
-
 def register_encoder(encoder: E) -> E:
     """Add a custom encoder, which should be a function that will be called
-    if the value can't otherwise be converted. It should takes a single value
-    and return a TOMLKit item or raise a ``ConvertError``.
+    if the value can't otherwise be converted.
+
+    The encoder should return a TOMLKit item or raise a ``ConvertError``.
+
+    Example:
+        @register_encoder
+        def encode_custom_dict(obj, _parent=None, _sort_keys=False):
+            if isinstance(obj, CustomDict):
+                tbl = table()
+                for key, value in obj.items():
+                    # Pass along parameters when encoding nested values
+                    tbl[key] = item(value, _parent=tbl, _sort_keys=_sort_keys)
+                return tbl
+            raise ConvertError("Not a CustomDict")
     """
     CUSTOM_ENCODERS.append(encoder)
     return encoder
