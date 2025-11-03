@@ -117,9 +117,9 @@ def float_(raw: str | float) -> Float:
     return item(float(raw))
 
 
-def boolean(raw: str) -> Bool:
+def boolean(raw: str | bool) -> Bool:
     """Turn `true` or `false` into a boolean item."""
-    return item(raw == "true")
+    return item(raw == "true" if isinstance(raw, str) else raw)
 
 
 def string(
