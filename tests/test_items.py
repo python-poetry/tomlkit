@@ -121,7 +121,7 @@ def test_aot_unwrap():
     d = item([{"a": "A"}, {"b": "B"}])
     unwrapped = d.unwrap()
     assert_is_ppo(unwrapped, list)
-    for du, _ in zip(unwrapped, d):
+    for du, _ in zip(unwrapped, d):  # noqa: B905
         assert_is_ppo(du, dict)
         for ku in du:
             vu = du[ku]
