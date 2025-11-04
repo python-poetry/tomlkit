@@ -5,6 +5,7 @@
 ### Added
 
 - Custom encoders can now receive `_parent` and `_sort_keys` parameters to enable proper encoding of nested structures. ([#429](https://github.com/python-poetry/tomlkit/issues/429))
+- Add `String.type` property to get the string type. ([#443](https://github.com/python-poetry/tomlkit/issues/443))
 
 ## Fixed
 

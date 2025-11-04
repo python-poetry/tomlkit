@@ -1867,6 +1867,10 @@ class String(str, Item):
     def as_string(self) -> str:
         return f"{self._t.value}{decode(self._original)}{self._t.value}"
 
+    @property
+    def type(self) -> StringType:
+        return self._t
+
     def __add__(self: ItemT, other: str) -> ItemT:
         if not isinstance(other, str):
             return NotImplemented
