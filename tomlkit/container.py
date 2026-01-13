@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import copy
 
+from collections.abc import Iterator
 from typing import Any
-from typing import Iterator
 
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict

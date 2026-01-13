@@ -3,10 +3,10 @@ from __future__ import annotations
 import contextlib
 import datetime as _datetime
 
+from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import IO
 from typing import TYPE_CHECKING
-from typing import Iterable
 from typing import TypeVar
 
 from tomlkit._utils import parse_rfc3339

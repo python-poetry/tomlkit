@@ -4,11 +4,13 @@ import abc
 import copy
 import dataclasses
 import inspect
-import math
 import re
 import string
-import sys
 
+from collections.abc import Collection
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Sequence
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -16,10 +18,6 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Collection
-from typing import Iterable
-from typing import Iterator
-from typing import Sequence
 from typing import TypeVar
 from typing import cast
 from typing import overload
@@ -755,12 +753,8 @@ class Float(Item, _CustomFloat):
     __truediv__ = wrap_method(float.__truediv__)
     __trunc__ = float.__trunc__
 
-    if sys.version_info >= (3, 9):
-        __ceil__ = float.__ceil__
-        __floor__ = float.__floor__
-    else:
-        __ceil__ = math.ceil
-        __floor__ = math.floor
+    __ceil__ = float.__ceil__
+    __floor__ = float.__floor__
 
 
 class Bool(Item):
