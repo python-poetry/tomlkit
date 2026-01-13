@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ Ubuntu, macOS, Windows ]
-        python-version: [ "3.11" ]
+        python-version: [ "3.12" ]
         project: [ "poetry", "poetry-core" ]
         include:
           - os: Ubuntu
@@ -34,16 +34,16 @@ jobs:
         shell: bash
     steps:
       - name: Checkout Source (${{ matrix.project }})
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: python-poetry/${{ matrix.project }}
 
       - name: Checkout Source (tomlkit)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: tomlkit
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -61,7 +61,7 @@ jobs:
         run: echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
       - name: Set up cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         if: matrix.project != 'poetry-core'
         id: cache
         with:
