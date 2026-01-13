@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Drop support for Python older than 3.9. Remove 3.8 from the CI matrix.
+
 ### Added
 
 - Custom encoders can now receive `_parent` and `_sort_keys` parameters to enable proper encoding of nested structures. ([#429](https://github.com/python-poetry/tomlkit/issues/429))
