@@ -13,7 +13,7 @@
 
 # TOML Kit - Style-preserving TOML library for Python
 
-TOML Kit is a **1.0.0-compliant** [TOML](https://toml.io/) library.
+TOML Kit is a **1.1.0-compliant** [TOML](https://toml.io/) library.
 
 It includes a parser that preserves all comments, indentations, whitespace and internal element ordering,
 and makes them accessible and editable via an intuitive API.
@@ -28,11 +28,17 @@ See the [documentation](https://tomlkit.readthedocs.io/) for more information.
 
 ## Installation
 
-If you are using [Poetry](https://poetry.eustace.io),
+If you are using [uv](https://docs.astral.sh/uv), you can
 add `tomlkit` to your `pyproject.toml` file by using:
 
 ```bash
-poetry add tomlkit
+uv add tomlkit
+```
+
+Or just:
+
+```bash
+uv pip install tomlkit
 ```
 
 If not, you can use `pip`:
