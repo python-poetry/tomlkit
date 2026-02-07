@@ -1782,6 +1782,11 @@ class InlineTable(AbstractTable):
 
     def as_string(self) -> str:
         buf = "{"
+        emitted_key = False
+        has_explicit_commas = any(
+            k is None and isinstance(v, Whitespace) and "," in v.s
+            for k, v in self._value.body
+        )
         last_item_idx = next(
             (
                 i
@@ -1792,10 +1797,26 @@ class InlineTable(AbstractTable):
         )
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
+                if isinstance(v, Whitespace) and "," in v.s:
+                    if not emitted_key:
+                        buf += v.as_string().replace(",", "", 1)
+                        continue
+
+                    has_following_null = any(
+                        isinstance(next_v, Null)
+                        for _, next_v in self._value.body[i + 1 :]
+                    )
+                    has_following_key = any(
+                        next_k is not None for next_k, _ in self._value.body[i + 1 :]
+                    )
+                    if has_following_null and not has_following_key:
+                        buf += v.as_string().replace(",", "", 1)
+                        continue
+
                 if i == len(self._value.body) - 1:
                     if self._new:
                         buf = buf.rstrip(", ")
-                    else:
+                    elif not has_explicit_commas or "," in v.as_string():
                         buf = buf.rstrip(",")
 
                 buf += v.as_string()
@@ -1811,8 +1832,13 @@ class InlineTable(AbstractTable):
                 f"{v.trivia.comment}"
                 f"{v_trivia_trail}"
             )
+            emitted_key = True
 
-            if last_item_idx is not None and i < last_item_idx:
+            if (
+                not has_explicit_commas
+                and last_item_idx is not None
+                and i < last_item_idx
+            ):
                 buf += ","
                 if self._new:
                     buf += " "

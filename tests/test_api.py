@@ -120,7 +120,6 @@ def test_parsed_document_are_properly_json_representable(
         ("inline_table_no_comma", UnexpectedCharError),
         ("inline_table_duplicate_comma", UnexpectedCharError),
         ("inline_table_leading_comma", UnexpectedCharError),
-        ("inline_table_trailing_comma", UnexpectedCharError),
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(
