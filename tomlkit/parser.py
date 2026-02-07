@@ -216,6 +216,12 @@ class Parser:
 
                     return None, Whitespace(self.extract())
                 elif c in " \t\r":
+                    if c == "\r":
+                        with self._state(restore=True):
+                            if not self.inc() or self._current != "\n":
+                                raise self.parse_error(
+                                    InvalidControlChar, CTRL_M, "documents"
+                                )
                     # Skip whitespace.
                     if not self.inc():
                         return None, Whitespace(self.extract())
@@ -275,6 +281,12 @@ class Parser:
 
                 break
             elif c in " \t\r":
+                if c == "\r":
+                    with self._state(restore=True):
+                        if not self.inc() or self._current != "\n":
+                            raise self.parse_error(
+                                InvalidControlChar, CTRL_M, "comments"
+                            )
                 self.inc()
             else:
                 raise self.parse_error(UnexpectedCharError, c)
@@ -288,6 +300,9 @@ class Parser:
                 pass
 
             if self._current == "\r":
+                with self._state(restore=True):
+                    if not self.inc() or self._current != "\n":
+                        raise self.parse_error(InvalidControlChar, CTRL_M, "documents")
                 self.inc()
 
             if self._current == "\n":
@@ -463,7 +478,7 @@ class Parser:
 
             m = RFC_3339_LOOSE.match(raw)
             if m:
-                if m.group(1) and m.group(5):
+                if m.group("date") and m.group("time"):
                     # datetime
                     try:
                         dt = parse_rfc3339(raw)
@@ -483,7 +498,7 @@ class Parser:
                     except ValueError:
                         raise self.parse_error(InvalidDateTimeError) from None
 
-                if m.group(1):
+                if m.group("date"):
                     try:
                         dt = parse_rfc3339(raw)
                         assert isinstance(dt, datetime.date)
@@ -515,7 +530,7 @@ class Parser:
                     except ValueError:
                         raise self.parse_error(InvalidDateError) from None
 
-                if m.group(5):
+                if m.group("time"):
                     try:
                         t = parse_rfc3339(raw)
                         assert isinstance(t, datetime.time)
@@ -623,49 +638,42 @@ class Parser:
         self.inc(exception=UnexpectedEofError)
 
         elems = Container(True)
-        trailing_comma = None
+        expect_key = True
         while True:
-            # consume leading whitespace
-            mark = self._idx
-            self.consume(TOMLChar.SPACES)
-            raw = self._src[mark : self._idx]
-            if raw:
-                elems.add(Whitespace(raw))
+            while True:
+                # consume whitespace and newlines
+                mark = self._idx
+                self.consume(TOMLChar.SPACES + TOMLChar.NL)
+                raw = self._src[mark : self._idx]
+                if raw:
+                    elems.add(Whitespace(raw))
 
-            if not trailing_comma:
-                # None: empty inline table
-                # False: previous key-value pair was not followed by a comma
-                if self._current == "}":
-                    # consume closing bracket, EOF here doesn't matter
-                    self.inc()
+                if self._current != "#":
                     break
 
-                if trailing_comma is False or (
-                    trailing_comma is None and self._current == ","
-                ):
-                    # Either the previous key-value pair was not followed by a comma
-                    # or the table has an unexpected leading comma.
+                cws, comment, trail = self._parse_comment_trail(parse_trail=False)
+                elems.add(Comment(Trivia("", cws, comment, trail)))
+
+            if self._current == "}":
+                # consume closing bracket, EOF here doesn't matter
+                self.inc()
+                break
+
+            if expect_key:
+                if self._current == ",":
                     raise self.parse_error(UnexpectedCharError, self._current)
-            else:
-                # True: previous key-value pair was followed by a comma
-                if self._current == "}" or self._current == ",":
-                    raise self.parse_error(UnexpectedCharError, self._current)
+                key, val = self._parse_key_value(False)
+                elems.add(key, val)
+                expect_key = False
+                continue
 
-            key, val = self._parse_key_value(False)
-            elems.add(key, val)
+            if self._current != ",":
+                raise self.parse_error(UnexpectedCharError, self._current)
 
-            # consume trailing whitespace
-            mark = self._idx
-            self.consume(TOMLChar.SPACES)
-            raw = self._src[mark : self._idx]
-            if raw:
-                elems.add(Whitespace(raw))
-
-            # consume trailing comma
-            trailing_comma = self._current == ","
-            if trailing_comma:
-                # consume closing bracket, EOF here is an issue (middle of inline table)
-                self.inc(exception=UnexpectedEofError)
+            elems.add(Whitespace(","))
+            # consume comma, EOF here is an issue (middle of inline table)
+            self.inc(exception=UnexpectedEofError)
+            expect_key = True
 
         return InlineTable(elems, Trivia())
 
@@ -767,6 +775,15 @@ class Parser:
 
             raise self.parse_error(InvalidUnicodeValueError)
 
+        if self._current == "x":
+            h, he = self._peek_hex()
+            if h is not None:
+                # consume the x char and the hex value
+                self.inc_n(len(he) + 1)
+                return h
+
+            raise self.parse_error(InvalidUnicodeValueError)
+
         raise self.parse_error(InvalidCharInStringError, self._current)
 
     def _parse_string(self, delim: StringType) -> String:
@@ -827,6 +844,10 @@ class Parser:
                 )
             ):
                 raise self.parse_error(InvalidControlChar, code, "strings")
+            elif delim.is_multiline() and not escaped and self._current == "\r":
+                with self._state(restore=True):
+                    if not self.inc() or self._current != "\n":
+                        raise self.parse_error(InvalidControlChar, CTRL_M, "strings")
             elif not escaped and self._current == delim.unit:
                 # try to process current as a closing delim
                 original = self.extract()
@@ -1136,5 +1157,29 @@ class Parser:
                     value = chr(int(extracted, 16))
                 except (ValueError, OverflowError):
                     value = None
+
+            return value, extracted
+
+    def _peek_hex(self) -> tuple[str | None, str | None]:
+        with self._state(save_marker=True, restore=True):
+            if self._current != "x":
+                raise self.parse_error(
+                    InternalParserError, "_peek_hex() entered on non-hex value"
+                )
+
+            self.inc()  # Dropping prefix
+            self.mark()
+
+            if not self.inc_n(2):
+                return None, None
+
+            extracted = self.extract()
+            if extracted.strip("0123456789abcdefABCDEF"):
+                return None, None
+
+            try:
+                value = chr(int(extracted, 16))
+            except (ValueError, OverflowError):
+                value = None
 
             return value, extracted

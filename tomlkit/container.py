@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 from collections.abc import Iterator
 from typing import Any
@@ -261,6 +262,11 @@ class Container(_CustomDict):
                         return self
                     elif current_body_element[0].is_dotted():
                         raise TOMLKitError("Redefinition of an existing table")
+                    else:
+                        # Merging a concrete table into an existing implicit/super
+                        # table is only valid if it does not redefine existing
+                        # subtrees via dotted keys and does not change prior types.
+                        self._validate_table_candidate(current, item)
                 elif not item.is_super_table():
                     raise KeyAlreadyPresent(key)
             elif isinstance(item, AoT):
@@ -307,6 +313,26 @@ class Container(_CustomDict):
 
         self._raw_append(key, item)
         return self
+
+    def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
+        for k, v in candidate.value.body:
+            if k is None:
+                continue
+
+            if k in current.value._map:
+                existing = current.value.item(k)
+                if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
+                    raise KeyAlreadyPresent(k)
+                if k.is_dotted():
+                    raise TOMLKitError("Redefinition of an existing table")
+                continue
+
+            if not k.is_dotted():
+                continue
+
+            head = next(iter(k))
+            if head in current.value._map:
+                raise TOMLKitError("Redefinition of an existing table")
 
     def _raw_append(self, key: Key | None, item: Item) -> None:
         if key in self._map:
@@ -764,7 +790,7 @@ class Container(_CustomDict):
         if not isinstance(other, dict):
             return NotImplemented
 
-        return self.value == other
+        return _equal_with_nan(self.value, other)
 
     def _getstate(self, protocol):
         return (self._parsed,)
@@ -833,7 +859,7 @@ class OutOfOrderTableProxy(_CustomDict):
 
             if isinstance(item, Table):
                 for k, v in item.value.body:
-                    temp_container.append(k, v, validate=False)
+                    temp_container.append(k, v, validate=True)
 
         temp_container._validate_out_of_order_table()
 
@@ -951,3 +977,21 @@ def ends_with_whitespace(it: Any) -> bool:
     return (
         isinstance(it, Table) and isinstance(it.value._previous_item(), Whitespace)
     ) or (isinstance(it, AoT) and len(it) > 0 and isinstance(it[-1], Whitespace))
+
+
+def _equal_with_nan(left: Any, right: Any) -> bool:
+    if isinstance(left, dict) and isinstance(right, dict):
+        if left.keys() != right.keys():
+            return False
+        return all(_equal_with_nan(left[k], right[k]) for k in left)
+
+    if isinstance(left, list) and isinstance(right, list):
+        if len(left) != len(right):
+            return False
+        return all(_equal_with_nan(l, r) for l, r in zip(left, right))  # noqa: B905, E741
+
+    if isinstance(left, float) and isinstance(right, float):
+        if math.isnan(left) and math.isnan(right):
+            return True
+
+    return left == right
