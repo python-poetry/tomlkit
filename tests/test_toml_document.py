@@ -1314,3 +1314,25 @@ value = 5
 """
 
     assert doc.as_string() == expected
+
+
+def test_missing_newline_after_inline_table_issue_440():
+    """Regression test for https://github.com/python-poetry/tomlkit/issues/440"""
+    content = """[x]\na.b = {}"""
+    doc = parse(content)
+    doc["x"]["c"] = 3
+    expected = "[x]\na.b = {}\nc = 3\n"
+    assert doc.as_string() == expected
+
+    # With trailing newline should also work
+    content2 = """[x]\na.b = {}\n"""
+    doc2 = parse(content2)
+    doc2["x"]["c"] = 3
+    assert doc2.as_string() == expected
+
+    # Non-dotted key variant
+    content3 = """[x]\na = {}"""
+    doc3 = parse(content3)
+    doc3["x"]["c"] = 3
+    expected3 = "[x]\na = {}\nc = 3\n"
+    assert doc3.as_string() == expected3
