@@ -606,6 +606,8 @@ class Container(_CustomDict):
                     cur += "\n"
                 cur += self._render_aot(k, v, prefix=_key)
             else:
+                if k is not None and cur and not cur.endswith("\n"):
+                    cur += "\n"
                 cur += self._render_simple_item(
                     k, v, prefix=_key if key.is_dotted() else None
                 )
