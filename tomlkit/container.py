@@ -34,11 +34,12 @@ class Container(_CustomDict):
     This class implements the `dict` interface with copy/deepcopy protocol.
     """
 
-    def __init__(self, parsed: bool = False) -> None:
+    def __init__(self, parsed: bool = False, last_line_newline_added: str = "") -> None:
         self._map: dict[SingleKey, int | tuple[int, ...]] = {}
         self._body: list[tuple[Key | None, Item]] = []
         self._parsed = parsed
         self._table_keys = []
+        self._last_line_newline_added = last_line_newline_added
 
     @property
     def body(self) -> list[tuple[Key | None, Item]]:
@@ -533,6 +534,13 @@ class Container(_CustomDict):
                     s += self._render_simple_item(k, v)
             else:
                 s += self._render_simple_item(k, v)
+
+        # If we added a final newline, we must remove it now
+        if self._last_line_newline_added:
+            if s.endswith("\r\n"):
+                s = s[:-2]
+            else:
+                s = s[:-1]
 
         return s
 
