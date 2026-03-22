@@ -607,6 +607,12 @@ class Parser:
                 elems.append(Whitespace(indent))
                 continue
 
+            # consume closing bracket
+            if self._current == "]":
+                # consume closing bracket, EOF here doesn't matter
+                self.inc()
+                break
+
             # consume value
             if not prev_value:
                 try:
@@ -626,12 +632,6 @@ class Parser:
                     elems.append(Whitespace(","))
                 prev_value = False
                 continue
-
-            # consume closing bracket
-            if self._current == "]":
-                # consume closing bracket, EOF here doesn't matter
-                self.inc()
-                break
 
             raise self.parse_error(UnexpectedCharError, self._current)
 
@@ -923,17 +923,13 @@ class Parser:
                 # consume this char, EOF here is an issue (middle of string)
                 self.inc(exception=UnexpectedEofError)
 
-    def _parse_table(
-        self, parent_name: Key | None = None, parent: Table | None = None
-    ) -> tuple[Key, Table | AoT]:
+    def _parse_table_header(self) -> tuple[str, bool, Key]:
         """
-        Parses a table element.
-        """
-        if self._current != "[":
-            raise self.parse_error(
-                InternalParserError, "_parse_table() called on non-bracket character."
-            )
+        Parses the header of a table ([key] or [[key]]).
 
+        Returns (indent, is_aot, key).
+        Leaves the parser positioned at the closing ']'.
+        """
         indent = self.extract()
         self.inc()  # Skip opening bracket
 
@@ -950,6 +946,28 @@ class Parser:
             key = self._parse_key()
         except EmptyKeyError:
             raise self.parse_error(EmptyTableNameError) from None
+
+        return indent, is_aot, key
+
+    def _parse_table(
+        self,
+        parent_name: Key | None = None,
+        parent: Table | None = None,
+        _header: tuple[str, bool, Key] | None = None,
+    ) -> tuple[Key, Table | AoT]:
+        """
+        Parses a table element.
+        """
+        if _header is not None:
+            indent, is_aot, key = _header
+        else:
+            if self._current != "[":
+                raise self.parse_error(
+                    InternalParserError,
+                    "_parse_table() called on non-bracket character.",
+                )
+            indent, is_aot, key = self._parse_table_header()
+
         if self.end():
             raise self.parse_error(UnexpectedEofError)
         elif self._current != "]":
@@ -1045,23 +1063,34 @@ class Parser:
                     table.raw_append(_key, _val)
             else:
                 if self._current == "[":
-                    _, key_next = self._peek_table()
+                    # Parse header tentatively to check for child table
+                    src = self._src
+                    saved = (src._idx, src._current, src._marker)
+                    header = self._parse_table_header()
+                    key_next = header[2]
 
                     if self._is_child(full_key, key_next):
-                        key_next, table_next = self._parse_table(full_key, table)
-
+                        key_next, table_next = self._parse_table(
+                            full_key, table, _header=header
+                        )
                         table.raw_append(key_next, table_next)
 
                         # Picking up any sibling
                         while not self.end():
-                            _, key_next = self._peek_table()
+                            saved = (src._idx, src._current, src._marker)
+                            header = self._parse_table_header()
+                            key_next = header[2]
 
                             if not self._is_child(full_key, key_next):
+                                src._idx, src._current, src._marker = saved
                                 break
 
-                            key_next, table_next = self._parse_table(full_key, table)
-
+                            key_next, table_next = self._parse_table(
+                                full_key, table, _header=header
+                            )
                             table.raw_append(key_next, table_next)
+                    else:
+                        src._idx, src._current, src._marker = saved
 
                     break
                 else:
@@ -1078,33 +1107,6 @@ class Parser:
 
         return key, result
 
-    def _peek_table(self) -> tuple[bool, Key]:
-        """
-        Peeks ahead non-intrusively by cloning then restoring the
-        initial state of the parser.
-
-        Returns the name of the table about to be parsed,
-        as well as whether it is part of an AoT.
-        """
-        # we always want to restore after exiting this scope
-        with self._state(save_marker=True, restore=True):
-            if self._current != "[":
-                raise self.parse_error(
-                    InternalParserError,
-                    "_peek_table() entered on non-bracket character",
-                )
-
-            # AoT
-            self.inc()
-            is_aot = False
-            if self._current == "[":
-                self.inc()
-                is_aot = True
-            try:
-                return is_aot, self._parse_key()
-            except EmptyKeyError:
-                raise self.parse_error(EmptyTableNameError) from None
-
     def _parse_aot(self, first: Table, name_first: Key) -> AoT:
         """
         Parses all siblings of the provided table first and bundles them into
@@ -1112,13 +1114,18 @@ class Parser:
         """
         payload: list[Table] = [first]
         self._aot_stack.append(name_first)
+        src = self._src
         while not self.end():
-            is_aot_next, name_next = self._peek_table()
+            saved = (src._idx, src._current, src._marker)
+            header = self._parse_table_header()
+            is_aot_next = header[1]
+            name_next = header[2]
             if is_aot_next and name_next == name_first:
-                _, table = self._parse_table(name_first)
+                _, table = self._parse_table(name_first, _header=header)
                 assert isinstance(table, Table)
                 payload.append(table)
             else:
+                src._idx, src._current, src._marker = saved
                 break
 
         self._aot_stack.pop()
