@@ -15,7 +15,7 @@ def test_toml_file(example: Callable[[str], str]) -> None:
 
     content = toml.read()
     assert isinstance(content, TOMLDocument)
-    assert content["owner"]["organization"] == "GitHub"  # type: ignore[comparison-overlap]
+    assert content["owner"]["organization"] == "GitHub"
 
     toml.write(content)
 
@@ -100,9 +100,9 @@ def test_default_eol_is_os_linesep(tmp_path: Path) -> None:
     toml_path = tmp_path / "pyproject.toml"
     toml_f = TOMLFile(toml_path)
     content = TOMLDocument()
-    content.append("a", 1)  # type: ignore[arg-type]
+    content.append("a", 1)
     content["a"].trivia.trail = "\n"
-    content.append("b", 2)  # type: ignore[arg-type]
+    content.append("b", 2)
     content["b"].trivia.trail = "\r\n"
     toml_f.write(content)
     linesep = os.linesep.encode()
@@ -113,7 +113,7 @@ def test_default_eol_is_os_linesep(tmp_path: Path) -> None:
 def test_readwrite_eol_windows(tmp_path: Path) -> None:
     toml_path = tmp_path / "pyproject.toml"
     doc = TOMLDocument()
-    doc.add("a", 1)  # type: ignore[arg-type]
+    doc.add("a", 1)
     toml_f = TOMLFile(toml_path)
     toml_f.write(doc)
     readback = toml_f.read()

@@ -18,7 +18,7 @@ def test_build_example(example: Callable[[str], str]) -> None:
     doc = document()
     doc.add(comment("This is a TOML document. Boom."))
     doc.add(nl())
-    doc.add("title", "TOML Example")  # type: ignore[arg-type]
+    doc.add("title", "TOML Example")
 
     owner = table()
     owner.add("name", "Tom Preston-Werner")
@@ -41,9 +41,10 @@ def test_build_example(example: Callable[[str], str]) -> None:
     servers.add(nl())
     c = comment(
         "You can indent as you please. Tabs or spaces. TOML don't care."
-    ).indent(2)
+    )
+    c.indent(2)
     c.trivia.trail = ""
-    servers.add(c)  # type: ignore[call-overload]
+    servers.add(c)
     alpha = table()
     servers.append("alpha", alpha)
     alpha.indent(2)
@@ -100,7 +101,7 @@ def test_add_remove() -> None:
     content = ""
 
     doc = parse(content)
-    doc.append("foo", "bar")  # type: ignore[arg-type]
+    doc.append("foo", "bar")
 
     assert (
         doc.as_string()
@@ -125,7 +126,7 @@ def test_append_table_after_multiple_indices() -> None:
     version = "*"
     """
     doc = parse(content)
-    doc.append("foobar", {"name": "John"})  # type: ignore[arg-type]
+    doc.append("foobar", {"name": "John"})
 
 
 def test_top_level_keys_are_put_at_the_root_of_the_document() -> None:

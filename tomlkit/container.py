@@ -5,6 +5,7 @@ import math
 
 from collections.abc import Iterator
 from typing import Any
+from typing import Self
 
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
@@ -92,7 +93,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 for t in v.body:
                     t.value.parsing(parsing)
 
-    def add(self, key: Key | Item | str, item: Item | None = None) -> Container:
+    def add(self, key: Key | Item | str, item: Any = None) -> Container:
         """
         Adds an item to the current Container.
 
@@ -160,7 +161,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         OutOfOrderTableProxy.validate(self, current_idx)
 
     def append(
-        self, key: Key | str | None, item: Item, validate: bool = True
+        self, key: Key | str | None, item: Any, validate: bool = True
     ) -> Container:
         """Similar to :meth:`add` but both key and value must be given."""
         if not isinstance(key, Key) and key is not None:
@@ -702,10 +703,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return iter(dict.keys(self))
 
     # Dictionary methods
-    def __getitem__(self, key: Key | str) -> Item:
+    def __getitem__(self, key: Key | str) -> Any:
         item = self.item(key)
         if isinstance(item, Item) and item.is_boolean():
-            return item.value  # type: ignore[no-any-return]
+            return item.value
 
         return item
 
@@ -719,7 +720,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def __delitem__(self, key: Key | str) -> None:
         self.remove(key)
 
-    def setdefault(self, key: Key | str, default: Any = None) -> Item:
+    def setdefault(self, key: Key | str, default: Any = None) -> Any:
         if key not in self:
             self[key] = default
         return self[key]
@@ -841,10 +842,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             if key is not None:
                 dict.__setitem__(self, key.key, item.value)
 
-    def copy(self) -> Container:
+    def copy(self) -> Self:
         return copy.copy(self)
 
-    def __copy__(self) -> Container:
+    def __copy__(self) -> Self:
         c = self.__class__(self._parsed)
         for k, v in dict.items(self):
             dict.__setitem__(c, k, v)

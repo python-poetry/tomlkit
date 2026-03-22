@@ -33,18 +33,18 @@ def test_document_is_a_dict(example: Callable[[str], str]) -> None:
     assert doc.get("owner") == owner
     assert isinstance(owner, dict)
     assert "name" in owner
-    assert owner["name"] == "Tom Preston-Werner"  # type: ignore[comparison-overlap]
-    assert owner["organization"] == "GitHub"  # type: ignore[comparison-overlap]
-    assert owner["bio"] == "GitHub Cofounder & CEO\nLikes tater tots and beer."  # type: ignore[comparison-overlap]
+    assert owner["name"] == "Tom Preston-Werner"
+    assert owner["organization"] == "GitHub"
+    assert owner["bio"] == "GitHub Cofounder & CEO\nLikes tater tots and beer."
     assert owner["dob"] == datetime(1979, 5, 27, 7, 32, tzinfo=_utc)
 
     # database
     database = doc["database"]
     assert isinstance(database, dict)
-    assert database["server"] == "192.168.1.1"  # type: ignore[comparison-overlap]
-    assert database["ports"] == [8001, 8001, 8002]  # type: ignore[comparison-overlap]
-    assert database["connection_max"] == 5000  # type: ignore[comparison-overlap]
-    assert database["enabled"] is True  # type: ignore[comparison-overlap]
+    assert database["server"] == "192.168.1.1"
+    assert database["ports"] == [8001, 8001, 8002]
+    assert database["connection_max"] == 5000
+    assert database["enabled"] is True
 
     # servers
     servers = doc["servers"]
@@ -139,9 +139,9 @@ name = "foo"
 
     doc = parse(content)
     assert "tool" in doc
-    assert "poetry" in doc["tool"]  # type: ignore[operator]
+    assert "poetry" in doc["tool"]
 
-    assert doc["tool"]["poetry"]["name"] == "foo"  # type: ignore[comparison-overlap]
+    assert doc["tool"]["poetry"]["name"] == "foo"
 
     doc["tool"]["poetry"]["name"] = "bar"
 
@@ -178,17 +178,17 @@ def test_toml_document_with_dotted_keys(example: Callable[[str], str]) -> None:
     doc = parse(content)
 
     assert "physical" in doc
-    assert "color" in doc["physical"]  # type: ignore[operator]
-    assert "shape" in doc["physical"]  # type: ignore[operator]
-    assert doc["physical"]["color"] == "orange"  # type: ignore[comparison-overlap]
-    assert doc["physical"]["shape"] == "round"  # type: ignore[comparison-overlap]
+    assert "color" in doc["physical"]
+    assert "shape" in doc["physical"]
+    assert doc["physical"]["color"] == "orange"
+    assert doc["physical"]["shape"] == "round"
 
     assert "site" in doc
-    assert "google.com" in doc["site"]  # type: ignore[operator]
+    assert "google.com" in doc["site"]
     assert doc["site"]["google.com"]
 
-    assert doc["a"]["b"]["c"] == 1  # type: ignore[comparison-overlap]
-    assert doc["a"]["b"]["d"] == 2  # type: ignore[comparison-overlap]
+    assert doc["a"]["b"]["c"] == 1
+    assert doc["a"]["b"]["d"] == 2
 
 
 def test_toml_document_super_table_with_different_sub_sections(example: Callable[[str], str]) -> None:
@@ -197,8 +197,8 @@ def test_toml_document_super_table_with_different_sub_sections(example: Callable
     doc = parse(content)
     tool = doc["tool"]
 
-    assert "poetry" in tool  # type: ignore[operator]
-    assert "black" in tool  # type: ignore[operator]
+    assert "poetry" in tool
+    assert "black" in tool
 
 
 def test_adding_an_element_to_existing_table_with_ws_remove_ws() -> None:
@@ -233,7 +233,7 @@ name = "Test 1"
 """
 
     doc = parse(content)
-    assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"  # type: ignore[comparison-overlap]
+    assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"
 
 
 def test_document_with_new_sub_table_after_other_table() -> None:
@@ -248,9 +248,9 @@ name = "Test 1"
 """
 
     doc = parse(content)
-    assert doc["foo"]["name"] == "Bar"  # type: ignore[comparison-overlap]
-    assert doc["bar"]["name"] == "Baz"  # type: ignore[comparison-overlap]
-    assert doc["foo"]["baz"]["name"] == "Test 1"  # type: ignore[comparison-overlap]
+    assert doc["foo"]["name"] == "Bar"
+    assert doc["bar"]["name"] == "Baz"
+    assert doc["foo"]["baz"]["name"] == "Test 1"
 
     assert doc.as_string() == content
 
@@ -344,11 +344,11 @@ def test_toml_document_with_dotted_keys_inside_table(example: Callable[[str], st
     doc = parse(content)
     t = doc["table"]
 
-    assert "a" in t  # type: ignore[operator]
+    assert "a" in t
 
-    assert t["a"]["b"]["c"] == 1  # type: ignore[comparison-overlap]
-    assert t["a"]["b"]["d"] == 2  # type: ignore[comparison-overlap]
-    assert t["a"]["c"] == 3  # type: ignore[comparison-overlap]
+    assert t["a"]["b"]["c"] == 1
+    assert t["a"]["b"]["d"] == 2
+    assert t["a"]["c"] == 3
 
 
 def test_toml_document_with_super_aot_after_super_table(example: Callable[[str], str]) -> None:
@@ -421,11 +421,11 @@ bar=1"""
     )
 
     assert doc == {"foo": {"bar": 1}}
-    assert doc["foo"]["bar"] == 1  # type: ignore[comparison-overlap]
+    assert doc["foo"]["bar"] == 1
     assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
 
     doc = parse(content)
-    doc = doc.copy()  # type: ignore[assignment]
+    doc = doc.copy()
 
     assert (
         doc.as_string()
@@ -434,7 +434,7 @@ bar=1"""
     )
 
     assert doc == {"foo": {"bar": 1}}
-    assert doc["foo"]["bar"] == 1  # type: ignore[comparison-overlap]
+    assert doc["foo"]["bar"] == 1
     assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
 
 
@@ -493,7 +493,7 @@ score = 91
 """
 
     doc = parse(content)
-    assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]  # type: ignore[comparison-overlap]
+    assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc["students"]
     assert {"tommy": 87, "mary": 66, "bob": {"score": 91}} == doc.get("students")
 
 
@@ -510,7 +510,7 @@ key = "value"
     doc = parse(content)
     doc["a"]["a"]["key"] = "new_value"
 
-    assert doc["a"]["a"]["key"] == "new_value"  # type: ignore[comparison-overlap]
+    assert doc["a"]["a"]["key"] == "new_value"
 
     expected = """
 [a.a]
@@ -570,7 +570,7 @@ z = 1
 """
     doc = parse(content)
     assert doc.as_string() == content
-    assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}  # type: ignore[comparison-overlap]
+    assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}
 
 
 def test_out_of_order_tables_are_still_dicts() -> None:
@@ -596,12 +596,12 @@ key = "value"
     assert table.get("d", "foo") == "foo"
 
     assert table.setdefault("d", "bar") == "bar"
-    assert table["d"] == "bar"  # type: ignore[comparison-overlap]
+    assert table["d"] == "bar"
 
     assert table.pop("key") == "value"
     assert "key" not in table
 
-    assert table.pop("missing", default="baz") == "baz"  # type: ignore[call-overload]
+    assert table.pop("missing", "baz") == "baz"
 
     with pytest.raises(KeyError):
         table.pop("missing")
@@ -631,7 +631,7 @@ a = "b"
     constraint["version"] = "^1.0"
     doc["tool"]["poetry"]["dependencies"]["bar"] = constraint
 
-    assert doc["tool"]["poetry"]["dependencies"]["bar"]["version"] == "^1.0"  # type: ignore[comparison-overlap]
+    assert doc["tool"]["poetry"]["dependencies"]["bar"]["version"] == "^1.0"
 
     expected = """
 [tool.poetry]
@@ -688,7 +688,7 @@ def test_update_nested_out_of_order_table() -> None:
 [root1.root2.x]
   value = 4
 """)
-    doc["root1"]["root2"]["a"].add("tmp", "hi")  # type: ignore[attr-defined]
+    doc["root1"]["root2"]["a"].add("tmp", "hi")
     assert (
         doc.as_string()
         == """\
@@ -903,7 +903,7 @@ def test_replace_with_aot_of_nested() -> None:
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)
-    a = tomlkit.item(int(doc["a"]))  # type: ignore[call-overload]
+    a: Any = tomlkit.item(int(doc["a"]))
     a.comment("`a` should be an int")
     doc["a"] = a
     expected = "a = 1 # `a` should be an int"
@@ -911,20 +911,20 @@ def test_replace_with_comment() -> None:
 
     content = 'a = "1, 2, 3"'
     doc = parse(content)
-    a = tomlkit.array()  # type: ignore[assignment]
+    a = tomlkit.array()
     a.comment("`a` should be an array")
-    for x in doc["a"].split(","):  # type: ignore[attr-defined]
-        a.append(int(x.strip()))  # type: ignore[attr-defined]
+    for x in doc["a"].split(","):
+        a.append(int(x.strip()))
     doc["a"] = a
     expected = "a = [1, 2, 3] # `a` should be an array"
     assert doc.as_string() == expected
 
     doc = parse(content)
-    a = tomlkit.inline_table()  # type: ignore[assignment]
+    a = tomlkit.inline_table()
     a.comment("`a` should be an inline-table")
-    for x in doc["a"].split(","):  # type: ignore[attr-defined]
+    for x in doc["a"].split(","):
         i = int(x.strip())
-        a.append(chr(ord("a") + i - 1), i)  # type: ignore[attr-defined]
+        a.append(chr(ord("a") + i - 1), i)
     doc["a"] = a
     expected = "a = {a = 1, b = 2, c = 3} # `a` should be an inline-table"
     assert doc.as_string() == expected
@@ -995,8 +995,8 @@ def test_pop_add_whitespace_and_insert_table_work_togheter() -> None:
     """
     text = doc.as_string()
     out = parse(text)
-    assert out["d"] == 4  # type: ignore[comparison-overlap]
-    assert "d" not in out["e"]  # type: ignore[operator]
+    assert out["d"] == 4
+    assert "d" not in out["e"]
     assert text == dedent(expected)
 
 
@@ -1049,7 +1049,7 @@ def test_nested_table_update_display_name() -> None:
     [bar]
     z = 3
     """
-    doc["parent"].update(parse(dedent(sub)))  # type: ignore[attr-defined]
+    doc["parent"].update(parse(dedent(sub)))
     expected = """\
     [parent]
 
@@ -1073,9 +1073,9 @@ def test_build_table_with_dotted_key() -> None:
 
     for key, value in data.items():
         if "." not in key:
-            doc.append(key, value)  # type: ignore[arg-type]
+            doc.append(key, value)
         else:
-            doc.append(tomlkit.key(key.split(".")), value)  # type: ignore[arg-type]
+            doc.append(tomlkit.key(key.split(".")), value)
 
     expected = """\
 a.b.c = 1
@@ -1305,7 +1305,7 @@ value = 5
 
     doc = parse(content)
     table_a = doc["a"]
-    table_a.append(tomlkit.key(["c", "d"]), "foo")  # type: ignore[attr-defined]
+    table_a.append(tomlkit.key(["c", "d"]), "foo")
 
     expected = """\
 [a]

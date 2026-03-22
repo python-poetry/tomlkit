@@ -41,9 +41,7 @@ if TYPE_CHECKING:
     from tomlkit import container
 
     class Encoder(Protocol):
-        def __call__(
-            self, __value: Any, _parent: Item | None = None, _sort_keys: bool = False
-        ) -> Item: ...
+        def __call__(self, __value: Any, /) -> Item: ...
 
 
 ItemT = TypeVar("ItemT", bound="Item")
@@ -101,6 +99,10 @@ def item(value: dict[str, Any], _parent: Item | None = ..., _sort_keys: bool = .
 
 @overload
 def item(value: ItemT, _parent: Item | None = ..., _sort_keys: bool = ...) -> ItemT: ...
+
+
+@overload
+def item(value: object, _parent: Item | None = ..., _sort_keys: bool = ...) -> Item: ...
 
 
 def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
@@ -208,7 +210,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
                     p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
                 ):
                     # New style encoder that can accept additional parameters
-                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)
+                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)  # type: ignore[call-arg]
                 else:
                     # Old style encoder that only accepts value
                     rv = encoder(value)
@@ -530,7 +532,7 @@ class Item:
     def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
         return self.__class__, self._getstate(protocol)
 
-    def __getitem__(self, key: Key | str | int) -> Item:
+    def __getitem__(self, key: Key | str | int) -> Any:
         raise TypeError(f"{type(self).__name__} does not support item access")
 
     def __setitem__(self, key: Key | str | int, value: Any) -> None:
@@ -783,6 +785,18 @@ class Integer(Item, _CustomInt):
             return result  # type: ignore[return-value]
         return self._new(result)
 
+    def __sub__(self, other: object) -> Integer:
+        result = int.__sub__(self, other)  # type: ignore[operator]
+        if result is NotImplemented:
+            return result  # type: ignore[return-value]
+        return self._new(result)
+
+    def __rsub__(self, other: object) -> Integer:
+        result = int.__rsub__(self, other)  # type: ignore[operator]
+        if result is NotImplemented:
+            return result  # type: ignore[return-value]
+        return self._new(result)
+
     def __trunc__(self) -> Integer:
         return self._new(int.__trunc__(self))
 
@@ -943,6 +957,18 @@ class Float(Item, _CustomFloat):
             return result  # type: ignore[return-value]
         return self._new(result)
 
+    def __sub__(self, other: object) -> Float:
+        result = float.__sub__(self, other)  # type: ignore[operator]
+        if result is NotImplemented:
+            return result  # type: ignore[return-value]
+        return self._new(result)
+
+    def __rsub__(self, other: object) -> Float:
+        result = float.__rsub__(self, other)  # type: ignore[operator]
+        if result is NotImplemented:
+            return result  # type: ignore[return-value]
+        return self._new(result)
+
     __trunc__ = float.__trunc__
     __ceil__ = float.__ceil__
     __floor__ = float.__floor__
@@ -1086,7 +1112,13 @@ class DateTime(Item, datetime):
 
         return self._new(result)
 
-    def __sub__(self, other: timedelta | datetime) -> DateTime | timedelta:  # type: ignore[override]
+    @overload  # type: ignore[override]
+    def __sub__(self, other: timedelta) -> DateTime: ...
+
+    @overload
+    def __sub__(self, other: datetime) -> timedelta: ...
+
+    def __sub__(self, other: timedelta | datetime) -> DateTime | timedelta:
         if PY38:
             result = datetime(
                 self.year,
@@ -1106,10 +1138,10 @@ class DateTime(Item, datetime):
 
         return result
 
-    def replace(self, *args: object, **kwargs: object) -> datetime:  # type: ignore[override]
+    def replace(self, *args: object, **kwargs: object) -> DateTime:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
-    def astimezone(self, tz: tzinfo) -> datetime:  # type: ignore[override]
+    def astimezone(self, tz: tzinfo) -> DateTime:  # type: ignore[override]
         result = super().astimezone(tz)
         if PY38:
             return result
@@ -1189,7 +1221,13 @@ class Date(Item, date):
 
         return self._new(result)
 
-    def __sub__(self, other: timedelta | date) -> Date | timedelta:  # type: ignore[override]
+    @overload  # type: ignore[override]
+    def __sub__(self, other: timedelta) -> Date: ...
+
+    @overload
+    def __sub__(self, other: date) -> timedelta: ...
+
+    def __sub__(self, other: timedelta | date) -> Date | timedelta:
         if PY38:
             result = date(self.year, self.month, self.day).__sub__(other)
         else:
@@ -1200,7 +1238,7 @@ class Date(Item, date):
 
         return result
 
-    def replace(self, *args: object, **kwargs: object) -> date:  # type: ignore[override]
+    def replace(self, *args: object, **kwargs: object) -> Date:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
     def _new(self, result: date) -> Date:
@@ -1258,7 +1296,7 @@ class Time(Item, time):
     def as_string(self) -> str:
         return self._raw
 
-    def replace(self, *args: object, **kwargs: object) -> time:  # type: ignore[override]
+    def replace(self, *args: object, **kwargs: object) -> Time:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
     def _new(self, result: time) -> Time:
@@ -1522,8 +1560,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
     def item(self, index: int) -> Item:
         return list.__getitem__(self, index)  # type: ignore[no-any-return]
 
-    def __getitem__(self, key: int | slice) -> Item:  # type: ignore[override]
-        return list.__getitem__(self, key)  # type: ignore[return-value]
+    def __getitem__(self, key: int | slice) -> Any:  # type: ignore[override]
+        return list.__getitem__(self, key)
 
     def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
         it = item(value, _parent=self)
@@ -1731,7 +1769,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def item(self, key: Key | str) -> Item:
         return self._value.item(key)
 
-    def setdefault(self, key: Key | str, default: Any) -> Item:  # type: ignore[override]
+    def setdefault(self, key: Key | str, default: Any) -> Any:  # type: ignore[override]
         super().setdefault(key, default)
         return self[key]
 
@@ -1752,7 +1790,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def __delitem__(self, key: Key | str) -> None:  # type: ignore[override]
         self.remove(key)
 
-    def __getitem__(self, key: Key | str) -> Item:  # type: ignore[override]
+    def __getitem__(self, key: Key | str) -> Any:  # type: ignore[override]
         return self._value[key]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]

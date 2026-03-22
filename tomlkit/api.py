@@ -57,18 +57,11 @@ def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
     """
     Dumps a TOMLDocument into a string.
     """
-    if not isinstance(data, (Table, InlineTable, Container)) and isinstance(
-        data, Mapping
-    ):
-        data = item(dict(data), _sort_keys=sort_keys)
-
-    try:
-        # data should be a `Container` (and therefore implement `as_string`)
-        # for all type safe invocations of this function
+    if isinstance(data, (Table, InlineTable, Container)):
         return data.as_string()
-    except AttributeError as ex:
-        msg = f"Expecting Mapping or TOML Table or Container, {type(data)} given"
-        raise TypeError(msg) from ex
+
+    table: Table = item(dict(data), _sort_keys=sort_keys)
+    return table.as_string()
 
 
 def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:

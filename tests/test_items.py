@@ -138,7 +138,7 @@ def test_aot_set_item() -> None:
     assert d[0] == "C"
     d[1]["b"] = "D"
     assert isinstance(d[1], InlineTable)
-    assert d[1]["b"] == "D"  # type: ignore[comparison-overlap]
+    assert d[1]["b"] == "D"
     d[0] = ["c", "C"]
     assert isinstance(d[0], Array)
     assert d[0][1] == "C"
@@ -228,7 +228,9 @@ def test_items_can_be_appended_to_and_removed_from_an_inline_table() -> None:
 """
 
     parser = Parser(string)
-    _, table = parser._parse_item()  # type: ignore[misc]
+    result = parser._parse_item()
+    assert result is not None
+    _, table = result
 
     assert isinstance(table, InlineTable)
     assert table.as_string() == "{}"
@@ -257,27 +259,27 @@ def test_inf_and_nan_are_supported(example: Callable[[str], str]) -> None:
     content = example("0.5.0")
     doc = parse(content)
 
-    assert doc["sf1"] == float("inf")  # type: ignore[comparison-overlap]
-    assert doc["sf2"] == float("inf")  # type: ignore[comparison-overlap]
-    assert doc["sf3"] == float("-inf")  # type: ignore[comparison-overlap]
+    assert doc["sf1"] == float("inf")
+    assert doc["sf2"] == float("inf")
+    assert doc["sf3"] == float("-inf")
 
-    assert math.isnan(doc["sf4"])  # type: ignore[arg-type]
-    assert math.isnan(doc["sf5"])  # type: ignore[arg-type]
-    assert math.isnan(doc["sf6"])  # type: ignore[arg-type]
+    assert math.isnan(doc["sf4"])
+    assert math.isnan(doc["sf5"])
+    assert math.isnan(doc["sf6"])
 
 
 def test_hex_octal_and_bin_integers_are_supported(example: Callable[[str], str]) -> None:
     content = example("0.5.0")
     doc = parse(content)
 
-    assert doc["hex1"] == 3735928559  # type: ignore[comparison-overlap]
-    assert doc["hex2"] == 3735928559  # type: ignore[comparison-overlap]
-    assert doc["hex3"] == 3735928559  # type: ignore[comparison-overlap]
+    assert doc["hex1"] == 3735928559
+    assert doc["hex2"] == 3735928559
+    assert doc["hex3"] == 3735928559
 
-    assert doc["oct1"] == 342391  # type: ignore[comparison-overlap]
-    assert doc["oct2"] == 493  # type: ignore[comparison-overlap]
+    assert doc["oct1"] == 342391
+    assert doc["oct2"] == 493
 
-    assert doc["bin1"] == 214  # type: ignore[comparison-overlap]
+    assert doc["bin1"] == 214
 
 
 def test_key_automatically_sets_proper_string_type_if_not_bare() -> None:
@@ -325,9 +327,9 @@ def test_array_behaves_like_a_list() -> None:
     doc = parse(content)
     assert str(doc["a"]) == "[1, 2]"
 
-    assert doc["a"] == [1, 2]  # type: ignore[comparison-overlap]
-    doc["a"] += [3, 4]  # type: ignore[operator]
-    assert doc["a"] == [1, 2, 3, 4]  # type: ignore[comparison-overlap]
+    assert doc["a"] == [1, 2]
+    doc["a"] += [3, 4]
+    assert doc["a"] == [1, 2, 3, 4]
     assert (
         doc.as_string()
         == """a = [1, 2, 3, 4] # Comment
@@ -353,10 +355,10 @@ def test_array_multiline() -> None:
 
     assert expected == t.as_string()
 
-    t = item([])  # type: ignore[assignment]
-    t.multiline(True)
+    t2: Any = item([])
+    t2.multiline(True)
 
-    assert t.as_string() == "[]"
+    assert t2.as_string() == "[]"
 
 
 def test_array_multiline_modify() -> None:
@@ -366,14 +368,14 @@ a = [
     "abc"
 ]"""
     )
-    doc["a"].append("def")  # type: ignore[attr-defined]
+    doc["a"].append("def")
     expected = """\
 a = [
     "abc",
     "def"
 ]"""
     assert expected == doc.as_string()
-    doc["a"].insert(1, "ghi")  # type: ignore[attr-defined]
+    doc["a"].insert(1, "ghi")
     expected = """\
 a = [
     "abc",
@@ -385,16 +387,16 @@ a = [
 
 def test_append_to_empty_array() -> None:
     doc = parse("x = [ ]")
-    doc["x"].append("a")  # type: ignore[attr-defined]
+    doc["x"].append("a")
     assert doc.as_string() == 'x = ["a" ]'
     doc = parse("x = [\n]")
-    doc["x"].append("a")  # type: ignore[attr-defined]
+    doc["x"].append("a")
     assert doc.as_string() == 'x = [\n    "a"\n]'
 
 
 def test_modify_array_with_comment() -> None:
     doc = parse("x = [ # comment\n]")
-    doc["x"].append("a")  # type: ignore[attr-defined]
+    doc["x"].append("a")
     assert doc.as_string() == 'x = [ # comment\n    "a"\n]'
     doc = parse(
         """\
@@ -404,7 +406,7 @@ x = [
     "b"
 ]"""
     )
-    doc["x"].insert(1, "c")  # type: ignore[attr-defined]
+    doc["x"].insert(1, "c")
     expected = """\
 x = [
     "a",
@@ -419,7 +421,7 @@ x = [
     1  # comment
 ]"""
     )
-    doc["x"].append(2)  # type: ignore[attr-defined]
+    doc["x"].append(2)
     assert (
         doc.as_string()
         == """\
@@ -428,7 +430,7 @@ x = [
     2
 ]"""
     )
-    doc["x"].pop(0)  # type: ignore[attr-defined]
+    doc["x"].pop(0)
     assert doc.as_string() == "x = [\n    2\n]"
 
 
@@ -442,7 +444,7 @@ x = [
 ]
 """
     )
-    doc["x"].multiline(True).append(3)  # type: ignore[attr-defined]
+    doc["x"].multiline(True).append(3)
     assert (
         doc.as_string()
         == """\
@@ -454,7 +456,7 @@ x = [
 ]
 """
     )
-    assert doc["x"].pop() == 3  # type: ignore[attr-defined]
+    assert doc["x"].pop() == 3
     assert (
         doc.as_string()
         == """\
@@ -469,7 +471,7 @@ x = [
 
 def test_append_dict_to_array() -> None:
     doc = parse("x = []")
-    doc["x"].append({"name": "John Doe", "email": "john@doe.com"})  # type: ignore[attr-defined]
+    doc["x"].append({"name": "John Doe", "email": "john@doe.com"})
     expected = 'x = [{name = "John Doe",email = "john@doe.com"}]'
     assert doc.as_string() == expected
     # Make sure the produced string is valid
@@ -598,31 +600,31 @@ bar = "baz"
 def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
-    doc["table"]["my_int"] += 5.0  # type: ignore[operator]
-    assert doc["table"]["my_int"] == 2048.0  # type: ignore[comparison-overlap]
+    doc["table"]["my_int"] += 5.0
+    assert doc["table"]["my_int"] == 2048.0
     assert isinstance(doc["table"]["my_int"], float)
 
 
 def test_sub_float_from_int() -> None:
     content = "[table]\nmy_int = 2048"
     doc = parse(content)
-    doc["table"]["my_int"] -= 5.0  # type: ignore[operator]
-    assert doc["table"]["my_int"] == 2043.0  # type: ignore[comparison-overlap]
+    doc["table"]["my_int"] -= 5.0
+    assert doc["table"]["my_int"] == 2043.0
     assert isinstance(doc["table"]["my_int"], float)
 
 
 def test_sub_int_from_float() -> None:
     content = "[table]\nmy_int = 2048.0"
     doc = parse(content)
-    doc["table"]["my_int"] -= 5  # type: ignore[operator]
-    assert doc["table"]["my_int"] == 2043.0  # type: ignore[comparison-overlap]
+    doc["table"]["my_int"] -= 5
+    assert doc["table"]["my_int"] == 2043.0
 
 
 def test_add_sum_int_with_float() -> None:
     content = "[table]\nmy_int = 2048.3"
     doc = parse(content)
-    doc["table"]["my_int"] += 5  # type: ignore[operator]
-    assert doc["table"]["my_int"] == 2053.3  # type: ignore[comparison-overlap]
+    doc["table"]["my_int"] += 5
+    assert doc["table"]["my_int"] == 2053.3
 
 
 def test_integers_behave_like_ints() -> None:
@@ -635,16 +637,16 @@ def test_integers_behave_like_ints() -> None:
     assert i == 35
     assert i.as_string() == "35"
 
-    i -= 2  # type: ignore[assignment]
+    i -= 2
     assert i == 33
     assert i.as_string() == "33"
 
-    i /= 2  # type: ignore[assignment]
-    assert i == 16.5
-    assert i.as_string() == "16.5"
+    f = i / 2
+    assert f == 16.5
+    assert f.as_string() == "16.5"
 
     doc = parse("int = +34")
-    doc["int"] += 1  # type: ignore[operator]
+    doc["int"] += 1
 
     assert doc.as_string() == "int = +35"
 
@@ -659,12 +661,12 @@ def test_floats_behave_like_floats() -> None:
     assert i == 35.12
     assert i.as_string() == "35.12"
 
-    i -= 2  # type: ignore[assignment]
+    i -= 2
     assert i == 33.12
     assert i.as_string() == "33.12"
 
     doc = parse("float = +34.12")
-    doc["float"] += 1  # type: ignore[operator]
+    doc["float"] += 1
 
     assert doc.as_string() == "float = +35.12"
 
@@ -679,20 +681,20 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     assert i == datetime(2018, 7, 23, 12, 34, 56)
     assert i.as_string() == "2018-07-23T12:34:56"
 
-    i -= timedelta(days=2)  # type: ignore[assignment]
+    i -= timedelta(days=2)
     assert i == datetime(2018, 7, 21, 12, 34, 56)
     assert i.as_string() == "2018-07-21T12:34:56"
 
-    i = i.replace(year=2019, tzinfo=tz_utc)  # type: ignore[assignment]
+    i = i.replace(year=2019, tzinfo=tz_utc)
     assert i == datetime(2019, 7, 21, 12, 34, 56, tzinfo=tz_utc)
     assert i.as_string() == "2019-07-21T12:34:56+00:00"
 
-    i = i.astimezone(tz_pst)  # type: ignore[assignment]
+    i = i.astimezone(tz_pst)
     assert i == datetime(2019, 7, 21, 4, 34, 56, tzinfo=tz_pst)
     assert i.as_string() == "2019-07-21T04:34:56-08:00"
 
     doc = parse("dt = 2018-07-22T12:34:56-05:00")
-    doc["dt"] += timedelta(days=1)  # type: ignore[operator]
+    doc["dt"] += timedelta(days=1)
 
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
 
@@ -707,16 +709,16 @@ def test_dates_behave_like_dates() -> None:
     assert i == date(2018, 7, 23)
     assert i.as_string() == "2018-07-23"
 
-    i -= timedelta(days=2)  # type: ignore[assignment]
+    i -= timedelta(days=2)
     assert i == date(2018, 7, 21)
     assert i.as_string() == "2018-07-21"
 
-    i = i.replace(year=2019)  # type: ignore[assignment]
+    i = i.replace(year=2019)
     assert i == date(2019, 7, 21)
     assert i.as_string() == "2019-07-21"
 
     doc = parse("dt = 2018-07-22 # Comment")
-    doc["dt"] += timedelta(days=1)  # type: ignore[operator]
+    doc["dt"] += timedelta(days=1)
 
     assert doc.as_string() == "dt = 2018-07-23 # Comment"
 
@@ -738,7 +740,7 @@ def test_times_behave_like_times() -> None:
     assert i == time(12, 34, 56)
     assert i.as_string() == "12:34:56"
 
-    i = i.replace(hour=13)  # type: ignore[assignment]
+    i = i.replace(hour=13)
     assert i == time(13, 34, 56)
     assert i.as_string() == "13:34:56"
 
@@ -758,14 +760,14 @@ def test_strings_behave_like_strs() -> None:
     assert i.as_string() == '"foo bar é"'
 
     doc = parse('str = "foo" # Comment')
-    doc["str"] += " bar"  # type: ignore[operator]
+    doc["str"] += " bar"
 
     assert doc.as_string() == 'str = "foo bar" # Comment'
 
 
 def test_string_add_preserve_escapes() -> None:
-    i = api.value('"foo\\"bar"')
-    i += " baz"  # type: ignore[operator]
+    i: Any = api.value('"foo\\"bar"')
+    i += " baz"
 
     assert i == 'foo"bar baz'
     assert i.as_string() == '"foo\\"bar baz"'
@@ -799,7 +801,7 @@ bar = "boom"
     )
 
     assert t.get("bar") == "boom"
-    assert t.setdefault("foobar", "fuzz") == "fuzz"  # type: ignore[comparison-overlap]
+    assert t.setdefault("foobar", "fuzz") == "fuzz"
     assert (
         t.as_string()
         == """foo = "bar"
@@ -810,58 +812,58 @@ foobar = "fuzz"
 
 
 def test_items_are_pickable() -> None:
-    n = item(12)
+    n: Item = item(12)
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "12"
 
-    n = item(12.34)  # type: ignore[assignment]
+    n = item(12.34)
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "12.34"
 
-    n = item(True)  # type: ignore[assignment]
+    n = item(True)
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "true"
 
-    n = item(datetime(2018, 10, 11, 12, 34, 56, 123456))  # type: ignore[assignment]
+    n = item(datetime(2018, 10, 11, 12, 34, 56, 123456))
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "2018-10-11T12:34:56.123456"
 
-    n = item(date(2018, 10, 11))  # type: ignore[assignment]
+    n = item(date(2018, 10, 11))
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "2018-10-11"
 
-    n = item(time(12, 34, 56, 123456))  # type: ignore[assignment]
+    n = item(time(12, 34, 56, 123456))
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "12:34:56.123456"
 
-    n = item([1, 2, 3])  # type: ignore[assignment]
+    n = item([1, 2, 3])
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "[1, 2, 3]"
 
-    n = item({"foo": "bar"})  # type: ignore[assignment]
+    n = item({"foo": "bar"})
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
 
-    n = api.inline_table()  # type: ignore[assignment]
+    n = api.inline_table()
     n["foo"] = "bar"
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == '{foo = "bar"}'
 
-    n = item("foo")  # type: ignore[assignment]
+    n = item("foo")
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == '"foo"'
 
-    n = item([{"foo": "bar"}])  # type: ignore[assignment]
+    n = item([{"foo": "bar"}])
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
@@ -930,7 +932,7 @@ value = false
 """
 
     content = parse(s)
-    assert content["foo"]["value"] is False  # type: ignore[comparison-overlap]
+    assert content["foo"]["value"] is False
     assert isinstance(content["foo"].item("value"), Bool)
 
     assert {"foo": {"value": False}} == content
@@ -973,19 +975,19 @@ def test_escape_key(key_str: str, escaped: str) -> None:
 def test_custom_encoders() -> None:
     import decimal
 
-    @api.register_encoder  # type: ignore[type-var]
+    @api.register_encoder
     def encode_decimal(obj: Any) -> Item:
         if isinstance(obj, decimal.Decimal):
             return api.float_(str(obj))
         raise TypeError
 
-    assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"  # type: ignore[call-overload]
+    assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"
 
     with pytest.raises(TypeError):
-        api.item(object())  # type: ignore[call-overload]
+        api.item(object())
 
     assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
-    api.unregister_encoder(encode_decimal)  # type: ignore[arg-type]
+    api.unregister_encoder(encode_decimal)
 
 
 def test_custom_encoders_with_parent_and_sort_keys() -> None:
@@ -1005,7 +1007,7 @@ def test_custom_encoders_with_parent_and_sort_keys() -> None:
         raise TypeError
 
     # Test with default parameters
-    result = api.item(decimal.Decimal("1.23"))  # type: ignore[call-overload]
+    result = api.item(decimal.Decimal("1.23"))
     assert result.as_string() == "1.23"
     assert parent_captured is None
     assert sort_keys_captured is False
@@ -1014,7 +1016,7 @@ def test_custom_encoders_with_parent_and_sort_keys() -> None:
     parent_captured = None
     sort_keys_captured = None
     table = api.table()
-    result = item(decimal.Decimal("4.56"), _parent=table, _sort_keys=True)  # type: ignore[call-overload]
+    result = item(decimal.Decimal("4.56"), _parent=table, _sort_keys=True)
     assert result.as_string() == "4.56"
     assert parent_captured is table
     assert sort_keys_captured is True
@@ -1026,7 +1028,7 @@ def test_custom_encoders_backward_compatibility() -> None:
     """Test that old-style custom encoders still work without modification."""
     import decimal
 
-    @api.register_encoder  # type: ignore[type-var]
+    @api.register_encoder
     def encode_decimal_old_style(obj: Any) -> Item:
         # Old style encoder - only accepts obj parameter
         if isinstance(obj, decimal.Decimal):
@@ -1034,15 +1036,15 @@ def test_custom_encoders_backward_compatibility() -> None:
         raise TypeError
 
     # Should work exactly as before
-    result = api.item(decimal.Decimal("2.34"))  # type: ignore[call-overload]
+    result = api.item(decimal.Decimal("2.34"))
     assert result.as_string() == "2.34"
 
     # Should work when called from item() with extra parameters
     table = api.table()
-    result = item(decimal.Decimal("5.67"), _parent=table, _sort_keys=True)  # type: ignore[call-overload]
+    result = item(decimal.Decimal("5.67"), _parent=table, _sort_keys=True)
     assert result.as_string() == "5.67"
 
-    api.unregister_encoder(encode_decimal_old_style)  # type: ignore[arg-type]
+    api.unregister_encoder(encode_decimal_old_style)
 
 
 def test_custom_encoders_with_kwargs() -> None:
@@ -1051,7 +1053,7 @@ def test_custom_encoders_with_kwargs() -> None:
 
     kwargs_captured = None
 
-    @api.register_encoder  # type: ignore[type-var]
+    @api.register_encoder
     def encode_decimal_with_kwargs(obj: Any, **kwargs: Any) -> Item:
         nonlocal kwargs_captured
         if isinstance(obj, decimal.Decimal):
@@ -1061,11 +1063,11 @@ def test_custom_encoders_with_kwargs() -> None:
 
     # Test with parent and sort_keys passed as kwargs
     table = api.table()
-    result = item(decimal.Decimal("7.89"), _parent=table, _sort_keys=True)  # type: ignore[call-overload]
+    result = item(decimal.Decimal("7.89"), _parent=table, _sort_keys=True)
     assert result.as_string() == "7.89"
     assert kwargs_captured == {"_parent": table, "_sort_keys": True}
 
-    api.unregister_encoder(encode_decimal_with_kwargs)  # type: ignore[arg-type]
+    api.unregister_encoder(encode_decimal_with_kwargs)
 
 
 def test_custom_encoders_for_complex_objects() -> None:
@@ -1088,7 +1090,7 @@ def test_custom_encoders_for_complex_objects() -> None:
 
     # Test with nested structure
     custom_obj = CustomDict({"a": 1, "b": {"c": 2, "d": 3}})
-    result = item(custom_obj, _sort_keys=True)  # type: ignore[call-overload]
+    result = item(custom_obj, _sort_keys=True)
 
     # Should properly format as a table with sorted keys
     expected = """a = 1
@@ -1105,16 +1107,16 @@ d = 3
 def test_no_extra_minus_sign() -> None:
     doc = parse("a = -1")
     assert doc.as_string() == "a = -1"
-    doc["a"] *= -1  # type: ignore[operator]
+    doc["a"] *= -1
     assert doc.as_string() == "a = +1"
-    doc["a"] *= -1  # type: ignore[operator]
+    doc["a"] *= -1
     assert doc.as_string() == "a = -1"
 
     doc = parse("a = -1.5")
     assert doc.as_string() == "a = -1.5"
-    doc["a"] *= -1  # type: ignore[operator]
+    doc["a"] *= -1
     assert doc.as_string() == "a = +1.5"
-    doc["a"] *= -1  # type: ignore[operator]
+    doc["a"] *= -1
     assert doc.as_string() == "a = -1.5"
 
 
@@ -1192,12 +1194,12 @@ def test_array_item_removal_newline_restore_next() -> None:
 
     docstr = "x = [\n  '0',\n    '1','2'\n]"
     doc = parse(docstr)
-    doc["x"].remove("1")  # type: ignore[attr-defined]
+    doc["x"].remove("1")
     assert doc.as_string() == expected
     parse(doc.as_string())
 
     docstr = "x = [\n  '0',\n    '1',  '2'\n]"
     doc = parse(docstr)
-    doc["x"].remove("1")  # type: ignore[attr-defined]
+    doc["x"].remove("1")
     assert doc.as_string() == expected
     parse(doc.as_string())

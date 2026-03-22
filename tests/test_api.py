@@ -312,7 +312,7 @@ def test_build_super_table() -> None:
 
 def test_add_dotted_key() -> None:
     doc = tomlkit.document()
-    doc.add(tomlkit.key(["foo", "bar"]), 1)  # type: ignore[arg-type]
+    doc.add(tomlkit.key(["foo", "bar"]), 1)
     assert doc.as_string() == "foo.bar = 1\n"
 
     table = tomlkit.table()
