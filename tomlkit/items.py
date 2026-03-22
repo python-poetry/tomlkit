@@ -19,7 +19,6 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Any
 from typing import TypeVar
 from typing import overload
 
@@ -1009,7 +1008,7 @@ class Bool(Item):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, bool):
-            return NotImplemented  
+            return NotImplemented
 
         return other == self._value
 

@@ -1,4 +1,5 @@
 import os
+
 from collections.abc import Callable
 
 import pytest

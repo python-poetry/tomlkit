@@ -1,7 +1,7 @@
 import os
+
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 from tomlkit.toml_document import TOMLDocument
 from tomlkit.toml_file import TOMLFile
