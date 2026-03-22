@@ -7,7 +7,9 @@ from tomlkit.items import StringType
 from tomlkit.parser import Parser
 
 
-def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string() -> None:
+def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string() -> (
+    None
+):
     parser = Parser('"foo"')
 
     with pytest.raises(InternalParserError) as e:

@@ -65,7 +65,9 @@ def json_serial(obj: Any) -> str:
         "table_names",
     ],
 )
-def test_parse_can_parse_valid_toml_files(example: Callable[[str], str], example_name: str) -> None:
+def test_parse_can_parse_valid_toml_files(
+    example: Callable[[str], str], example_name: str
+) -> None:
     assert isinstance(parse(example(example_name)), TOMLDocument)
     assert isinstance(loads(example(example_name)), TOMLDocument)
 
@@ -145,7 +147,9 @@ def test_parse_raises_errors_for_invalid_toml_files(
         "table_names",
     ],
 )
-def test_original_string_and_dumped_string_are_equal(example: Callable[[str], str], example_name: str) -> None:
+def test_original_string_and_dumped_string_are_equal(
+    example: Callable[[str], str], example_name: str
+) -> None:
     content = example(example_name)
     parsed = parse(content)
 
@@ -463,7 +467,9 @@ def test_create_string(kwargs: dict[str, Any], example: str, expected: str) -> N
         ({"multiline": True, "literal": True}, "My'''String"),
     ],
 )
-def test_create_string_with_invalid_characters(kwargs: dict[str, Any], example: str) -> None:
+def test_create_string_with_invalid_characters(
+    kwargs: dict[str, Any], example: str
+) -> None:
     with pytest.raises(InvalidStringError):
         tomlkit.string(example, **kwargs)
 

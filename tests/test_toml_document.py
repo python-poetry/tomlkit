@@ -191,7 +191,9 @@ def test_toml_document_with_dotted_keys(example: Callable[[str], str]) -> None:
     assert doc["a"]["b"]["d"] == 2
 
 
-def test_toml_document_super_table_with_different_sub_sections(example: Callable[[str], str]) -> None:
+def test_toml_document_super_table_with_different_sub_sections(
+    example: Callable[[str], str],
+) -> None:
     content = example("pyproject")
 
     doc = parse(content)
@@ -338,7 +340,9 @@ def test_inserting_after_deletion() -> None:
     assert expected == doc.as_string()
 
 
-def test_toml_document_with_dotted_keys_inside_table(example: Callable[[str], str]) -> None:
+def test_toml_document_with_dotted_keys_inside_table(
+    example: Callable[[str], str],
+) -> None:
     content = example("0.5.0")
 
     doc = parse(content)
@@ -351,7 +355,9 @@ def test_toml_document_with_dotted_keys_inside_table(example: Callable[[str], st
     assert t["a"]["c"] == 3
 
 
-def test_toml_document_with_super_aot_after_super_table(example: Callable[[str], str]) -> None:
+def test_toml_document_with_super_aot_after_super_table(
+    example: Callable[[str], str],
+) -> None:
     content = example("pyproject")
 
     doc = parse(content)

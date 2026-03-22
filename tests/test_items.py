@@ -269,7 +269,9 @@ def test_inf_and_nan_are_supported(example: Callable[[str], str]) -> None:
     assert math.isnan(doc["sf6"])
 
 
-def test_hex_octal_and_bin_integers_are_supported(example: Callable[[str], str]) -> None:
+def test_hex_octal_and_bin_integers_are_supported(
+    example: Callable[[str], str],
+) -> None:
     content = example("0.5.0")
     doc = parse(content)
 
@@ -999,7 +1001,9 @@ def test_custom_encoders_with_parent_and_sort_keys() -> None:
     sort_keys_captured = None
 
     @api.register_encoder
-    def encode_decimal_with_context(obj: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
+    def encode_decimal_with_context(
+        obj: Any, _parent: Item | None = None, _sort_keys: bool = False
+    ) -> Item:
         nonlocal parent_captured, sort_keys_captured
         if isinstance(obj, decimal.Decimal):
             parent_captured = _parent
@@ -1079,7 +1083,9 @@ def test_custom_encoders_for_complex_objects() -> None:
             self.data = data
 
     @api.register_encoder
-    def encode_custom_dict(obj: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
+    def encode_custom_dict(
+        obj: Any, _parent: Item | None = None, _sort_keys: bool = False
+    ) -> Item:
         if isinstance(obj, CustomDict):
             # Create a table and use item() to convert nested values
             table = api.table()

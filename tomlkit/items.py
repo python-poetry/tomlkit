@@ -65,7 +65,9 @@ def item(value: str, _parent: Item | None = ..., _sort_keys: bool = ...) -> Stri
 
 
 @overload
-def item(value: datetime, _parent: Item | None = ..., _sort_keys: bool = ...) -> DateTime: ...  # type: ignore[overload-overlap]
+def item(
+    value: datetime, _parent: Item | None = ..., _sort_keys: bool = ...
+) -> DateTime: ...  # type: ignore[overload-overlap]
 
 
 @overload
@@ -89,11 +91,15 @@ def item(
 
 
 @overload
-def item(value: dict[str, Any], _parent: Array = ..., _sort_keys: bool = ...) -> InlineTable: ...
+def item(
+    value: dict[str, Any], _parent: Array = ..., _sort_keys: bool = ...
+) -> InlineTable: ...
 
 
 @overload
-def item(value: dict[str, Any], _parent: Item | None = ..., _sort_keys: bool = ...) -> Table: ...
+def item(
+    value: dict[str, Any], _parent: Item | None = ..., _sort_keys: bool = ...
+) -> Table: ...
 
 
 @overload
@@ -714,7 +720,9 @@ class Integer(Item, _CustomInt):
         return self._new(int.__pos__(self))
 
     def __pow__(self, other: int, mod: int | None = None) -> Integer:  # type: ignore[override]
-        result = int.__pow__(self, other) if mod is None else int.__pow__(self, other, mod)
+        result = (
+            int.__pow__(self, other) if mod is None else int.__pow__(self, other, mod)
+        )
         return self._new(result)
 
     def __radd__(self, other: object) -> Integer:
@@ -763,7 +771,9 @@ class Integer(Item, _CustomInt):
         return self._new(int.__round__(self, ndigits))
 
     def __rpow__(self, other: int, mod: int | None = None) -> Integer:  # type: ignore[misc]
-        result = int.__rpow__(self, other) if mod is None else int.__rpow__(self, other, mod)
+        result = (
+            int.__rpow__(self, other) if mod is None else int.__rpow__(self, other, mod)
+        )
         return self._new(result)
 
     def __rrshift__(self, other: object) -> Integer:
@@ -1162,7 +1172,9 @@ class DateTime(Item, datetime):
             raw,
         )
 
-    def _getstate(self, protocol: int = 3) -> tuple[int, int, int, int, int, int, int, tzinfo | None, Trivia, str]:
+    def _getstate(
+        self, protocol: int = 3
+    ) -> tuple[int, int, int, int, int, int, int, tzinfo | None, Trivia, str]:
         return (
             self.year,
             self.month,
@@ -1182,7 +1194,14 @@ class Date(Item, date):
     A date literal.
     """
 
-    def __new__(cls, year: int, month: int, day: int, trivia: Trivia | None = None, raw: str = "") -> Date:
+    def __new__(
+        cls,
+        year: int,
+        month: int,
+        day: int,
+        trivia: Trivia | None = None,
+        raw: str = "",
+    ) -> Date:
         return date.__new__(cls, year, month, day)
 
     def __init__(
@@ -1311,7 +1330,9 @@ class Time(Item, time):
             raw,
         )
 
-    def _getstate(self, protocol: int = 3) -> tuple[int, int, int, int, tzinfo | None, Trivia, str]:
+    def _getstate(
+        self, protocol: int = 3
+    ) -> tuple[int, int, int, int, tzinfo | None, Trivia, str]:
         return (
             self.hour,
             self.minute,
@@ -1339,7 +1360,11 @@ class _ArrayItemGroup:
         self.comment = comment
 
     def __iter__(self) -> Iterator[Item]:
-        return (x for x in (self.indent, self.value, self.comma, self.comment) if x is not None)
+        return (
+            x
+            for x in (self.indent, self.value, self.comma, self.comment)
+            if x is not None
+        )
 
     def __repr__(self) -> str:
         return repr(tuple(self))
@@ -1594,10 +1619,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
                 # The last item is a pure whitespace(\n ), insert before it
                 idx -= 1
                 _indent = self._value[idx].indent
-                if (
-                    _indent is not None
-                    and "\n" in _indent.s
-                ):
+                if _indent is not None and "\n" in _indent.s:
                     default_indent = "\n    "
         indent: Whitespace | None = None
         comma: Whitespace | None = Whitespace(",") if pos < length else None
@@ -1741,7 +1763,9 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     @overload
     def add(self: AT, key: Key | str, value: Any = ...) -> AT: ...
 
-    def add(self: AT, key: Key | str | Comment | Whitespace, value: Any | None = None) -> AT:
+    def add(
+        self: AT, key: Key | str | Comment | Whitespace, value: Any | None = None
+    ) -> AT:
         if value is None:
             if not isinstance(key, (Comment, Whitespace)):
                 msg = "Non comment/whitespace items must have an associated key"
@@ -1772,7 +1796,8 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
         super().setdefault(key, default)
         return self[key]
 
-    def __str__(self) -> str:        return str(self.value)
+    def __str__(self) -> str:
+        return str(self.value)
 
     def copy(self: AT) -> AT:
         return copy.copy(self)
@@ -1956,7 +1981,9 @@ class Table(AbstractTable):
             if hasattr(child, "invalidate_display_name"):
                 child.invalidate_display_name()
 
-    def _getstate(self, protocol: int = 3) -> tuple[container.Container, Trivia, bool, bool | None, str | None, str | None]:
+    def _getstate(
+        self, protocol: int = 3
+    ) -> tuple[container.Container, Trivia, bool, bool | None, str | None, str | None]:
         return (
             self._value,
             self._trivia,
@@ -2090,7 +2117,9 @@ class String(str, Item):  # type: ignore[misc]
     A string literal.
     """
 
-    def __new__(cls, t: StringType, value: str, original: str, trivia: Trivia) -> String:
+    def __new__(
+        cls, t: StringType, value: str, original: str, trivia: Trivia
+    ) -> String:
         return super().__new__(cls, value)
 
     def __init__(self, t: StringType, _: str, original: str, trivia: Trivia) -> None:
@@ -2130,7 +2159,9 @@ class String(str, Item):  # type: ignore[misc]
         return self._t, str(self), self._original, self._trivia
 
     @classmethod
-    def from_raw(cls, value: str, type_: StringType = StringType.SLB, escape: bool = True) -> String:
+    def from_raw(
+        cls, value: str, type_: StringType = StringType.SLB, escape: bool = True
+    ) -> String:
         value = decode(value)
 
         invalid = type_.invalid_sequences

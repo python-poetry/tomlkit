@@ -40,9 +40,7 @@ def test_build_example(example: Callable[[str], str]) -> None:
 
     servers = table()
     servers.add(nl())
-    c = comment(
-        "You can indent as you please. Tabs or spaces. TOML don't care."
-    )
+    c = comment("You can indent as you please. Tabs or spaces. TOML don't care.")
     c.indent(2)
     c.trivia.trail = ""
     servers.add(c)

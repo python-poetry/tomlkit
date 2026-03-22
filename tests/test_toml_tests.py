@@ -56,7 +56,14 @@ def _load_case_list() -> list[str]:
         return [line.strip() for line in f if line.strip()]
 
 
-def _build_cases() -> tuple[list[dict[str, str]], list[str], list[dict[str, str]], list[str], list[str], list[str]]:
+def _build_cases() -> tuple[
+    list[dict[str, str]],
+    list[str],
+    list[dict[str, str]],
+    list[str],
+    list[str],
+    list[str],
+]:
     valid_cases = []
     valid_ids = []
     invalid_decode_cases = []
