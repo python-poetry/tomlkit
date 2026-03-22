@@ -497,7 +497,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return self
 
-    def item(self, key: Key | str) -> Item:
+    def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         """Get an item for the given key."""
         if not isinstance(key, Key):
             key = SingleKey(key)
@@ -510,7 +510,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             # The item we are getting is an out of order table
             # so we need a proxy to retrieve the proper objects
             # from the parent container
-            return OutOfOrderTableProxy(self, idx)  # type: ignore[return-value]
+            return OutOfOrderTableProxy(self, idx)
 
         return self._body[idx][1]
 
@@ -711,7 +711,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return item
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
-        if key is not None and key in self:
+        if key in self:
             old_key = next(filter(lambda k: k == key, self._map))
             self._replace(old_key, key, value)
         else:

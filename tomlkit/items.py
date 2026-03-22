@@ -37,6 +37,7 @@ from tomlkit.exceptions import InvalidStringError
 if TYPE_CHECKING:
     from typing import Protocol
 
+    from tomlkit.container import OutOfOrderTableProxy
     from tomlkit import container
 
     class Encoder(Protocol):
@@ -65,9 +66,9 @@ def item(value: str, _parent: Item | None = ..., _sort_keys: bool = ...) -> Stri
 
 
 @overload
-def item(
+def item(  # type: ignore[overload-overlap]
     value: datetime, _parent: Item | None = ..., _sort_keys: bool = ...
-) -> DateTime: ...  # type: ignore[overload-overlap]
+) -> DateTime: ...
 
 
 @overload
@@ -1789,7 +1790,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
 
         return self
 
-    def item(self, key: Key | str) -> Item:
+    def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         return self._value.item(key)
 
     def setdefault(self, key: Key | str, default: Any) -> Any:  # type: ignore[override]
