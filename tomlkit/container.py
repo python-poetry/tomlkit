@@ -258,17 +258,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                             return self
 
-                        # Create a new element to replace the old one
-                        current = copy.deepcopy(current)
+                        # Merge the new super table's entries into
+                        # the existing one.
                         for k, v in item.value.body:
                             current.append(k, v)
-                        self._body[
-                            (
-                                current_idx[-1]
-                                if isinstance(current_idx, tuple)
-                                else current_idx
-                            )
-                        ] = (current_body_element[0], current)
 
                         return self
                     elif (
@@ -856,6 +849,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._table_keys = list(self._table_keys)
 
         return c
 
@@ -885,13 +879,16 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     @staticmethod
     def validate(container: Container, indices: tuple[int, ...]) -> None:
         """Validate out of order tables in the given container"""
-        # Append all items to a temp container to see if there is any error
+        # Append all items to a temp container to see if there is any error.
+        # Shallow-copy Tables so the merge path doesn't mutate originals.
         temp_container = Container(True)
         for i in indices:
             _, item = container._body[i]
 
             if isinstance(item, Table):
                 for k, v in item.value.body:
+                    if isinstance(v, Table):
+                        v = copy.copy(v)
                     temp_container.append(k, v, validate=True)
 
         temp_container._validate_out_of_order_table()
