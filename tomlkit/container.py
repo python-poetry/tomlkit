@@ -4,8 +4,12 @@ import copy
 import math
 
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 from typing import Any
-from typing import Self
+
+
+if TYPE_CHECKING:
+    from typing import Self
 
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict

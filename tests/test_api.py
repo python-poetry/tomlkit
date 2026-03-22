@@ -8,7 +8,6 @@ from datetime import time
 from types import MappingProxyType
 from typing import Any
 from typing import Callable
-from typing import Type
 
 import pytest
 
@@ -128,7 +127,7 @@ def test_parsed_document_are_properly_json_representable(
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(
-    invalid_example: Callable[[str], str], error: Type[Exception], example_name: str
+    invalid_example: Callable[[str], str], error: type[Exception], example_name: str
 ) -> None:
     with pytest.raises(error):
         parse(invalid_example(example_name))

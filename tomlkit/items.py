@@ -37,8 +37,8 @@ from tomlkit.exceptions import InvalidStringError
 if TYPE_CHECKING:
     from typing import Protocol
 
-    from tomlkit.container import OutOfOrderTableProxy
     from tomlkit import container
+    from tomlkit.container import OutOfOrderTableProxy
 
     class Encoder(Protocol):
         def __call__(self, __value: Any, /) -> Item: ...
