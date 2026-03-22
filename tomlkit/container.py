@@ -182,23 +182,23 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             assert isinstance(key, Key)
             item.name = key.key
 
-        prev = self._previous_item()
-        prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
-        if isinstance(item, Table):
-            if not self._parsed:
+        if not self._parsed:
+            prev = self._previous_item()
+            prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
+            if isinstance(item, Table):
                 item.invalidate_display_name()
-            if (
-                self._body
-                and not (self._parsed or item.trivia.indent or prev_ws)
-                and key is not None
-                and not key.is_dotted()
-            ):
-                item.trivia.indent = "\n"
+                if (
+                    self._body
+                    and not (item.trivia.indent or prev_ws)
+                    and key is not None
+                    and not key.is_dotted()
+                ):
+                    item.trivia.indent = "\n"
 
-        if isinstance(item, AoT) and self._body and not self._parsed:
-            item.invalidate_display_name()
-            if item and not ("\n" in item[0].trivia.indent or prev_ws):
-                item[0].trivia.indent = "\n" + item[0].trivia.indent
+            if isinstance(item, AoT) and self._body:
+                item.invalidate_display_name()
+                if item and not ("\n" in item[0].trivia.indent or prev_ws):
+                    item[0].trivia.indent = "\n" + item[0].trivia.indent
 
         if key is not None and key in self._map:
             current_idx = self._map[key]
@@ -289,35 +289,31 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             else:
                 raise KeyAlreadyPresent(key)
 
-        is_table = isinstance(item, (Table, AoT))
-        if (
-            key is not None
-            and self._body
-            and not self._parsed
-            and (not is_table or key.is_dotted())
-        ):
-            # If there is already at least one table in the current container
-            # and the given item is not a table, we need to find the last
-            # item that is not a table and insert after it
-            # If no such item exists, insert at the top of the table
-            last_index = self._get_last_index_before_table()
+        if not self._parsed:
+            is_table = isinstance(item, (Table, AoT))
+            if key is not None and self._body and (not is_table or key.is_dotted()):
+                # If there is already at least one table in the current container
+                # and the given item is not a table, we need to find the last
+                # item that is not a table and insert after it
+                # If no such item exists, insert at the top of the table
+                last_index = self._get_last_index_before_table()
 
-            if last_index < len(self._body):
-                after_item = self._body[last_index][1]
-                if not (
-                    isinstance(after_item, Whitespace)
-                    or "\n" in after_item.trivia.indent
-                ):
-                    after_item.trivia.indent = "\n" + after_item.trivia.indent
-                return self._insert_at(last_index, key, item)
-            else:
-                previous_item = self._body[-1][1]
-                if not (
-                    isinstance(previous_item, Whitespace)
-                    or ends_with_whitespace(previous_item)
-                    or "\n" in previous_item.trivia.trail
-                ):
-                    previous_item.trivia.trail += "\n"
+                if last_index < len(self._body):
+                    after_item = self._body[last_index][1]
+                    if not (
+                        isinstance(after_item, Whitespace)
+                        or "\n" in after_item.trivia.indent
+                    ):
+                        after_item.trivia.indent = "\n" + after_item.trivia.indent
+                    return self._insert_at(last_index, key, item)
+                else:
+                    previous_item = self._body[-1][1]
+                    if not (
+                        isinstance(previous_item, Whitespace)
+                        or ends_with_whitespace(previous_item)
+                        or "\n" in previous_item.trivia.trail
+                    ):
+                        previous_item.trivia.trail += "\n"
 
         self._raw_append(key, item)
         return self
