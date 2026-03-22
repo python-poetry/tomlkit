@@ -54,6 +54,11 @@ force-single-line = true
 lines-after-imports = 2
 lines-between-types = 1
 
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0a9"]
 build-backend = "poetry.core.masonry.api"

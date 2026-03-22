@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Callable
 
 from tomlkit import aot
 from tomlkit import array
@@ -11,13 +12,13 @@ from tomlkit import table
 from tomlkit._utils import _utc
 
 
-def test_build_example(example):
+def test_build_example(example: Callable[[str], str]) -> None:
     content = example("example")
 
     doc = document()
     doc.add(comment("This is a TOML document. Boom."))
     doc.add(nl())
-    doc.add("title", "TOML Example")
+    doc.add("title", "TOML Example")  # type: ignore[arg-type]
 
     owner = table()
     owner.add("name", "Tom Preston-Werner")
@@ -42,7 +43,7 @@ def test_build_example(example):
         "You can indent as you please. Tabs or spaces. TOML don't care."
     ).indent(2)
     c.trivia.trail = ""
-    servers.add(c)
+    servers.add(c)  # type: ignore[call-overload]
     alpha = table()
     servers.append("alpha", alpha)
     alpha.indent(2)
@@ -95,11 +96,11 @@ def test_build_example(example):
     assert content == doc.as_string()
 
 
-def test_add_remove():
+def test_add_remove() -> None:
     content = ""
 
     doc = parse(content)
-    doc.append("foo", "bar")
+    doc.append("foo", "bar")  # type: ignore[arg-type]
 
     assert (
         doc.as_string()
@@ -112,7 +113,7 @@ def test_add_remove():
     assert doc.as_string() == ""
 
 
-def test_append_table_after_multiple_indices():
+def test_append_table_after_multiple_indices() -> None:
     content = """
     [packages]
     foo = "*"
@@ -124,10 +125,10 @@ def test_append_table_after_multiple_indices():
     version = "*"
     """
     doc = parse(content)
-    doc.append("foobar", {"name": "John"})
+    doc.append("foobar", {"name": "John"})  # type: ignore[arg-type]
 
 
-def test_top_level_keys_are_put_at_the_root_of_the_document():
+def test_top_level_keys_are_put_at_the_root_of_the_document() -> None:
     doc = document()
     doc.add(comment("Comment"))
     doc["foo"] = {"name": "test"}

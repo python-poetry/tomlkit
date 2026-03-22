@@ -4,6 +4,8 @@ import datetime
 import re
 import string
 
+from typing import Any
+
 from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE
 from tomlkit._utils import _escaped
@@ -44,6 +46,7 @@ from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
 from tomlkit.source import Source
+from tomlkit.source import _StateHandler
 from tomlkit.toml_char import TOMLChar
 from tomlkit.toml_document import TOMLDocument
 
@@ -67,19 +70,19 @@ class Parser:
         self._aot_stack: list[Key] = []
 
     @property
-    def _state(self):
+    def _state(self) -> _StateHandler:
         return self._src.state
 
     @property
-    def _idx(self):
+    def _idx(self) -> int:
         return self._src.idx
 
     @property
-    def _current(self):
+    def _current(self) -> TOMLChar:
         return self._src.current
 
     @property
-    def _marker(self):
+    def _marker(self) -> int:
         return self._src.marker
 
     def extract(self) -> str:
@@ -102,7 +105,7 @@ class Parser:
         """
         return self._src.inc_n(n=n, exception=exception)
 
-    def consume(self, chars, min=0, max=-1):
+    def consume(self, chars: str, min: int = 0, max: int = -1) -> None:
         """
         Consume chars until min/max is satisfied is valid.
         """
@@ -120,7 +123,12 @@ class Parser:
         """
         self._src.mark()
 
-    def parse_error(self, exception=ParseError, *args, **kwargs):
+    def parse_error(
+        self,
+        exception: type[ParseError] = ParseError,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ParseError:
         """
         Creates a generic "parse error" at the current position.
         """
@@ -233,7 +241,7 @@ class Parser:
                     return None, Comment(Trivia(indent, cws, comment, trail))
                 elif c == "[":
                     # Found a table, delegate to the calling function.
-                    return
+                    return None
                 else:
                     # Beginning of a KV pair.
                     # Return to beginning of whitespace so it gets included
@@ -396,12 +404,12 @@ class Parser:
         while self._current.is_spaces() and self.inc():
             pass
         original += self.extract()
-        key = SingleKey(str(key_str), t=key_type, sep="", original=original)
+        result: Key = SingleKey(str(key_str), t=key_type, sep="", original=original)
         if self._current == ".":
             self.inc()
-            key = key.concat(self._parse_key())
+            result = result.concat(self._parse_key())
 
-        return key
+        return result
 
     def _parse_bare_key(self) -> Key:
         """
@@ -413,22 +421,22 @@ class Parser:
             pass
 
         original = self.extract()
-        key = original.strip()
-        if not key:
+        key_s = original.strip()
+        if not key_s:
             # Empty key
             raise self.parse_error(EmptyKeyError)
 
-        if " " in key:
+        if " " in key_s:
             # Bare key with spaces in it
-            raise self.parse_error(ParseError, f'Invalid key "{key}"')
+            raise self.parse_error(ParseError, f'Invalid key "{key_s}"')
 
-        key = SingleKey(key, KeyType.Bare, "", original)
+        result: Key = SingleKey(key_s, KeyType.Bare, "", original)
 
         if self._current == ".":
             self.inc()
-            key = key.concat(self._parse_key())
+            result = result.concat(self._parse_key())
 
-        return key
+        return result
 
     def _parse_value(self) -> Item:
         """
@@ -554,10 +562,10 @@ class Parser:
         else:
             raise self.parse_error(UnexpectedCharError, c)
 
-    def _parse_true(self):
+    def _parse_true(self) -> Bool:
         return self._parse_bool(BoolType.TRUE)
 
-    def _parse_false(self):
+    def _parse_false(self) -> Bool:
         return self._parse_bool(BoolType.FALSE)
 
     def _parse_bool(self, style: BoolType) -> Bool:
@@ -632,6 +640,8 @@ class Parser:
             pass
         else:
             return res
+
+        raise self.parse_error(ParseError, "Failed to parse array")
 
     def _parse_inline_table(self) -> InlineTable:
         # consume opening bracket, EOF here is an issue (middle of array)
@@ -732,7 +742,7 @@ class Parser:
         with self._state:
             return self._parse_string(StringType.SLB)
 
-    def _parse_escaped_char(self, multiline):
+    def _parse_escaped_char(self, multiline: bool) -> str:
         if multiline and self._current.is_ws():
             # When the last non-whitespace character on a line is
             # a \, it will be trimmed along with all whitespace
@@ -768,6 +778,7 @@ class Parser:
             # this needs to be a unicode
             u, ue = self._peek_unicode(self._current == "U")
             if u is not None:
+                assert ue is not None
                 # consume the U char and the unicode value
                 self.inc_n(len(ue) + 1)
 
@@ -778,6 +789,7 @@ class Parser:
         if self._current == "x":
             h, he = self._peek_hex()
             if h is not None:
+                assert he is not None
                 # consume the x char and the hex value
                 self.inc_n(len(he) + 1)
                 return h
@@ -819,7 +831,7 @@ class Parser:
                 # consume the newline, EOF here is an issue (middle of string)
                 self.inc(exception=UnexpectedEofError)
             else:
-                cur = self._current
+                cur: str = self._current
                 with self._state(restore=True):
                     if self.inc():
                         cur += self._current
@@ -964,7 +976,7 @@ class Parser:
 
         cws, comment, trail = self._parse_comment_trail()
 
-        result = Null()
+        result: Table | AoT = Null()  # type: ignore[assignment]
         table = Table(
             values,
             Trivia(indent, cws, comment, trail),
@@ -1019,11 +1031,11 @@ class Parser:
                 key = name_parts[0]
 
         while not self.end():
-            item = self._parse_item()
-            if item:
-                _key, item = item
-                if not self._merge_ws(item, values):
-                    table.raw_append(_key, item)
+            parsed = self._parse_item()
+            if parsed:
+                _key, _val = parsed
+                if not self._merge_ws(_val, values):
+                    table.raw_append(_key, _val)
             else:
                 if self._current == "[":
                     _, key_next = self._peek_table()
@@ -1091,12 +1103,13 @@ class Parser:
         Parses all siblings of the provided table first and bundles them into
         an AoT.
         """
-        payload = [first]
+        payload: list[Table] = [first]
         self._aot_stack.append(name_first)
         while not self.end():
             is_aot_next, name_next = self._peek_table()
             if is_aot_next and name_next == name_first:
                 _, table = self._parse_table(name_first)
+                assert isinstance(table, Table)
                 payload.append(table)
             else:
                 break

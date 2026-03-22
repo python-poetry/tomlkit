@@ -7,7 +7,7 @@ from tomlkit.items import StringType
 from tomlkit.parser import Parser
 
 
-def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string():
+def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string() -> None:
     parser = Parser('"foo"')
 
     with pytest.raises(InternalParserError) as e:
@@ -17,7 +17,7 @@ def test_parser_should_raise_an_internal_error_if_parsing_wrong_type_of_string()
     assert e.value.col == 0
 
 
-def test_parser_should_raise_an_error_for_empty_tables():
+def test_parser_should_raise_an_error_for_empty_tables() -> None:
     content = """
 [one]
 []
@@ -32,7 +32,7 @@ def test_parser_should_raise_an_error_for_empty_tables():
     assert e.value.col == 1
 
 
-def test_parser_should_raise_an_error_if_equal_not_found():
+def test_parser_should_raise_an_error_if_equal_not_found() -> None:
     content = """[foo]
 a {c = 1, d = 2}
 """
@@ -41,7 +41,7 @@ a {c = 1, d = 2}
         parser.parse()
 
 
-def test_parse_multiline_string_ignore_the_first_newline():
+def test_parse_multiline_string_ignore_the_first_newline() -> None:
     content = 'a = """\nfoo\n"""'
     parser = Parser(content)
     assert parser.parse() == {"a": "foo\n"}

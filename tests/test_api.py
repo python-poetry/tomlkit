@@ -6,6 +6,9 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from types import MappingProxyType
+from typing import Any
+from typing import Callable
+from typing import Type
 
 import pytest
 
@@ -38,7 +41,7 @@ from tomlkit.items import Time
 from tomlkit.toml_document import TOMLDocument
 
 
-def json_serial(obj):
+def json_serial(obj: Any) -> str:
     """JSON serializer for objects not serializable by default json code"""
     if isinstance(obj, (datetime, date, time)):
         return obj.isoformat()
@@ -62,7 +65,7 @@ def json_serial(obj):
         "table_names",
     ],
 )
-def test_parse_can_parse_valid_toml_files(example, example_name):
+def test_parse_can_parse_valid_toml_files(example: Callable[[str], str], example_name: str) -> None:
     assert isinstance(parse(example(example_name)), TOMLDocument)
     assert isinstance(loads(example(example_name)), TOMLDocument)
 
@@ -83,7 +86,7 @@ def test_parse_can_parse_valid_toml_files(example, example_name):
         "table_names",
     ],
 )
-def test_load_from_file_object(example_name):
+def test_load_from_file_object(example_name: str) -> None:
     with open(
         os.path.join(os.path.dirname(__file__), "examples", example_name + ".toml"),
         encoding="utf-8",
@@ -93,8 +96,8 @@ def test_load_from_file_object(example_name):
 
 @pytest.mark.parametrize("example_name", ["0.5.0", "pyproject", "table_names"])
 def test_parsed_document_are_properly_json_representable(
-    example, json_example, example_name
-):
+    example: Callable[[str], str], json_example: Callable[[str], str], example_name: str
+) -> None:
     doc = json.loads(json.dumps(parse(example(example_name)), default=json_serial))
     json_doc = json.loads(json_example(example_name))
 
@@ -123,8 +126,8 @@ def test_parsed_document_are_properly_json_representable(
     ],
 )
 def test_parse_raises_errors_for_invalid_toml_files(
-    invalid_example, error, example_name
-):
+    invalid_example: Callable[[str], str], error: Type[Exception], example_name: str
+) -> None:
     with pytest.raises(error):
         parse(invalid_example(example_name))
 
@@ -142,69 +145,69 @@ def test_parse_raises_errors_for_invalid_toml_files(
         "table_names",
     ],
 )
-def test_original_string_and_dumped_string_are_equal(example, example_name):
+def test_original_string_and_dumped_string_are_equal(example: Callable[[str], str], example_name: str) -> None:
     content = example(example_name)
     parsed = parse(content)
 
     assert content == dumps(parsed)
 
 
-def test_a_raw_dict_can_be_dumped():
+def test_a_raw_dict_can_be_dumped() -> None:
     s = dumps({"foo": "bar"})
 
     assert s == 'foo = "bar"\n'
 
 
-def test_mapping_types_can_be_dumped():
+def test_mapping_types_can_be_dumped() -> None:
     x = MappingProxyType({"foo": "bar"})
     assert dumps(x) == 'foo = "bar"\n'
 
 
-def test_dumps_weird_object():
+def test_dumps_weird_object() -> None:
     with pytest.raises(TypeError):
-        dumps(object())
+        dumps(object())  # type: ignore[arg-type]
 
 
-def test_dump_tuple_value_as_array():
-    x = {"foo": (1, 2)}
+def test_dump_tuple_value_as_array() -> None:
+    x: dict[str, Any] = {"foo": (1, 2)}
     assert dumps(x) == "foo = [1, 2]\n"
 
     x = {"foo": ({"a": 1}, {"a": 2})}
     assert dumps(x) == "[[foo]]\na = 1\n\n[[foo]]\na = 2\n"
 
 
-def test_dump_to_file_object():
+def test_dump_to_file_object() -> None:
     doc = {"foo": "bar"}
     fp = io.StringIO()
     dump(doc, fp)
     assert fp.getvalue() == 'foo = "bar"\n'
 
 
-def test_dump_nested_dotted_table():
-    a = tomlkit.parse("a.b.c.d='e'")["a"]
+def test_dump_nested_dotted_table() -> None:
+    a: Any = tomlkit.parse("a.b.c.d='e'")["a"]
     assert a == {"b": {"c": {"d": "e"}}}
     assert dumps(a) == "b.c.d='e'"
 
 
-def test_integer():
+def test_integer() -> None:
     i = tomlkit.integer("34")
 
     assert isinstance(i, Integer)
 
 
-def test_float():
+def test_float() -> None:
     i = tomlkit.float_("34.56")
 
     assert isinstance(i, Float)
 
 
-def test_boolean():
+def test_boolean() -> None:
     i = tomlkit.boolean("true")
 
     assert isinstance(i, Bool)
 
 
-def test_date():
+def test_date() -> None:
     dt = tomlkit.date("1979-05-13")
 
     assert isinstance(dt, Date)
@@ -213,7 +216,7 @@ def test_date():
         tomlkit.date("12:34:56")
 
 
-def test_time():
+def test_time() -> None:
     dt = tomlkit.time("12:34:56")
 
     assert isinstance(dt, Time)
@@ -222,7 +225,7 @@ def test_time():
         tomlkit.time("1979-05-13")
 
 
-def test_datetime():
+def test_datetime() -> None:
     dt = tomlkit.datetime("1979-05-13T12:34:56")
 
     assert isinstance(dt, DateTime)
@@ -231,7 +234,7 @@ def test_datetime():
         tomlkit.time("1979-05-13")
 
 
-def test_array():
+def test_array() -> None:
     a = tomlkit.array()
 
     assert isinstance(a, Array)
@@ -241,45 +244,45 @@ def test_array():
     assert isinstance(a, Array)
 
 
-def test_table():
+def test_table() -> None:
     t = tomlkit.table()
 
     assert isinstance(t, Table)
 
 
-def test_inline_table():
+def test_inline_table() -> None:
     t = tomlkit.inline_table()
 
     assert isinstance(t, InlineTable)
 
 
-def test_aot():
+def test_aot() -> None:
     t = tomlkit.aot()
 
     assert isinstance(t, AoT)
 
 
-def test_key():
+def test_key() -> None:
     k = tomlkit.key("foo")
 
     assert isinstance(k, Key)
 
 
-def test_key_value():
+def test_key_value() -> None:
     k, i = tomlkit.key_value("foo = 12")
 
     assert isinstance(k, Key)
     assert isinstance(i, Integer)
 
 
-def test_string():
+def test_string() -> None:
     s = tomlkit.string('foo "')
 
     assert s.value == 'foo "'
     assert s.as_string() == '"foo \\""'
 
 
-def test_item_dict_to_table():
+def test_item_dict_to_table() -> None:
     t = tomlkit.item({"foo": {"bar": "baz"}})
 
     assert t.value == {"foo": {"bar": "baz"}}
@@ -291,7 +294,7 @@ bar = "baz"
     )
 
 
-def test_item_mixed_aray():
+def test_item_mixed_aray() -> None:
     example = [{"a": 3}, "b", 42]
     expected = '[{a = 3}, "b", 42]'
     t = tomlkit.item(example)
@@ -299,7 +302,7 @@ def test_item_mixed_aray():
     assert dumps({"x": {"y": example}}).strip() == "[x]\ny = " + expected
 
 
-def test_build_super_table():
+def test_build_super_table() -> None:
     doc = tomlkit.document()
     table = tomlkit.table(True)
     table.add("bar", {"x": 1})
@@ -307,9 +310,9 @@ def test_build_super_table():
     assert doc.as_string() == "[foo.bar]\nx = 1\n"
 
 
-def test_add_dotted_key():
+def test_add_dotted_key() -> None:
     doc = tomlkit.document()
-    doc.add(tomlkit.key(["foo", "bar"]), 1)
+    doc.add(tomlkit.key(["foo", "bar"]), 1)  # type: ignore[arg-type]
     assert doc.as_string() == "foo.bar = 1\n"
 
     table = tomlkit.table()
@@ -324,15 +327,15 @@ def test_add_dotted_key():
         ("false", False),
     ],
 )
-def test_value_parses_boolean(raw, expected):
+def test_value_parses_boolean(raw: str, expected: bool) -> None:
     parsed = tomlkit.value(raw)
-    assert parsed == expected
+    assert parsed == expected  # type: ignore[comparison-overlap]
 
 
 @pytest.mark.parametrize(
     "raw", ["t", "f", "tru", "fals", "test", "friend", "truthy", "falsify"]
 )
-def test_value_rejects_values_looking_like_bool_at_start(raw):
+def test_value_rejects_values_looking_like_bool_at_start(raw: str) -> None:
     """Reproduces https://github.com/sdispater/tomlkit/issues/165"""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
@@ -347,7 +350,7 @@ def test_value_rejects_values_looking_like_bool_at_start(raw):
         "true_hip_hop",
     ],
 )
-def test_value_rejects_values_having_true_prefix(raw):
+def test_value_rejects_values_having_true_prefix(raw: str) -> None:
     """Values that have ``true`` or ``false`` as prefix but then have additional chars are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
@@ -362,7 +365,7 @@ def test_value_rejects_values_having_true_prefix(raw):
         "false_prophet",
     ],
 )
-def test_value_rejects_values_having_false_prefix(raw):
+def test_value_rejects_values_having_false_prefix(raw: str) -> None:
     """Values that have ``true`` or ``false`` as prefix but then have additional chars are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
@@ -384,18 +387,18 @@ def test_value_rejects_values_having_false_prefix(raw):
         "false{a=1}",
     ],
 )
-def test_value_rejects_values_with_appendage(raw):
+def test_value_rejects_values_with_appendage(raw: str) -> None:
     """Values that appear valid at the beginning but leave chars unparsed are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
 
 
-def test_create_super_table_with_table():
+def test_create_super_table_with_table() -> None:
     data = {"foo": {"bar": {"a": 1}}}
     assert dumps(data) == "[foo.bar]\na = 1\n"
 
 
-def test_create_super_table_with_aot():
+def test_create_super_table_with_aot() -> None:
     data = {"foo": {"bar": [{"a": 1}]}}
     assert dumps(data) == "[[foo.bar]]\na = 1\n"
 
@@ -442,7 +445,7 @@ def test_create_super_table_with_aot():
         ),
     ],
 )
-def test_create_string(kwargs, example, expected):
+def test_create_string(kwargs: dict[str, Any], example: str, expected: str) -> None:
     value = tomlkit.string(example, **kwargs)
     assert value.as_string() == expected
 
@@ -460,12 +463,12 @@ def test_create_string(kwargs, example, expected):
         ({"multiline": True, "literal": True}, "My'''String"),
     ],
 )
-def test_create_string_with_invalid_characters(kwargs, example):
+def test_create_string_with_invalid_characters(kwargs: dict[str, Any], example: str) -> None:
     with pytest.raises(InvalidStringError):
         tomlkit.string(example, **kwargs)
 
 
-def test_parse_empty_quoted_table_name():
+def test_parse_empty_quoted_table_name() -> None:
     content = "['']\nx = 1\n"
     parsed = loads(content)
     assert parsed == {"": {"x": 1}}
