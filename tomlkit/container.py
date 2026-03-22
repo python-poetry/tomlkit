@@ -200,7 +200,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             if item and not ("\n" in item[0].trivia.indent or prev_ws):
                 item[0].trivia.indent = "\n" + item[0].trivia.indent
 
-        if key is not None and key in self:
+        if key is not None and key in self._map:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
                 current_body_element = self._body[current_idx[-1]]
