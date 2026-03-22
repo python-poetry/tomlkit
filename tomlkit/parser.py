@@ -47,7 +47,11 @@ from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
 from tomlkit.source import Source
 from tomlkit.source import _StateHandler
-from tomlkit.toml_char import TOMLChar
+from tomlkit.toml_char import BARE
+from tomlkit.toml_char import KV
+from tomlkit.toml_char import NL
+from tomlkit.toml_char import SPACES
+from tomlkit.toml_char import WS
 from tomlkit.toml_document import TOMLDocument
 
 
@@ -78,7 +82,7 @@ class Parser:
         return self._src._idx
 
     @property
-    def _current(self) -> TOMLChar:
+    def _current(self) -> str:
         return self._src._current
 
     @property
@@ -276,7 +280,7 @@ class Parser:
                 self.inc()  # Skip #
 
                 # The comment itself
-                while not self.end() and not self._current.is_nl():
+                while not self.end() and self._current not in NL:
                     code = ord(self._current)
                     if code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I):
                         raise self.parse_error(InvalidControlChar, code, "comments")
@@ -304,7 +308,7 @@ class Parser:
 
         trail = ""
         if parse_trail:
-            while self._current.is_spaces() and self.inc():
+            while self._current in SPACES and self.inc():
                 pass
 
             if self._current == "\r":
@@ -316,7 +320,7 @@ class Parser:
             if self._current == "\n":
                 self.inc()
 
-            if self._idx != self._marker or self._current.is_ws():
+            if self._idx != self._marker or self._current in WS:
                 trail = self.extract()
 
         return comment_ws, comment, trail
@@ -325,7 +329,7 @@ class Parser:
         # Leading indent
         self.mark()
 
-        while self._current.is_spaces() and self.inc():
+        while self._current in SPACES and self.inc():
             pass
 
         indent = self.extract()
@@ -336,7 +340,7 @@ class Parser:
         self.mark()
 
         found_equals = self._current == "="
-        while self._current.is_kv_sep() and self.inc():
+        while self._current in KV and self.inc():
             if self._current == "=":
                 if found_equals:
                     raise self.parse_error(UnexpectedCharError, "=")
@@ -374,8 +378,7 @@ class Parser:
         WS before the key must be exhausted first at the callsite.
         """
         self.mark()
-        while self._current.is_spaces() and self.inc():
-            # Skip any leading whitespace
+        while self._current in SPACES and self.inc():
             pass
         if self._current in "\"'":
             return self._parse_quoted_key()
@@ -401,7 +404,7 @@ class Parser:
             raise self.parse_error(UnexpectedCharError, key_str._t.value)
         original += key_str.as_string()
         self.mark()
-        while self._current.is_spaces() and self.inc():
+        while self._current in SPACES and self.inc():
             pass
         original += self.extract()
         result: Key = SingleKey(str(key_str), t=key_type, sep="", original=original)
@@ -415,9 +418,7 @@ class Parser:
         """
         Parses a bare key.
         """
-        while (
-            self._current.is_bare_key_char() or self._current.is_spaces()
-        ) and self.inc():
+        while (self._current in BARE or self._current in SPACES) and self.inc():
             pass
 
         original = self.extract()
@@ -588,9 +589,9 @@ class Parser:
         while True:
             # consume whitespace
             mark = self._idx
-            self.consume(TOMLChar.SPACES + TOMLChar.NL)
+            self.consume(SPACES + NL)
             indent = self._src[mark : self._idx]
-            newline = set(TOMLChar.NL) & set(indent)
+            newline = set(NL) & set(indent)
             if newline:
                 elems.append(Whitespace(indent))
                 continue
@@ -653,7 +654,7 @@ class Parser:
             while True:
                 # consume whitespace and newlines
                 mark = self._idx
-                self.consume(TOMLChar.SPACES + TOMLChar.NL)
+                self.consume(SPACES + NL)
                 raw = self._src[mark : self._idx]
                 if raw:
                     elems.add(Whitespace(raw))
@@ -743,7 +744,7 @@ class Parser:
             return self._parse_string(StringType.SLB)
 
     def _parse_escaped_char(self, multiline: bool) -> str:
-        if multiline and self._current.is_ws():
+        if multiline and self._current in WS:
             # When the last non-whitespace character on a line is
             # a \, it will be trimmed along with all whitespace
             # (including newlines) up to the next non-whitespace
@@ -752,7 +753,7 @@ class Parser:
             #     hello \
             #     world"""
             tmp = ""
-            while self._current.is_ws():
+            while self._current in WS:
                 tmp += self._current
                 # consume the whitespace, EOF here is an issue
                 # (middle of string)
@@ -1134,7 +1135,7 @@ class Parser:
         with self._state(restore=True):
             buf = ""
             for _ in range(n):
-                if self._current not in " \t\n\r#,]}" + self._src.EOF:
+                if self._current not in " \t\n\r#,]}\0":
                     buf += self._current
                     self.inc()
                     continue

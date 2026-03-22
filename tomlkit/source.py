@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from copy import copy
 from typing import Any
 
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
-from tomlkit.toml_char import TOMLChar
 
 
 class _State:
@@ -21,7 +19,6 @@ class _State:
 
     def __enter__(self) -> _State:
         # Entering this context manager - save the state
-        self._chars = copy(self._source._chars)
         self._idx = self._source._idx
         self._current = self._source._current
         self._marker = self._source._marker
@@ -36,7 +33,6 @@ class _State:
     ) -> None:
         # Exiting this context manager - restore the prior state
         if self.restore or exception_type:
-            self._source._chars = self._chars
             self._source._idx = self._idx
             self._source._current = self._current
             if self._save_marker:
@@ -75,28 +71,17 @@ class _StateHandler:
 
 
 class Source(str):
-    EOF = TOMLChar("\0")
+    EOF = "\0"
 
     def __init__(self, _: str) -> None:
         super().__init__()
 
-        # Collection of TOMLChars
-        self._chars = iter([(i, TOMLChar(c)) for i, c in enumerate(self)])
-
+        self._length = len(self)
         self._idx = 0
         self._marker = 0
-        self._current = TOMLChar("")
+        self._current = self[0] if self._length > 0 else self.EOF
 
         self._state = _StateHandler(self)
-
-        self.inc()
-
-    def reset(self) -> None:
-        # initialize both idx and current
-        self.inc()
-
-        # reset marker
-        self.mark()
 
     @property
     def state(self) -> _StateHandler:
@@ -107,7 +92,7 @@ class Source(str):
         return self._idx
 
     @property
-    def current(self) -> TOMLChar:
+    def current(self) -> str:
         return self._current
 
     @property
@@ -125,17 +110,18 @@ class Source(str):
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
-        try:
-            self._idx, self._current = next(self._chars)
-
+        idx = self._idx + 1
+        if idx < self._length:
+            self._idx = idx
+            self._current = self[idx]
             return True
-        except StopIteration:
-            self._idx = len(self)
-            self._current = self.EOF
-            if exception:
-                raise self.parse_error(exception) from None
 
-            return False
+        self._idx = self._length
+        self._current = self.EOF
+        if exception:
+            raise self.parse_error(exception) from None
+
+        return False
 
     def inc_n(self, n: int, exception: type[ParseError] | None = None) -> bool:
         """
@@ -148,7 +134,7 @@ class Source(str):
         """
         Consume chars until min/max is satisfied is valid.
         """
-        while self.current in chars and max != 0:
+        while self._current in chars and max != 0:
             min -= 1
             max -= 1
             if not self.inc():
@@ -156,13 +142,13 @@ class Source(str):
 
         # failed to consume minimum number of characters
         if min > 0:
-            raise self.parse_error(UnexpectedCharError, self.current)
+            raise self.parse_error(UnexpectedCharError, self._current)
 
     def end(self) -> bool:
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._current is self.EOF
+        return self._idx >= self._length
 
     def mark(self) -> None:
         """
