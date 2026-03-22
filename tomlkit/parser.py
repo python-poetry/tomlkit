@@ -71,19 +71,19 @@ class Parser:
 
     @property
     def _state(self) -> _StateHandler:
-        return self._src.state
+        return self._src._state
 
     @property
     def _idx(self) -> int:
-        return self._src.idx
+        return self._src._idx
 
     @property
     def _current(self) -> TOMLChar:
-        return self._src.current
+        return self._src._current
 
     @property
     def _marker(self) -> int:
-        return self._src.marker
+        return self._src._marker
 
     def extract(self) -> str:
         """
@@ -825,8 +825,14 @@ class Parser:
         self.mark()  # to extract the original string with whitespace and all
         value = ""
 
+        # Pre-compute delim properties — these are constant through the loop
+        delim_is_singleline = delim.is_singleline()
+        delim_is_multiline = delim.is_multiline()
+        delim_is_basic = delim.is_basic()
+        delim_unit = delim.unit
+
         # A newline immediately following the opening delimiter will be trimmed.
-        if delim.is_multiline():
+        if delim_is_multiline:
             if self._current == "\n":
                 # consume the newline, EOF here is an issue (middle of string)
                 self.inc(exception=UnexpectedEofError)
@@ -842,33 +848,33 @@ class Parser:
         while True:
             code = ord(self._current)
             if (
-                delim.is_singleline()
+                delim_is_singleline
                 and not escaped
                 and (code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I))
             ) or (
-                delim.is_multiline()
+                delim_is_multiline
                 and not escaped
                 and (
                     code == CHR_DEL
                     or (
-                        code <= CTRL_CHAR_LIMIT and code not in [CTRL_I, CTRL_J, CTRL_M]
+                        code <= CTRL_CHAR_LIMIT and code not in (CTRL_I, CTRL_J, CTRL_M)
                     )
                 )
             ):
                 raise self.parse_error(InvalidControlChar, code, "strings")
-            elif delim.is_multiline() and not escaped and self._current == "\r":
+            elif delim_is_multiline and not escaped and self._current == "\r":
                 with self._state(restore=True):
                     if not self.inc() or self._current != "\n":
                         raise self.parse_error(InvalidControlChar, CTRL_M, "strings")
-            elif not escaped and self._current == delim.unit:
+            elif not escaped and self._current == delim_unit:
                 # try to process current as a closing delim
                 original = self.extract()
 
                 close = ""
-                if delim.is_multiline():
+                if delim_is_multiline:
                     # Consume the delimiters to see if we are at the end of the string
                     close = ""
-                    while self._current == delim.unit:
+                    while self._current == delim_unit:
                         close += self._current
                         self.inc()
 
@@ -895,14 +901,14 @@ class Parser:
                     self.inc()
 
                 return String(delim, value, original, Trivia())
-            elif delim.is_basic() and escaped:
+            elif delim_is_basic and escaped:
                 # attempt to parse the current char as an escaped value, an exception
                 # is raised if this fails
-                value += self._parse_escaped_char(delim.is_multiline())
+                value += self._parse_escaped_char(delim_is_multiline)
 
                 # no longer escaped
                 escaped = False
-            elif delim.is_basic() and self._current == "\\":
+            elif delim_is_basic and self._current == "\\":
                 # the next char is being escaped
                 escaped = True
 

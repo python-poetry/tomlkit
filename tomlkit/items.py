@@ -280,16 +280,16 @@ class StringType(Enum):
         return self.value[0]
 
     def is_basic(self) -> bool:
-        return self in {StringType.SLB, StringType.MLB}
+        return self is StringType.SLB or self is StringType.MLB
 
     def is_literal(self) -> bool:
-        return self in {StringType.SLL, StringType.MLL}
+        return self is StringType.SLL or self is StringType.MLL
 
     def is_singleline(self) -> bool:
-        return self in {StringType.SLB, StringType.SLL}
+        return self is StringType.SLB or self is StringType.SLL
 
     def is_multiline(self) -> bool:
-        return self in {StringType.MLB, StringType.MLL}
+        return self is StringType.MLB or self is StringType.MLL
 
     def toggle(self) -> StringType:
         return {
