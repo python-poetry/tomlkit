@@ -5,7 +5,6 @@ import copy
 import dataclasses
 import inspect
 import re
-import string
 
 from collections.abc import Collection
 from collections.abc import Iterable
@@ -32,6 +31,7 @@ from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
 from tomlkit.exceptions import ConvertError
 from tomlkit.exceptions import InvalidStringError
+from tomlkit.toml_char import BARE
 
 
 if TYPE_CHECKING:
@@ -280,16 +280,16 @@ class StringType(Enum):
         return self.value[0]
 
     def is_basic(self) -> bool:
-        return self in {StringType.SLB, StringType.MLB}
+        return self is StringType.SLB or self is StringType.MLB
 
     def is_literal(self) -> bool:
-        return self in {StringType.SLL, StringType.MLL}
+        return self is StringType.SLL or self is StringType.MLL
 
     def is_singleline(self) -> bool:
-        return self in {StringType.SLB, StringType.SLL}
+        return self is StringType.SLB or self is StringType.SLL
 
     def is_multiline(self) -> bool:
-        return self in {StringType.MLB, StringType.MLL}
+        return self is StringType.MLB or self is StringType.MLL
 
     def toggle(self) -> StringType:
         return {
@@ -404,9 +404,7 @@ class SingleKey(Key):
             raise TypeError("Keys must be strings")
 
         if t is None:
-            if not k or any(
-                c not in string.ascii_letters + string.digits + "-" + "_" for c in k
-            ):
+            if not k or any(c not in BARE for c in k):
                 t = KeyType.Basic
             else:
                 t = KeyType.Bare
@@ -1919,7 +1917,9 @@ class Table(AbstractTable):
 
         if isinstance(key, Key):
             key = next(iter(key)).key
-            _item = self._value[key]
+            # Get the stored value directly from the Container's dict,
+            # avoiding __getitem__ which would create a throwaway SingleKey.
+            _item = dict.__getitem__(self._value, key)
 
         if key is not None:
             dict.__setitem__(self, key, _item)

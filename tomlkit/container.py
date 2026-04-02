@@ -182,25 +182,25 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             assert isinstance(key, Key)
             item.name = key.key
 
-        prev = self._previous_item()
-        prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
-        if isinstance(item, Table):
-            if not self._parsed:
+        if not self._parsed:
+            prev = self._previous_item()
+            prev_ws = isinstance(prev, Whitespace) or ends_with_whitespace(prev)
+            if isinstance(item, Table):
                 item.invalidate_display_name()
-            if (
-                self._body
-                and not (self._parsed or item.trivia.indent or prev_ws)
-                and key is not None
-                and not key.is_dotted()
-            ):
-                item.trivia.indent = "\n"
+                if (
+                    self._body
+                    and not (item.trivia.indent or prev_ws)
+                    and key is not None
+                    and not key.is_dotted()
+                ):
+                    item.trivia.indent = "\n"
 
-        if isinstance(item, AoT) and self._body and not self._parsed:
-            item.invalidate_display_name()
-            if item and not ("\n" in item[0].trivia.indent or prev_ws):
-                item[0].trivia.indent = "\n" + item[0].trivia.indent
+            if isinstance(item, AoT) and self._body:
+                item.invalidate_display_name()
+                if item and not ("\n" in item[0].trivia.indent or prev_ws):
+                    item[0].trivia.indent = "\n" + item[0].trivia.indent
 
-        if key is not None and key in self:
+        if key is not None and key in self._map:
             current_idx = self._map[key]
             if isinstance(current_idx, tuple):
                 current_body_element = self._body[current_idx[-1]]
@@ -258,17 +258,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                             return self
 
-                        # Create a new element to replace the old one
-                        current = copy.deepcopy(current)
+                        # Merge the new super table's entries into
+                        # the existing one.
                         for k, v in item.value.body:
                             current.append(k, v)
-                        self._body[
-                            (
-                                current_idx[-1]
-                                if isinstance(current_idx, tuple)
-                                else current_idx
-                            )
-                        ] = (current_body_element[0], current)
 
                         return self
                     elif (
@@ -296,35 +289,31 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             else:
                 raise KeyAlreadyPresent(key)
 
-        is_table = isinstance(item, (Table, AoT))
-        if (
-            key is not None
-            and self._body
-            and not self._parsed
-            and (not is_table or key.is_dotted())
-        ):
-            # If there is already at least one table in the current container
-            # and the given item is not a table, we need to find the last
-            # item that is not a table and insert after it
-            # If no such item exists, insert at the top of the table
-            last_index = self._get_last_index_before_table()
+        if not self._parsed:
+            is_table = isinstance(item, (Table, AoT))
+            if key is not None and self._body and (not is_table or key.is_dotted()):
+                # If there is already at least one table in the current container
+                # and the given item is not a table, we need to find the last
+                # item that is not a table and insert after it
+                # If no such item exists, insert at the top of the table
+                last_index = self._get_last_index_before_table()
 
-            if last_index < len(self._body):
-                after_item = self._body[last_index][1]
-                if not (
-                    isinstance(after_item, Whitespace)
-                    or "\n" in after_item.trivia.indent
-                ):
-                    after_item.trivia.indent = "\n" + after_item.trivia.indent
-                return self._insert_at(last_index, key, item)
-            else:
-                previous_item = self._body[-1][1]
-                if not (
-                    isinstance(previous_item, Whitespace)
-                    or ends_with_whitespace(previous_item)
-                    or "\n" in previous_item.trivia.trail
-                ):
-                    previous_item.trivia.trail += "\n"
+                if last_index < len(self._body):
+                    after_item = self._body[last_index][1]
+                    if not (
+                        isinstance(after_item, Whitespace)
+                        or "\n" in after_item.trivia.indent
+                    ):
+                        after_item.trivia.indent = "\n" + after_item.trivia.indent
+                    return self._insert_at(last_index, key, item)
+                else:
+                    previous_item = self._body[-1][1]
+                    if not (
+                        isinstance(previous_item, Whitespace)
+                        or ends_with_whitespace(previous_item)
+                        or "\n" in previous_item.trivia.trail
+                    ):
+                        previous_item.trivia.trail += "\n"
 
         self._raw_append(key, item)
         return self
@@ -856,6 +845,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._table_keys = list(self._table_keys)
 
         return c
 
@@ -885,13 +875,16 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     @staticmethod
     def validate(container: Container, indices: tuple[int, ...]) -> None:
         """Validate out of order tables in the given container"""
-        # Append all items to a temp container to see if there is any error
+        # Append all items to a temp container to see if there is any error.
+        # Shallow-copy Tables so the merge path doesn't mutate originals.
         temp_container = Container(True)
         for i in indices:
             _, item = container._body[i]
 
             if isinstance(item, Table):
                 for k, v in item.value.body:
+                    if isinstance(v, Table):
+                        v = copy.copy(v)
                     temp_container.append(k, v, validate=True)
 
         temp_container._validate_out_of_order_table()
