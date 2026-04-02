@@ -28,7 +28,7 @@ pygments==2.20.0
     # via
     #   furo
     #   sphinx
-requests==2.32.4
+requests==2.33.0
     # via sphinx
 snowballstemmer==2.2.0
     # via sphinx
