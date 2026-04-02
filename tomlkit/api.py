@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import IO
 from typing import TYPE_CHECKING
+from typing import Any
 from typing import TypeVar
 
 from tomlkit._utils import parse_rfc3339
@@ -32,9 +33,9 @@ from tomlkit.items import Table
 from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
-from tomlkit.items import item
+from tomlkit.items import item as item
 from tomlkit.parser import Parser
-from tomlkit.toml_document import TOMLDocument
+from tomlkit.toml_document import TOMLDocument as TOMLDocument
 
 
 if TYPE_CHECKING:
@@ -52,22 +53,15 @@ def loads(string: str | bytes) -> TOMLDocument:
     return parse(string)
 
 
-def dumps(data: Mapping, sort_keys: bool = False) -> str:
+def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
     """
     Dumps a TOMLDocument into a string.
     """
-    if not isinstance(data, (Table, InlineTable, Container)) and isinstance(
-        data, Mapping
-    ):
-        data = item(dict(data), _sort_keys=sort_keys)
+    if isinstance(data, (Table, InlineTable, Container)):
+        return data.as_string()
 
-    try:
-        # data should be a `Container` (and therefore implement `as_string`)
-        # for all type safe invocations of this function
-        return data.as_string()  # type: ignore[attr-defined]
-    except AttributeError as ex:
-        msg = f"Expecting Mapping or TOML Table or Container, {type(data)} given"
-        raise TypeError(msg) from ex
+    table: Table = item(dict(data), _sort_keys=sort_keys)
+    return table.as_string()
 
 
 def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:
@@ -77,7 +71,7 @@ def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:
     return parse(fp.read())
 
 
-def dump(data: Mapping, fp: IO[str], *, sort_keys: bool = False) -> None:
+def dump(data: Mapping[str, Any], fp: IO[str], *, sort_keys: bool = False) -> None:
     """
     Dump a TOMLDocument into a writable file stream.
 
@@ -185,7 +179,10 @@ def array(raw: str = "[]") -> Array:
     >>> a
     [1, 2, 3]
     """
-    return value(raw)
+    v = value(raw)
+    if not isinstance(v, Array):
+        raise ValueError(f"Expected an array, got {type(v)}")
+    return v
 
 
 def table(is_super_table: bool | None = None) -> Table:
@@ -252,7 +249,7 @@ def key(k: str | Iterable[str]) -> Key:
     """
     if isinstance(k, str):
         return SingleKey(k)
-    return DottedKey([key(_k) for _k in k])
+    return DottedKey([SingleKey(_k) for _k in k])
 
 
 def value(raw: str) -> _Item:

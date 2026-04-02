@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import copy
 import math
 import pickle
 
+from collections.abc import Callable
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from datetime import timezone
+from datetime import tzinfo
+from typing import Any
 
 import pytest
 
@@ -33,50 +38,50 @@ from tomlkit.parser import Parser
 
 
 @pytest.fixture()
-def tz_pst():
+def tz_pst() -> tzinfo:
     try:
         from datetime import timezone
 
         return timezone(timedelta(hours=-8), "PST")
     except ImportError:
-        from datetime import tzinfo
+        from datetime import tzinfo as _tzinfo
 
-        class PST(tzinfo):
-            def utcoffset(self, dt):
+        class PST(_tzinfo):
+            def utcoffset(self, dt: datetime | None) -> timedelta:
                 return timedelta(hours=-8)
 
-            def tzname(self, dt):
+            def tzname(self, dt: datetime | None) -> str:
                 return "PST"
 
-            def dst(self, dt):
+            def dst(self, dt: datetime | None) -> timedelta:
                 return timedelta(0)
 
         return PST()
 
 
 @pytest.fixture()
-def tz_utc():
+def tz_utc() -> tzinfo:
     try:
         from datetime import timezone
 
         return timezone.utc
     except ImportError:
-        from datetime import tzinfo
+        from datetime import tzinfo as _tzinfo
 
-        class UTC(tzinfo):
-            def utcoffset(self, dt):
+        class UTC(_tzinfo):
+            def utcoffset(self, dt: datetime | None) -> timedelta:
                 return timedelta(hours=0)
 
-            def tzname(self, dt):
+            def tzname(self, dt: datetime | None) -> str:
                 return "UTC"
 
-            def dst(self, dt):
+            def dst(self, dt: datetime | None) -> timedelta:
                 return timedelta(0)
 
         return UTC()
 
 
-def test_item_base_has_no_unwrap():
+def test_item_base_has_no_unwrap() -> None:
     trivia = Trivia(indent="\t", comment_ws=" ", comment="For unit test")
     item = Item(trivia)
     try:
@@ -87,37 +92,37 @@ def test_item_base_has_no_unwrap():
         raise AssertionError("`items.Item` should not implement `unwrap`")
 
 
-def test_integer_unwrap():
+def test_integer_unwrap() -> None:
     elementary_test(item(666), int)
 
 
-def test_float_unwrap():
+def test_float_unwrap() -> None:
     elementary_test(item(2.78), float)
 
 
-def test_false_unwrap():
+def test_false_unwrap() -> None:
     elementary_test(item(False), bool)
 
 
-def test_true_unwrap():
+def test_true_unwrap() -> None:
     elementary_test(item(True), bool)
 
 
-def test_datetime_unwrap():
+def test_datetime_unwrap() -> None:
     dt = datetime.now(tz=timezone.utc)
     elementary_test(item(dt), datetime)
 
 
-def test_string_unwrap():
+def test_string_unwrap() -> None:
     elementary_test(item("hello"), str)
 
 
-def test_null_unwrap():
+def test_null_unwrap() -> None:
     n = Null()
     elementary_test(n, type(None))
 
 
-def test_aot_unwrap():
+def test_aot_unwrap() -> None:
     d = item([{"a": "A"}, {"b": "B"}])
     unwrapped = d.unwrap()
     assert_is_ppo(unwrapped, list)
@@ -129,7 +134,7 @@ def test_aot_unwrap():
             assert_is_ppo(vu, str)
 
 
-def test_aot_set_item():
+def test_aot_set_item() -> None:
     d = item(["A", {"b": "B"}, ["c", "D"]])
     d[0] = "C"
     assert isinstance(d[0], String)
@@ -142,17 +147,17 @@ def test_aot_set_item():
     assert d[0][1] == "C"
 
 
-def test_time_unwrap():
+def test_time_unwrap() -> None:
     t = time(3, 8, 14)
     elementary_test(item(t), time)
 
 
-def test_date_unwrap():
+def test_date_unwrap() -> None:
     d = date.today()
     elementary_test(item(d), date)
 
 
-def test_array_unwrap():
+def test_array_unwrap() -> None:
     trivia = Trivia(indent="\t", comment_ws=" ", comment="For unit test")
     i = item(666)
     f = item(2.78)
@@ -165,7 +170,7 @@ def test_array_unwrap():
     assert_is_ppo(a_unwrapped[2], bool)
 
 
-def test_abstract_table_unwrap():
+def test_abstract_table_unwrap() -> None:
     table = item({"foo": "bar"})
     super_table = item({"table": table, "baz": "borg"})
 
@@ -179,7 +184,7 @@ def test_abstract_table_unwrap():
         assert_is_ppo(vu, str)
 
 
-def test_key_comparison():
+def test_key_comparison() -> None:
     k = Key("foo")
 
     assert k == Key("foo")
@@ -188,7 +193,7 @@ def test_key_comparison():
     assert k != 5
 
 
-def test_items_can_be_appended_to_and_removed_from_a_table():
+def test_items_can_be_appended_to_and_removed_from_a_table() -> None:
     string = """[table]
 """
 
@@ -221,12 +226,14 @@ def test_items_can_be_appended_to_and_removed_from_a_table():
         table.remove(Key("foo"))
 
 
-def test_items_can_be_appended_to_and_removed_from_an_inline_table():
+def test_items_can_be_appended_to_and_removed_from_an_inline_table() -> None:
     string = """table = {}
 """
 
     parser = Parser(string)
-    _, table = parser._parse_item()
+    result = parser._parse_item()
+    assert result is not None
+    _, table = result
 
     assert isinstance(table, InlineTable)
     assert table.as_string() == "{}"
@@ -251,7 +258,7 @@ def test_items_can_be_appended_to_and_removed_from_an_inline_table():
         table.remove(Key("foo"))
 
 
-def test_inf_and_nan_are_supported(example):
+def test_inf_and_nan_are_supported(example: Callable[[str], str]) -> None:
     content = example("0.5.0")
     doc = parse(content)
 
@@ -264,7 +271,9 @@ def test_inf_and_nan_are_supported(example):
     assert math.isnan(doc["sf6"])
 
 
-def test_hex_octal_and_bin_integers_are_supported(example):
+def test_hex_octal_and_bin_integers_are_supported(
+    example: Callable[[str], str],
+) -> None:
     content = example("0.5.0")
     doc = parse(content)
 
@@ -278,7 +287,7 @@ def test_hex_octal_and_bin_integers_are_supported(example):
     assert doc["bin1"] == 214
 
 
-def test_key_automatically_sets_proper_string_type_if_not_bare():
+def test_key_automatically_sets_proper_string_type_if_not_bare() -> None:
     key = Key("foo.bar")
 
     assert key.t == KeyType.Basic
@@ -287,7 +296,7 @@ def test_key_automatically_sets_proper_string_type_if_not_bare():
     assert key.t == KeyType.Basic
 
 
-def test_array_behaves_like_a_list():
+def test_array_behaves_like_a_list() -> None:
     a = item([1, 2])
 
     assert a == [1, 2]
@@ -333,7 +342,7 @@ def test_array_behaves_like_a_list():
     )
 
 
-def test_array_multiline():
+def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
 
@@ -351,13 +360,13 @@ def test_array_multiline():
 
     assert expected == t.as_string()
 
-    t = item([])
-    t.multiline(True)
+    t2: Any = item([])
+    t2.multiline(True)
 
-    assert t.as_string() == "[]"
+    assert t2.as_string() == "[]"
 
 
-def test_array_multiline_modify():
+def test_array_multiline_modify() -> None:
     doc = parse(
         """\
 a = [
@@ -381,7 +390,7 @@ a = [
     assert expected == doc.as_string()
 
 
-def test_append_to_empty_array():
+def test_append_to_empty_array() -> None:
     doc = parse("x = [ ]")
     doc["x"].append("a")
     assert doc.as_string() == 'x = ["a" ]'
@@ -390,7 +399,7 @@ def test_append_to_empty_array():
     assert doc.as_string() == 'x = [\n    "a"\n]'
 
 
-def test_modify_array_with_comment():
+def test_modify_array_with_comment() -> None:
     doc = parse("x = [ # comment\n]")
     doc["x"].append("a")
     assert doc.as_string() == 'x = [ # comment\n    "a"\n]'
@@ -430,7 +439,7 @@ x = [
     assert doc.as_string() == "x = [\n    2\n]"
 
 
-def test_append_to_multiline_array_with_comment():
+def test_append_to_multiline_array_with_comment() -> None:
     doc = parse(
         """\
 x = [
@@ -465,7 +474,7 @@ x = [
     )
 
 
-def test_append_dict_to_array():
+def test_append_dict_to_array() -> None:
     doc = parse("x = []")
     doc["x"].append({"name": "John Doe", "email": "john@doe.com"})
     expected = 'x = [{name = "John Doe",email = "john@doe.com"}]'
@@ -474,7 +483,7 @@ def test_append_dict_to_array():
     assert parse(doc.as_string()) == doc
 
 
-def test_dicts_are_converted_to_tables():
+def test_dicts_are_converted_to_tables() -> None:
     t = item({"foo": {"bar": "baz"}})
 
     assert (
@@ -485,7 +494,7 @@ bar = "baz"
     )
 
 
-def test_array_add_line():
+def test_array_add_line() -> None:
     t = api.array()
     t.add_line(1, 2, 3, comment="Line 1")
     t.add_line(4, 5, 6, comment="Line 2")
@@ -505,7 +514,7 @@ def test_array_add_line():
     )
 
 
-def test_array_add_line_invalid_value():
+def test_array_add_line_invalid_value() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="is not allowed"):
         t.add_line(1, api.ws(" "))
@@ -514,7 +523,7 @@ def test_array_add_line_invalid_value():
     assert len(t) == 0
 
 
-def test_dicts_are_converted_to_tables_and_keep_order():
+def test_dicts_are_converted_to_tables_and_keep_order() -> None:
     t = item(
         {
             "foo": {
@@ -539,7 +548,7 @@ a = 1
     )
 
 
-def test_dicts_are_converted_to_tables_and_are_sorted_if_requested():
+def test_dicts_are_converted_to_tables_and_are_sorted_if_requested() -> None:
     t = item(
         {
             "foo": {
@@ -565,7 +574,7 @@ c = 3
     )
 
 
-def test_dicts_with_sub_dicts_are_properly_converted():
+def test_dicts_with_sub_dicts_are_properly_converted() -> None:
     t = item(
         {"foo": {"bar": {"string": "baz"}, "int": 34, "float": 3.14}}, _sort_keys=True
     )
@@ -582,7 +591,7 @@ string = "baz"
     )
 
 
-def test_item_array_of_dicts_converted_to_aot():
+def test_item_array_of_dicts_converted_to_aot() -> None:
     a = item({"foo": [{"bar": "baz"}]})
 
     assert (
@@ -593,7 +602,7 @@ bar = "baz"
     )
 
 
-def test_add_float_to_int():
+def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
     doc["table"]["my_int"] += 5.0
@@ -601,7 +610,7 @@ def test_add_float_to_int():
     assert isinstance(doc["table"]["my_int"], float)
 
 
-def test_sub_float_from_int():
+def test_sub_float_from_int() -> None:
     content = "[table]\nmy_int = 2048"
     doc = parse(content)
     doc["table"]["my_int"] -= 5.0
@@ -609,21 +618,21 @@ def test_sub_float_from_int():
     assert isinstance(doc["table"]["my_int"], float)
 
 
-def test_sub_int_from_float():
+def test_sub_int_from_float() -> None:
     content = "[table]\nmy_int = 2048.0"
     doc = parse(content)
     doc["table"]["my_int"] -= 5
     assert doc["table"]["my_int"] == 2043.0
 
 
-def test_add_sum_int_with_float():
+def test_add_sum_int_with_float() -> None:
     content = "[table]\nmy_int = 2048.3"
     doc = parse(content)
     doc["table"]["my_int"] += 5
     assert doc["table"]["my_int"] == 2053.3
 
 
-def test_integers_behave_like_ints():
+def test_integers_behave_like_ints() -> None:
     i = item(34)
 
     assert i == 34
@@ -637,9 +646,9 @@ def test_integers_behave_like_ints():
     assert i == 33
     assert i.as_string() == "33"
 
-    i /= 2
-    assert i == 16.5
-    assert i.as_string() == "16.5"
+    f = i / 2
+    assert f == 16.5
+    assert f.as_string() == "16.5"
 
     doc = parse("int = +34")
     doc["int"] += 1
@@ -647,7 +656,7 @@ def test_integers_behave_like_ints():
     assert doc.as_string() == "int = +35"
 
 
-def test_floats_behave_like_floats():
+def test_floats_behave_like_floats() -> None:
     i = item(34.12)
 
     assert i == 34.12
@@ -667,7 +676,7 @@ def test_floats_behave_like_floats():
     assert doc.as_string() == "float = +35.12"
 
 
-def test_datetimes_behave_like_datetimes(tz_utc, tz_pst):
+def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None:
     i = item(datetime(2018, 7, 22, 12, 34, 56))
 
     assert i == datetime(2018, 7, 22, 12, 34, 56)
@@ -695,7 +704,7 @@ def test_datetimes_behave_like_datetimes(tz_utc, tz_pst):
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
 
 
-def test_dates_behave_like_dates():
+def test_dates_behave_like_dates() -> None:
     i = item(date(2018, 7, 22))
 
     assert i == date(2018, 7, 22)
@@ -719,7 +728,7 @@ def test_dates_behave_like_dates():
     assert doc.as_string() == "dt = 2018-07-23 # Comment"
 
 
-def test_parse_datetime_followed_by_space():
+def test_parse_datetime_followed_by_space() -> None:
     # issue #260
     doc = parse("dt = 2018-07-22 ")
     assert doc["dt"] == date(2018, 7, 22)
@@ -730,7 +739,7 @@ def test_parse_datetime_followed_by_space():
     assert doc.as_string() == "dt = 2013-01-24 13:48:01.123456 "
 
 
-def test_times_behave_like_times():
+def test_times_behave_like_times() -> None:
     i = item(time(12, 34, 56))
 
     assert i == time(12, 34, 56)
@@ -741,7 +750,7 @@ def test_times_behave_like_times():
     assert i.as_string() == "13:34:56"
 
 
-def test_strings_behave_like_strs():
+def test_strings_behave_like_strs() -> None:
     i = item("foo")
 
     assert i == "foo"
@@ -761,15 +770,15 @@ def test_strings_behave_like_strs():
     assert doc.as_string() == 'str = "foo bar" # Comment'
 
 
-def test_string_add_preserve_escapes():
-    i = api.value('"foo\\"bar"')
+def test_string_add_preserve_escapes() -> None:
+    i: Any = api.value('"foo\\"bar"')
     i += " baz"
 
     assert i == 'foo"bar baz'
     assert i.as_string() == '"foo\\"bar baz"'
 
 
-def test_tables_behave_like_dicts():
+def test_tables_behave_like_dicts() -> None:
     t = item({"foo": "bar"})
 
     assert (
@@ -807,8 +816,8 @@ foobar = "fuzz"
     )
 
 
-def test_items_are_pickable():
-    n = item(12)
+def test_items_are_pickable() -> None:
+    n: Item = item(12)
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == "12"
@@ -865,7 +874,7 @@ def test_items_are_pickable():
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
 
 
-def test_trim_comments_when_building_inline_table():
+def test_trim_comments_when_building_inline_table() -> None:
     table = api.inline_table()
     row = parse('foo = "bar"  # Comment')
     table.update(row)
@@ -877,7 +886,7 @@ def test_trim_comments_when_building_inline_table():
     assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
 
 
-def test_deleting_inline_table_element_does_not_leave_trailing_separator():
+def test_deleting_inline_table_element_does_not_leave_trailing_separator() -> None:
     table = api.inline_table()
     table["foo"] = "bar"
     table["baz"] = "boom"
@@ -898,7 +907,7 @@ def test_deleting_inline_table_element_does_not_leave_trailing_separator():
     assert table.as_string() == '{baz = "boom"}'
 
 
-def test_deleting_inline_table_element_does_not_leave_trailing_separator2():
+def test_deleting_inline_table_element_does_not_leave_trailing_separator2() -> None:
     doc = parse('a = {foo = "bar", baz = "boom"}')
     table = doc["a"]
     assert table.as_string() == '{foo = "bar", baz = "boom"}'
@@ -914,7 +923,7 @@ def test_deleting_inline_table_element_does_not_leave_trailing_separator2():
     assert table.as_string() == '{ baz = "boom"}'
 
 
-def test_booleans_comparison():
+def test_booleans_comparison() -> None:
     boolean = Bool(True, Trivia())
 
     assert boolean
@@ -935,7 +944,7 @@ value = false
     assert {"value": False} == content["foo"]
 
 
-def test_table_copy():
+def test_table_copy() -> None:
     table = item({"foo": "bar"})
     table_copy = table.copy()
     assert isinstance(table_copy, Table)
@@ -944,7 +953,7 @@ def test_table_copy():
     assert table_copy.as_string() == 'foo = "bar"\n'
 
 
-def test_copy_copy():
+def test_copy_copy() -> None:
     result = parse(
         """
     [tool.poetry]
@@ -964,15 +973,15 @@ def test_copy_copy():
     "key_str,escaped",
     [("\\", '"\\\\"'), ('"', '"\\""'), ("\t", '"\\t"'), ("\x10", '"\\u0010"')],
 )
-def test_escape_key(key_str, escaped):
+def test_escape_key(key_str: str, escaped: str) -> None:
     assert api.key(key_str).as_string() == escaped
 
 
-def test_custom_encoders():
+def test_custom_encoders() -> None:
     import decimal
 
     @api.register_encoder
-    def encode_decimal(obj):
+    def encode_decimal(obj: Any) -> Item:
         if isinstance(obj, decimal.Decimal):
             return api.float_(str(obj))
         raise TypeError
@@ -986,7 +995,7 @@ def test_custom_encoders():
     api.unregister_encoder(encode_decimal)
 
 
-def test_custom_encoders_with_parent_and_sort_keys():
+def test_custom_encoders_with_parent_and_sort_keys() -> None:
     """Test that custom encoders can receive _parent and _sort_keys parameters."""
     import decimal
 
@@ -994,7 +1003,9 @@ def test_custom_encoders_with_parent_and_sort_keys():
     sort_keys_captured = None
 
     @api.register_encoder
-    def encode_decimal_with_context(obj, _parent=None, _sort_keys=False):
+    def encode_decimal_with_context(
+        obj: Any, _parent: Item | None = None, _sort_keys: bool = False
+    ) -> Item:
         nonlocal parent_captured, sort_keys_captured
         if isinstance(obj, decimal.Decimal):
             parent_captured = _parent
@@ -1020,12 +1031,12 @@ def test_custom_encoders_with_parent_and_sort_keys():
     api.unregister_encoder(encode_decimal_with_context)
 
 
-def test_custom_encoders_backward_compatibility():
+def test_custom_encoders_backward_compatibility() -> None:
     """Test that old-style custom encoders still work without modification."""
     import decimal
 
     @api.register_encoder
-    def encode_decimal_old_style(obj):
+    def encode_decimal_old_style(obj: Any) -> Item:
         # Old style encoder - only accepts obj parameter
         if isinstance(obj, decimal.Decimal):
             return api.float_(str(obj))
@@ -1043,14 +1054,14 @@ def test_custom_encoders_backward_compatibility():
     api.unregister_encoder(encode_decimal_old_style)
 
 
-def test_custom_encoders_with_kwargs():
+def test_custom_encoders_with_kwargs() -> None:
     """Test that custom encoders can use **kwargs to accept additional parameters."""
     import decimal
 
     kwargs_captured = None
 
     @api.register_encoder
-    def encode_decimal_with_kwargs(obj, **kwargs):
+    def encode_decimal_with_kwargs(obj: Any, **kwargs: Any) -> Item:
         nonlocal kwargs_captured
         if isinstance(obj, decimal.Decimal):
             kwargs_captured = kwargs
@@ -1066,15 +1077,17 @@ def test_custom_encoders_with_kwargs():
     api.unregister_encoder(encode_decimal_with_kwargs)
 
 
-def test_custom_encoders_for_complex_objects():
+def test_custom_encoders_for_complex_objects() -> None:
     """Test custom encoders that need to encode nested structures."""
 
     class CustomDict:
-        def __init__(self, data):
+        def __init__(self, data: dict[str, Any]) -> None:
             self.data = data
 
     @api.register_encoder
-    def encode_custom_dict(obj, _parent=None, _sort_keys=False):
+    def encode_custom_dict(
+        obj: Any, _parent: Item | None = None, _sort_keys: bool = False
+    ) -> Item:
         if isinstance(obj, CustomDict):
             # Create a table and use item() to convert nested values
             table = api.table()
@@ -1100,7 +1113,7 @@ d = 3
     api.unregister_encoder(encode_custom_dict)
 
 
-def test_no_extra_minus_sign():
+def test_no_extra_minus_sign() -> None:
     doc = parse("a = -1")
     assert doc.as_string() == "a = -1"
     doc["a"] *= -1
@@ -1116,7 +1129,7 @@ def test_no_extra_minus_sign():
     assert doc.as_string() == "a = -1.5"
 
 
-def test_serialize_table_with_dotted_key():
+def test_serialize_table_with_dotted_key() -> None:
     child = api.table()
     child.add(api.key(("b", "c")), 1)
     parent = api.table()
@@ -1124,10 +1137,10 @@ def test_serialize_table_with_dotted_key():
     assert parent.as_string() == "[a]\nb.c = 1\n"
 
 
-def test_not_showing_parent_header_for_super_table():
+def test_not_showing_parent_header_for_super_table() -> None:
     doc = api.document()
 
-    def add_table(parent, name):
+    def add_table(parent: Any, name: str) -> Any:
         parent.add(name, api.table())
         return parent[name]
 
@@ -1137,7 +1150,7 @@ def test_not_showing_parent_header_for_super_table():
     assert doc.as_string() == "[root.first]\n\n[root.second]\n"
 
 
-def test_removal_of_arrayitem_with_extra_whitespace():
+def test_removal_of_arrayitem_with_extra_whitespace() -> None:
     expected = 'x = [\n    "bar",\n]'
     doc = parse('x = [\n    "foo" ,#spam\n    "bar",\n]')
     x = doc["x"]
@@ -1148,7 +1161,7 @@ def test_removal_of_arrayitem_with_extra_whitespace():
     assert docstr == expected
 
 
-def test_badly_formatted_array_and_item_removal():
+def test_badly_formatted_array_and_item_removal() -> None:
     expected = """
 x = [
     '0'#a
@@ -1185,7 +1198,7 @@ x = [
         parse(doc.as_string())
 
 
-def test_array_item_removal_newline_restore_next():
+def test_array_item_removal_newline_restore_next() -> None:
     expected = "x = [\n  '0',\n    '2'\n]"
 
     docstr = "x = [\n  '0',\n    '1','2'\n]"

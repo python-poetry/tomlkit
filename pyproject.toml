@@ -28,7 +28,7 @@ pytest = "^7.2.0"
 pytest-cov = "^4.0.0"
 PyYAML = "^6.0"
 pre-commit = "^2.20.0"
-mypy = "^0.990"
+mypy = "1.19.1"
 Sphinx = "^4.3.2"
 furo = "^2022.9.29"
 
@@ -53,6 +53,15 @@ known-third-party = ["pytest"]
 force-single-line = true
 lines-after-imports = 2
 lines-between-types = 1
+
+[tool.mypy]
+files = "tomlkit, tests"
+strict = true
+enable_error_code = [
+    "ignore-without-code",
+    "redundant-expr",
+    "truthy-bool",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0a9"]

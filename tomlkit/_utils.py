@@ -9,6 +9,7 @@ from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from datetime import timezone
+from typing import Any
 
 from tomlkit._compat import decode
 
@@ -130,7 +131,7 @@ def escape_string(s: str, escape_sequences: Collection[str] = _basic_escapes) ->
     res = []
     start = 0
 
-    def flush(inc=1):
+    def flush(inc: int = 1) -> int:
         if start != i:
             res.append(s[start:i])
 
@@ -153,9 +154,9 @@ def escape_string(s: str, escape_sequences: Collection[str] = _basic_escapes) ->
     return "".join(res)
 
 
-def merge_dicts(d1: dict, d2: dict) -> dict:
+def merge_dicts(d1: dict[str, Any], d2: dict[str, Any]) -> None:
     for k, v in d2.items():
         if k in d1 and isinstance(d1[k], dict) and isinstance(v, Mapping):
-            merge_dicts(d1[k], v)
+            merge_dicts(d1[k], dict(v))
         else:
             d1[k] = d2[k]

@@ -1,6 +1,9 @@
 import json
 import os
 
+from typing import Any
+from typing import Callable
+
 import pytest
 
 from tomlkit import load
@@ -14,13 +17,13 @@ TESTS_ROOT = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
 FILES_LIST = os.path.join(TESTS_ROOT, "files-toml-1.1.0")
 
 
-def to_bool(s):
+def to_bool(s: str) -> bool:
     assert s in ["true", "false"]
 
     return s == "true"
 
 
-stypes = {
+stypes: dict[str, Callable[[str], Any]] = {
     "string": str,
     "bool": to_bool,
     "integer": int,
@@ -32,7 +35,7 @@ stypes = {
 }
 
 
-def untag(value):
+def untag(value: Any) -> Any:
     if isinstance(value, list):
         return [untag(i) for i in value]
     elif "type" in value and "value" in value and len(value) == 2:
@@ -48,12 +51,19 @@ def untag(value):
         return {k: untag(v) for k, v in value.items()}
 
 
-def _load_case_list():
+def _load_case_list() -> list[str]:
     with open(FILES_LIST, encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
 
-def _build_cases():
+def _build_cases() -> tuple[
+    list[dict[str, str]],
+    list[str],
+    list[dict[str, str]],
+    list[str],
+    list[str],
+    list[str],
+]:
     valid_cases = []
     valid_ids = []
     invalid_decode_cases = []
@@ -109,7 +119,7 @@ def _build_cases():
 
 
 @pytest.mark.parametrize("toml11_valid_case", VALID_CASES, ids=VALID_IDS)
-def test_valid_decode(toml11_valid_case):
+def test_valid_decode(toml11_valid_case: dict[str, str]) -> None:
     json_val = untag(json.loads(toml11_valid_case["json"]))
     toml_val = parse(toml11_valid_case["toml"])
 
@@ -120,7 +130,7 @@ def test_valid_decode(toml11_valid_case):
 @pytest.mark.parametrize(
     "toml11_invalid_decode_case", INVALID_DECODE_CASES, ids=INVALID_DECODE_IDS
 )
-def test_invalid_decode(toml11_invalid_decode_case):
+def test_invalid_decode(toml11_invalid_decode_case: dict[str, str]) -> None:
     with pytest.raises(TOMLKitError):
         parse(toml11_invalid_decode_case["toml"])
 
@@ -128,7 +138,7 @@ def test_invalid_decode(toml11_invalid_decode_case):
 @pytest.mark.parametrize(
     "toml11_invalid_encode_case", INVALID_ENCODE_CASES, ids=INVALID_ENCODE_IDS
 )
-def test_invalid_encode(toml11_invalid_encode_case):
+def test_invalid_encode(toml11_invalid_encode_case: str) -> None:
     with open(toml11_invalid_encode_case, encoding="utf-8") as f:
         with pytest.raises((TOMLKitError, UnicodeDecodeError)):
             load(f)

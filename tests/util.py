@@ -42,16 +42,16 @@ TOMLKIT_TYPES = [
 ]
 
 
-def assert_not_tomlkit_type(v):
+def assert_not_tomlkit_type(v: object) -> None:
     for _, tomlkit_type in enumerate(TOMLKIT_TYPES):
         assert not isinstance(v, tomlkit_type)
 
 
-def assert_is_ppo(v_unwrapped, unwrapped_type):
+def assert_is_ppo(v_unwrapped: object, unwrapped_type: type) -> None:
     assert_not_tomlkit_type(v_unwrapped)
     assert isinstance(v_unwrapped, unwrapped_type)
 
 
-def elementary_test(v, unwrapped_type):
+def elementary_test(v: Item, unwrapped_type: type) -> None:
     v_unwrapped = v.unwrap()
     assert_is_ppo(v_unwrapped, unwrapped_type)

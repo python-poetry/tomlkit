@@ -1,5 +1,7 @@
 import datetime
 
+from collections.abc import Callable
+
 from tomlkit import aot
 from tomlkit import array
 from tomlkit import comment
@@ -11,7 +13,7 @@ from tomlkit import table
 from tomlkit._utils import _utc
 
 
-def test_build_example(example):
+def test_build_example(example: Callable[[str], str]) -> None:
     content = example("example")
 
     doc = document()
@@ -38,9 +40,8 @@ def test_build_example(example):
 
     servers = table()
     servers.add(nl())
-    c = comment(
-        "You can indent as you please. Tabs or spaces. TOML don't care."
-    ).indent(2)
+    c = comment("You can indent as you please. Tabs or spaces. TOML don't care.")
+    c.indent(2)
     c.trivia.trail = ""
     servers.add(c)
     alpha = table()
@@ -95,7 +96,7 @@ def test_build_example(example):
     assert content == doc.as_string()
 
 
-def test_add_remove():
+def test_add_remove() -> None:
     content = ""
 
     doc = parse(content)
@@ -112,7 +113,7 @@ def test_add_remove():
     assert doc.as_string() == ""
 
 
-def test_append_table_after_multiple_indices():
+def test_append_table_after_multiple_indices() -> None:
     content = """
     [packages]
     foo = "*"
@@ -127,7 +128,7 @@ def test_append_table_after_multiple_indices():
     doc.append("foobar", {"name": "John"})
 
 
-def test_top_level_keys_are_put_at_the_root_of_the_document():
+def test_top_level_keys_are_put_at_the_root_of_the_document() -> None:
     doc = document()
     doc.add(comment("Comment"))
     doc["foo"] = {"name": "test"}
