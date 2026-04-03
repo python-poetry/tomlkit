@@ -63,11 +63,16 @@ class Parser:
     Parser for TOML documents.
     """
 
-    def __init__(self, string: str | bytes) -> None:
+    # Default maximum nesting depth for arrays/inline tables
+    DEFAULT_MAX_NESTING_DEPTH = 100
+
+    def __init__(self, string: str | bytes, max_nesting_depth: int | None = None) -> None:
         # Input to parse
         self._src = Source(decode(string))
 
         self._aot_stack: list[Key] = []
+        self._nesting_depth = 0
+        self._max_nesting_depth = max_nesting_depth if max_nesting_depth is not None else self.DEFAULT_MAX_NESTING_DEPTH
 
     @property
     def _state(self) -> _StateHandler:
@@ -582,6 +587,11 @@ class Parser:
     def _parse_array(self) -> Array:
         # Consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
+        self._nesting_depth += 1
+        if self._nesting_depth > self._max_nesting_depth:
+            raise self.parse_error(
+                InternalParserError, "Maximum nesting depth exceeded"
+            )
 
         elems: list[Item] = []
         prev_value = None
@@ -637,8 +647,10 @@ class Parser:
         try:
             res = Array(elems, Trivia())
         except ValueError:
-            pass
+            self._nesting_depth -= 1
+            raise
         else:
+            self._nesting_depth -= 1
             return res
 
         raise self.parse_error(ParseError, "Failed to parse array")
@@ -646,6 +658,11 @@ class Parser:
     def _parse_inline_table(self) -> InlineTable:
         # consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
+        self._nesting_depth += 1
+        if self._nesting_depth > self._max_nesting_depth:
+            raise self.parse_error(
+                InternalParserError, "Maximum nesting depth exceeded"
+            )
 
         elems = Container(True)
         expect_key = True
@@ -685,6 +702,7 @@ class Parser:
             self.inc(exception=UnexpectedEofError)
             expect_key = True
 
+        self._nesting_depth -= 1
         return InlineTable(elems, Trivia())
 
     def _parse_number(self, raw: str, trivia: Trivia) -> Item | None:
