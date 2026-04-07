@@ -605,6 +605,12 @@ class Comment(Item):
     def __str__(self) -> str:
         return f"{self._trivia.indent}{decode(self._trivia.comment)}"
 
+    def unwrap(self):
+        return decode(self._trivia.comment).lstrip("#").lstrip()
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} {self.unwrap()!r}>"
+
 
 class Integer(Item, _CustomInt):
     """
@@ -2306,3 +2312,6 @@ class Null(Item):
 
     def _getstate(self, protocol: int = 3) -> tuple[()]:
         return ()
+
+    def __repr__(self):
+        return "<Null>"
