@@ -51,3 +51,15 @@ def test_parse_multiline_string_ignore_the_first_newline() -> None:
     content = 'a = """\r\nfoo\n"""'
     parser = Parser(content)
     assert parser.parse() == {"a": "foo\n"}
+
+
+def test_parse_multiline_basic_string_with_crlf() -> None:
+    content = 'a = """foo\r\nbar"""'
+    parser = Parser(content)
+    assert parser.parse() == {"a": "foo\r\nbar"}
+
+
+def test_parse_multiline_literal_string_with_crlf() -> None:
+    content = "a = '''foo\r\nbar'''"
+    parser = Parser(content)
+    assert parser.parse() == {"a": "foo\r\nbar"}

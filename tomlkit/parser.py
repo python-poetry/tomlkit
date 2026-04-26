@@ -860,6 +860,8 @@ class Parser:
                 with self._state(restore=True):
                     if not self.inc() or self._current != "\n":
                         raise self.parse_error(InvalidControlChar, CTRL_M, "strings")
+                value += self._current
+                self.inc(exception=UnexpectedEofError)
             elif not escaped and self._current == delim.unit:
                 # try to process current as a closing delim
                 original = self.extract()
