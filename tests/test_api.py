@@ -166,6 +166,12 @@ def test_mapping_types_can_be_dumped() -> None:
     assert dumps(x) == 'foo = "bar"\n'
 
 
+def test_parsed_document_can_be_dumped_with_sorted_keys() -> None:
+    doc = loads('zzz = 1\naaa = "foo"')
+
+    assert dumps(doc, sort_keys=True) == 'aaa = "foo"\nzzz = 1\n'
+
+
 def test_dumps_weird_object() -> None:
     with pytest.raises(TypeError):
         dumps(object())  # type: ignore[arg-type]
