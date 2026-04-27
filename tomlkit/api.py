@@ -58,9 +58,12 @@ def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
     Dumps a TOMLDocument into a string.
     """
     if isinstance(data, (Table, InlineTable, Container)):
-        return data.as_string()
+        if not sort_keys:
+            return data.as_string()
 
-    table: Table = item(dict(data), _sort_keys=sort_keys)
+        return item(data, _sort_keys=True).as_string()
+
+    table = item(dict(data), _sort_keys=sort_keys)
     return table.as_string()
 
 
