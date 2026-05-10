@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomlkit"
-version = "0.14.0"
+version = "0.15.0"
 description = "Style preserving TOML library"
 authors = [
     "Sébastien Eustace <sebastien@eustace.io>",
@@ -10,8 +10,8 @@ license = "MIT"
 
 readme = "README.md"
 
-homepage = "https://github.com/sdispater/tomlkit"
-repository = "https://github.com/sdispater/tomlkit"
+homepage = "https://github.com/python-poetry/tomlkit"
+repository = "https://github.com/python-poetry/tomlkit"
 
 include = [
   { path = "tomlkit/py.typed" },

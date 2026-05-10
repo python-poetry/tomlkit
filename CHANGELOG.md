@@ -2,9 +2,11 @@
 
 ## [unreleased]
 
+## [0.15.0] - 2026-05-10
+
 ### Changed
 
-- Update parser to support TOML spec v1.1.0. ([#456](https://github.com/python-poetry/tomlkit/pull/456)
+- Update parser to support TOML spec v1.1.0. ([#456](https://github.com/python-poetry/tomlkit/pull/456))
 
 ## [0.14.0] - 2026-01-13
 
@@ -458,56 +460,57 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.14.0...master
-[0.14.0]: https://github.com/sdispater/tomlkit/releases/tag/0.14.0
-[0.13.3]: https://github.com/sdispater/tomlkit/releases/tag/0.13.3
-[0.13.2]: https://github.com/sdispater/tomlkit/releases/tag/0.13.2
-[0.13.1]: https://github.com/sdispater/tomlkit/releases/tag/0.13.1
-[0.13.0]: https://github.com/sdispater/tomlkit/releases/tag/0.13.0
-[0.12.5]: https://github.com/sdispater/tomlkit/releases/tag/0.12.5
-[0.12.4]: https://github.com/sdispater/tomlkit/releases/tag/0.12.4
-[0.12.3]: https://github.com/sdispater/tomlkit/releases/tag/0.12.3
-[0.12.2]: https://github.com/sdispater/tomlkit/releases/tag/0.12.2
-[0.12.1]: https://github.com/sdispater/tomlkit/releases/tag/0.12.1
-[0.12.0]: https://github.com/sdispater/tomlkit/releases/tag/0.12.0
-[0.11.8]: https://github.com/sdispater/tomlkit/releases/tag/0.11.8
-[0.11.7]: https://github.com/sdispater/tomlkit/releases/tag/0.11.7
-[0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
-[0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
-[0.11.4]: https://github.com/sdispater/tomlkit/releases/tag/0.11.4
-[0.11.3]: https://github.com/sdispater/tomlkit/releases/tag/0.11.3
-[0.11.2]: https://github.com/sdispater/tomlkit/releases/tag/0.11.2
-[0.11.1]: https://github.com/sdispater/tomlkit/releases/tag/0.11.1
-[0.11.0]: https://github.com/sdispater/tomlkit/releases/tag/0.11.0
-[0.10.2]: https://github.com/sdispater/tomlkit/releases/tag/0.10.2
-[0.10.1]: https://github.com/sdispater/tomlkit/releases/tag/0.10.1
-[0.10.0]: https://github.com/sdispater/tomlkit/releases/tag/0.10.0
-[0.9.2]: https://github.com/sdispater/tomlkit/releases/tag/0.9.2
-[0.9.1]: https://github.com/sdispater/tomlkit/releases/tag/0.9.1
-[0.9.0]: https://github.com/sdispater/tomlkit/releases/tag/0.9.0
-[0.8.0]: https://github.com/sdispater/tomlkit/releases/tag/0.8.0
-[0.7.2]: https://github.com/sdispater/tomlkit/releases/tag/0.7.2
-[0.7.1]: https://github.com/sdispater/tomlkit/releases/tag/0.7.1
-[0.7.0]: https://github.com/sdispater/tomlkit/releases/tag/0.7.0
-[0.6.0]: https://github.com/sdispater/tomlkit/releases/tag/0.6.0
-[0.5.11]: https://github.com/sdispater/tomlkit/releases/tag/0.5.11
-[0.5.10]: https://github.com/sdispater/tomlkit/releases/tag/0.5.10
-[0.5.9]: https://github.com/sdispater/tomlkit/releases/tag/0.5.9
-[0.5.8]: https://github.com/sdispater/tomlkit/releases/tag/0.5.8
-[0.5.7]: https://github.com/sdispater/tomlkit/releases/tag/0.5.7
-[0.5.6]: https://github.com/sdispater/tomlkit/releases/tag/0.5.6
-[0.5.5]: https://github.com/sdispater/tomlkit/releases/tag/0.5.5
-[0.5.4]: https://github.com/sdispater/tomlkit/releases/tag/0.5.4
-[0.5.3]: https://github.com/sdispater/tomlkit/releases/tag/0.5.3
-[0.5.2]: https://github.com/sdispater/tomlkit/releases/tag/0.5.2
-[0.5.1]: https://github.com/sdispater/tomlkit/releases/tag/0.5.1
-[0.5.0]: https://github.com/sdispater/tomlkit/releases/tag/0.5.0
-[0.4.6]: https://github.com/sdispater/tomlkit/releases/tag/0.4.6
-[0.4.5]: https://github.com/sdispater/tomlkit/releases/tag/0.4.5
-[0.4.4]: https://github.com/sdispater/tomlkit/releases/tag/0.4.4
-[0.4.3]: https://github.com/sdispater/tomlkit/releases/tag/0.4.3
-[0.4.2]: https://github.com/sdispater/tomlkit/releases/tag/0.4.2
-[0.4.1]: https://github.com/sdispater/tomlkit/releases/tag/0.4.1
-[0.4.0]: https://github.com/sdispater/tomlkit/releases/tag/0.4.0
-[0.3.0]: https://github.com/sdispater/tomlkit/releases/tag/0.3.0
-[0.2.0]: https://github.com/sdispater/tomlkit/releases/tag/0.2.0
+[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.0...master
+[0.15.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.0
+[0.14.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.14.0
+[0.13.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.13.3
+[0.13.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.13.2
+[0.13.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.13.1
+[0.13.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.13.0
+[0.12.5]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.5
+[0.12.4]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.4
+[0.12.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.3
+[0.12.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.2
+[0.12.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.1
+[0.12.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.12.0
+[0.11.8]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.8
+[0.11.7]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.7
+[0.11.6]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.6
+[0.11.5]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.5
+[0.11.4]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.4
+[0.11.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.3
+[0.11.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.2
+[0.11.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.1
+[0.11.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.11.0
+[0.10.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.10.2
+[0.10.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.10.1
+[0.10.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.10.0
+[0.9.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.9.2
+[0.9.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.9.1
+[0.9.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.9.0
+[0.8.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.8.0
+[0.7.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.7.2
+[0.7.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.7.1
+[0.7.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.7.0
+[0.6.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.6.0
+[0.5.11]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.11
+[0.5.10]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.10
+[0.5.9]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.9
+[0.5.8]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.8
+[0.5.7]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.7
+[0.5.6]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.6
+[0.5.5]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.5
+[0.5.4]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.4
+[0.5.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.3
+[0.5.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.2
+[0.5.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.1
+[0.5.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.5.0
+[0.4.6]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.6
+[0.4.5]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.5
+[0.4.4]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.4
+[0.4.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.3
+[0.4.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.2
+[0.4.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.1
+[0.4.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.4.0
+[0.3.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.3.0
+[0.2.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.2.0
