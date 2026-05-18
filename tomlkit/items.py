@@ -2083,7 +2083,7 @@ class InlineTable(AbstractTable):
 
             if has_explicit_commas and needs_separator:
                 stripped = buf.rstrip()
-                buf = f"{stripped},{buf[len(stripped):]}"
+                buf = f"{stripped},{buf[len(stripped) :]}"
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
