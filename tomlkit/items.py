@@ -2037,6 +2037,7 @@ class InlineTable(AbstractTable):
     def as_string(self) -> str:
         buf = "{"
         emitted_key = False
+        needs_separator = False
         has_explicit_commas = any(
             k is None and isinstance(v, Whitespace) and "," in v.s
             for k, v in self._value.body
@@ -2073,9 +2074,17 @@ class InlineTable(AbstractTable):
                     elif not has_explicit_commas or "," in v.as_string():
                         buf = buf.rstrip(",")
 
-                buf += v.as_string()
+                v_string = v.as_string()
+                buf += v_string
+                if "," in v_string:
+                    needs_separator = False
 
                 continue
+
+            if has_explicit_commas and needs_separator:
+                stripped = buf.rstrip()
+                buf = f"{stripped},{buf[len(stripped):]}"
+                needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
             buf += (
@@ -2087,6 +2096,8 @@ class InlineTable(AbstractTable):
                 f"{v_trivia_trail}"
             )
             emitted_key = True
+            if has_explicit_commas:
+                needs_separator = True
 
             if (
                 not has_explicit_commas
