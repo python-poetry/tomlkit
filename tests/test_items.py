@@ -923,6 +923,14 @@ def test_deleting_inline_table_element_does_not_leave_trailing_separator2() -> N
     assert table.as_string() == '{ baz = "boom"}'
 
 
+def test_appending_to_parsed_inline_table_preserves_separator() -> None:
+    doc = parse("a = { foo = 1, bar = 2 }\n")
+    doc["a"]["baz"] = 3
+
+    assert doc.as_string() == "a = { foo = 1, bar = 2, baz = 3}\n"
+    parse(doc.as_string())
+
+
 def test_booleans_comparison() -> None:
     boolean = Bool(True, Trivia())
 
