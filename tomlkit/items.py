@@ -2050,6 +2050,7 @@ class InlineTable(AbstractTable):
             ),
             None,
         )
+        pending_separator = False
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
                 if isinstance(v, Whitespace) and "," in v.s:
@@ -2067,6 +2068,15 @@ class InlineTable(AbstractTable):
                     if has_following_null and not has_following_key:
                         buf += v.as_string().replace(",", "", 1)
                         continue
+
+                    if pending_separator:
+                        # A previous key was removed, leaving this comma as a
+                        # duplicate of an already emitted separator. Drop it to
+                        # avoid producing an invalid ``, ,`` sequence.
+                        buf += v.as_string().replace(",", "", 1)
+                        continue
+
+                    pending_separator = True
 
                 if i == len(self._value.body) - 1:
                     if self._new:
@@ -2096,6 +2106,7 @@ class InlineTable(AbstractTable):
                 f"{v_trivia_trail}"
             )
             emitted_key = True
+            pending_separator = False
             if has_explicit_commas:
                 needs_separator = True
 

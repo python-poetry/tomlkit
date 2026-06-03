@@ -931,6 +931,19 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_deleting_inline_table_middle_element_does_not_leave_double_separator() -> None:
+    doc = parse("a = {foo = 1, bar = 2, baz = 3}\n")
+    del doc["a"]["bar"]
+
+    # The dangling separator left by the removed key must not produce an
+    # invalid ``, ,`` sequence; the result must round-trip.
+    rendered = doc.as_string()
+    assert ", ," not in rendered
+    assert ",," not in rendered
+    assert parse(rendered) == {"a": {"foo": 1, "baz": 3}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_booleans_comparison() -> None:
     boolean = Bool(True, Trivia())
 
