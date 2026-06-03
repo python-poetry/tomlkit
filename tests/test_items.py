@@ -330,6 +330,7 @@ def test_array_behaves_like_a_list() -> None:
     content = """a = [1, 2,] # Comment
 """
     doc = parse(content)
+    assert str(doc) == "{'a': [1, 2]}"
     assert str(doc["a"]) == "[1, 2]"
 
     assert doc["a"] == [1, 2]
