@@ -1233,3 +1233,51 @@ def test_array_item_removal_newline_restore_next() -> None:
     doc["x"].remove("1")
     assert doc.as_string() == expected
     parse(doc.as_string())
+
+
+def test_table_membership_matches_inner_container() -> None:
+    doc = parse('[server]\nhost = "localhost"\nport = 8080\nenabled = true\n')
+    table = doc["server"]
+    assert isinstance(table, Table)
+
+    assert "host" in table
+    assert "port" in table
+    assert "enabled" in table
+    assert "missing" not in table
+
+    # ``str`` and ``Key`` arguments behave identically.
+    assert Key("host") in table
+    assert Key("missing") not in table
+
+    # The native ``__contains__`` must agree with the inner container it delegates to.
+    for key in ("host", "port", "enabled", "missing", ""):
+        assert (key in table) == (key in table.value)
+
+    # A non-string / non-Key key still raises, as before.
+    with pytest.raises(TypeError):
+        table.__contains__(42)
+
+
+def test_inline_table_membership() -> None:
+    doc = parse("point = {x = 1, y = 2}")
+    inline = doc["point"]
+    assert isinstance(inline, InlineTable)
+
+    assert "x" in inline
+    assert "y" in inline
+    assert "z" not in inline
+    assert Key("y") in inline
+
+
+def test_out_of_order_table_membership() -> None:
+    content = '[a.a]\nkey = "value"\n\n[a.b]\n\n[a.a.c]\n'
+    doc = parse(content)
+    table = doc["a"]
+
+    # ``a`` is stored out of order (a tuple index in the inner container): the
+    # only non-trivial ``__contains__`` branch, where an ``OutOfOrderTableProxy``
+    # is built. Membership must be correct and must not mutate the document.
+    assert "a" in table
+    assert "b" in table
+    assert "missing" not in table
+    assert doc.as_string() == content

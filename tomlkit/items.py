@@ -1818,6 +1818,15 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def __getitem__(self, key: Key | str) -> Any:  # type: ignore[override]
         return self._value[key]
 
+    def __contains__(self, key: object) -> bool:
+        # Native membership test. The inherited ``MutableMapping.__contains__``
+        # resolves the value via ``__getitem__`` (``self._value[key]``) -- and
+        # builds a ``NonExistentKey`` on every absent key -- only to discard it.
+        # Delegate straight to the inner container instead: its ``__contains__``
+        # answers from ``_map`` while still building the ``OutOfOrderTableProxy``
+        # for an out-of-order entry, so validation runs exactly as before.
+        return key in self._value
+
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
         if not isinstance(value, Item):
             value = item(value, _parent=self)
