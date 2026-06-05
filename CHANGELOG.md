@@ -5,6 +5,7 @@
 ### Changed
 
 - Speed up membership tests (`key in ...`) on `Container`, `Table` and `InlineTable` with native `__contains__` implementations, avoiding the inherited `MutableMapping` round-trip through `__getitem__` (which resolves the value and builds an exception on every absent key). ([#483](https://github.com/python-poetry/tomlkit/issues/483))
+- Speed up parsing by interning `TOMLChar` instances: the single-character strings read while parsing draw on a tiny alphabet, so caching one instance per character avoids reconstructing them on every read. ([#488](https://github.com/python-poetry/tomlkit/pull/488))
 
 ### Fixed
 
