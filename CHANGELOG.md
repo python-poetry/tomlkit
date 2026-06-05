@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Changed
+
+- Speed up membership tests (`key in ...`) on `Container`, `Table` and `InlineTable` with native `__contains__` implementations, avoiding the inherited `MutableMapping` round-trip through `__getitem__` (which resolves the value and builds an exception on every absent key). ([#483](https://github.com/python-poetry/tomlkit/issues/483))
+
 ### Fixed
 
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))

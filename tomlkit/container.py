@@ -714,6 +714,23 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return item
 
+    def __contains__(self, key: object) -> bool:
+        # Native membership test. The inherited ``MutableMapping.__contains__``
+        # resolves the value via ``__getitem__``/``item()`` (and builds a
+        # ``NonExistentKey`` on every absent key) only to discard it. Resolve the
+        # key the same way ``item()`` does -- ``str`` becomes a ``SingleKey``
+        # (a non-str/non-``Key`` argument still raises ``TypeError``) -- then
+        # probe ``_map`` directly. For an out-of-order table the proxy is still
+        # built so its validation runs exactly as before.
+        if not isinstance(key, Key):
+            key = SingleKey(key)  # type: ignore[arg-type]
+        idx = self._map.get(key)
+        if idx is None:
+            return False
+        if isinstance(idx, tuple):
+            OutOfOrderTableProxy(self, idx)
+        return True
+
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
             old_key = next(filter(lambda k: k == key, self._map))
