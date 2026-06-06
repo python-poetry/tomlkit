@@ -4,7 +4,6 @@ from typing import Any
 
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
-from tomlkit.toml_char import TOMLChar
 
 
 class _State:
@@ -75,19 +74,20 @@ class _StateHandler:
 
 
 class Source(str):
-    EOF = TOMLChar("\0")
+    # EOF is a placeholder value for `current` past the end of input. End-of-input
+    # is detected positionally (`end()` / `_idx >= len`), never by comparing to this
+    # value, so a real NUL byte in the input is not mistaken for EOF.
+    EOF = "\0"
 
     def __init__(self, _: str) -> None:
         super().__init__()
 
-        # PERF: previously built `iter([(i, TOMLChar(c)) for i, c in enumerate(self)])`
-        # which materialized N tuples + N TOMLChars at init time (~584 k allocations
-        # per 150-parse benchmark). Switching to an integer index over the underlying
-        # str makes init O(1) and lets `inc()` just bump the index and slice the str.
-        # The TOMLChar cache (toml_char.py) absorbs the per-character cost.
+        # Track an integer index over the underlying str (Source subclasses str):
+        # init is O(1) and `inc()` just bumps the index and reads the next char,
+        # instead of materializing a list of (index, char) pairs up front.
         self._idx = -1  # pre-start sentinel; first inc() will land on 0
         self._marker = 0
-        self._current: TOMLChar = TOMLChar("")
+        self._current: str = ""
 
         self._state = _StateHandler(self)
 
@@ -109,7 +109,7 @@ class Source(str):
         return self._idx
 
     @property
-    def current(self) -> TOMLChar:
+    def current(self) -> str:
         return self._current
 
     @property
@@ -127,13 +127,11 @@ class Source(str):
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
-        # PERF: integer increment + cached TOMLChar lookup, no iterator/next()/
-        # StopIteration triage. After the first char of each kind has been seen,
-        # `TOMLChar(self[i])` is a dict.get cache hit.
+        # Integer increment + a single str index, no iterator / StopIteration triage.
         next_idx = self._idx + 1
         if next_idx < len(self):
             self._idx = next_idx
-            self._current = TOMLChar(self[next_idx])
+            self._current = self[next_idx]
             return True
 
         # Past end : pin to len, switch current to EOF, raise if asked.
@@ -159,7 +157,7 @@ class Source(str):
             i += 1
         if i < n:
             self._idx = i
-            self._current = TOMLChar(self[i])
+            self._current = self[i]
             return True
         self._idx = n
         self._current = self.EOF
@@ -179,7 +177,7 @@ class Source(str):
             i += 1
         if i < n:
             self._idx = i
-            self._current = TOMLChar(self[i])
+            self._current = self[i]
             return True
         self._idx = n
         self._current = self.EOF
@@ -210,7 +208,7 @@ class Source(str):
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._current is self.EOF
+        return self._idx >= len(self)
 
     def mark(self) -> None:
         """

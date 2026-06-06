@@ -47,7 +47,6 @@ from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
 from tomlkit.source import Source
 from tomlkit.source import _StateHandler
-from tomlkit.toml_char import TOMLChar
 from tomlkit.toml_document import TOMLDocument
 
 
@@ -57,11 +56,15 @@ CTRL_M = 0x0D  # Carriage return
 CTRL_CHAR_LIMIT = 0x1F
 CHR_DEL = 0x7F
 
-# Character sets for Source.advance_while / advance_until bulk run scans
-# (replace per-character `while self._current.is_*() and self.inc()` loops with
-# a single underlying-string scan).
-_SPACES_SET = frozenset(TOMLChar.SPACES)
-_BARE_KEY_OR_SPACE = frozenset(TOMLChar.BARE + TOMLChar.SPACES)
+# TOML character classes (formerly the `TOMLChar` constants), as frozensets for
+# O(1) membership tests; also the stop-sets for the Source.advance_while /
+# advance_until bulk run scans that replace per-character
+# `while self._current in <set> and self.inc()` loops with a single scan.
+_SPACES = frozenset(" \t")
+_NL = frozenset("\n\r")
+_WS = _SPACES | _NL
+_KV = frozenset("= \t")
+_BARE_KEY_OR_SPACE = frozenset(string.ascii_letters + string.digits + "-_ \t")
 _NUM_STOP = frozenset(" \t\n\r#,]}")
 _DATE_TAIL_STOP = frozenset("\t\n\r#,]}")
 # Control chars invalid inside a single-line string (DEL + everything <= 0x1F
@@ -94,7 +97,7 @@ class Parser:
         return self._src.idx
 
     @property
-    def _current(self) -> TOMLChar:
+    def _current(self) -> str:
         return self._src.current
 
     @property
@@ -292,7 +295,7 @@ class Parser:
                 self.inc()  # Skip #
 
                 # The comment itself
-                while not self.end() and not self._current.is_nl():
+                while not self.end() and self._current not in _NL:
                     code = ord(self._current)
                     if code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I):
                         raise self.parse_error(InvalidControlChar, code, "comments")
@@ -320,7 +323,7 @@ class Parser:
 
         trail = ""
         if parse_trail:
-            self._src.advance_while(_SPACES_SET)
+            self._src.advance_while(_SPACES)
 
             if self._current == "\r":
                 with self._state(restore=True):
@@ -331,7 +334,7 @@ class Parser:
             if self._current == "\n":
                 self.inc()
 
-            if self._idx != self._marker or self._current.is_ws():
+            if self._idx != self._marker or self._current in _WS:
                 trail = self.extract()
 
         return comment_ws, comment, trail
@@ -340,7 +343,7 @@ class Parser:
         # Leading indent
         self.mark()
 
-        self._src.advance_while(_SPACES_SET)
+        self._src.advance_while(_SPACES)
 
         indent = self.extract()
 
@@ -350,7 +353,7 @@ class Parser:
         self.mark()
 
         found_equals = self._current == "="
-        while self._current.is_kv_sep() and self.inc():
+        while self._current in _KV and self.inc():
             if self._current == "=":
                 if found_equals:
                     raise self.parse_error(UnexpectedCharError, "=")
@@ -389,7 +392,7 @@ class Parser:
         """
         self.mark()
         # Skip any leading whitespace (bulk scan)
-        self._src.advance_while(_SPACES_SET)
+        self._src.advance_while(_SPACES)
         if self._current in "\"'":
             return self._parse_quoted_key()
         else:
@@ -414,7 +417,7 @@ class Parser:
             raise self.parse_error(UnexpectedCharError, key_str._t.value)
         original += key_str.as_string()
         self.mark()
-        self._src.advance_while(_SPACES_SET)
+        self._src.advance_while(_SPACES)
         original += self.extract()
         result: Key = SingleKey(str(key_str), t=key_type, sep="", original=original)
         if self._current == ".":
@@ -594,9 +597,9 @@ class Parser:
         while True:
             # consume whitespace
             mark = self._idx
-            self.consume(TOMLChar.SPACES + TOMLChar.NL)
+            self.consume(" \t\n\r")
             indent = self._src[mark : self._idx]
-            newline = set(TOMLChar.NL) & set(indent)
+            newline = _NL & set(indent)
             if newline:
                 elems.append(Whitespace(indent))
                 continue
@@ -659,7 +662,7 @@ class Parser:
             while True:
                 # consume whitespace and newlines
                 mark = self._idx
-                self.consume(TOMLChar.SPACES + TOMLChar.NL)
+                self.consume(" \t\n\r")
                 raw = self._src[mark : self._idx]
                 if raw:
                     elems.add(Whitespace(raw))
@@ -749,7 +752,7 @@ class Parser:
             return self._parse_string(StringType.SLB)
 
     def _parse_escaped_char(self, multiline: bool) -> str:
-        if multiline and self._current.is_ws():
+        if multiline and self._current in _WS:
             # When the last non-whitespace character on a line is
             # a \, it will be trimmed along with all whitespace
             # (including newlines) up to the next non-whitespace
@@ -758,7 +761,7 @@ class Parser:
             #     hello \
             #     world"""
             tmp = ""
-            while self._current.is_ws():
+            while self._current in _WS:
                 tmp += self._current
                 # consume the whitespace, EOF here is an issue
                 # (middle of string)
@@ -847,7 +850,6 @@ class Parser:
         # PERF: stop-set for the single-line string-body bulk fast-path (None for
         # multiline, which keeps the per-char loop because of \r\n handling).
         src = self._src
-        EOF = src.EOF
         single_stop = None
         if delim.is_singleline():
             single_stop = (
@@ -938,7 +940,7 @@ class Parser:
                     # loop for CRLF handling).
                     run_start = src._idx
                     src.advance_until(single_stop)
-                    if src._current is EOF:
+                    if src.end():
                         # mid-string EOF — same error as the per-char inc()
                         raise self.parse_error(UnexpectedEofError)
                     value += src[run_start : src._idx]

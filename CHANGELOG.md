@@ -8,6 +8,7 @@
 - Speed up parsing by making `Source` index-based: it now tracks an integer position over the input string instead of materializing a list of `(index, char)` tuples up front, so construction is O(1) and state save/restore no longer copies an iterator. ([#489](https://github.com/python-poetry/tomlkit/pull/489))
 - Speed up parsing by scanning character runs in bulk: `Source.advance_while`/`advance_until` consume a whole run of whitespace, bare-key or number characters in a single pass over the input string instead of one `inc()` call per character. ([#490](https://github.com/python-poetry/tomlkit/pull/490))
 - Speed up parsing of single-line strings by bulk-appending the run of ordinary characters up to the next delimiter, backslash or control character in one pass, instead of one character at a time. ([#491](https://github.com/python-poetry/tomlkit/pull/491))
+- Speed up parsing by removing the internal `TOMLChar` wrapper: the parser now reads plain `str` characters from `Source` and detects end-of-input positionally, avoiding a per-character object construction and method dispatch. ([#492](https://github.com/python-poetry/tomlkit/pull/492))
 
 ### Fixed
 
