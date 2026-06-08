@@ -2,6 +2,7 @@ import pytest
 
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
@@ -63,3 +64,19 @@ def test_parse_multiline_literal_string_with_crlf() -> None:
     content = "a = '''foo\r\nbar'''"
     parser = Parser(content)
     assert parser.parse() == {"a": "foo\r\nbar"}
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        r'a = "\uD800"',
+        r'a = "\uDFFF"',
+        r'a = "\U0000D800"',
+        r'a = "\U0000DFFF"',
+        r'a = "\U0000DC00"',
+    ],
+)
+def test_parser_rejects_surrogate_unicode_escapes(content: str) -> None:
+    parser = Parser(content)
+    with pytest.raises(InvalidUnicodeValueError):
+        parser.parse()

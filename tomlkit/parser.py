@@ -1165,11 +1165,19 @@ class Parser:
             else:
                 extracted = self.extract()
 
-                if extracted[0].lower() == "d" and extracted[1].strip("01234567"):
-                    return None, None
+                try:
+                    codepoint = int(extracted, 16)
+                except ValueError:
+                    return None, extracted
+
+                # Unicode scalar values exclude the surrogate range
+                # (U+D800 to U+DFFF). The 8-digit \U form reaches this range
+                # with leading zeros, so it must be checked on the value itself.
+                if 0xD800 <= codepoint <= 0xDFFF:
+                    return None, extracted
 
                 try:
-                    value = chr(int(extracted, 16))
+                    value = chr(codepoint)
                 except (ValueError, OverflowError):
                     value = None
 
