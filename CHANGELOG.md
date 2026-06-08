@@ -5,6 +5,7 @@
 ### Changed
 
 - Speed up membership tests (`key in ...`) on `Container`, `Table` and `InlineTable` with native `__contains__` implementations, avoiding the inherited `MutableMapping` round-trip through `__getitem__` (which resolves the value and builds an exception on every absent key). ([#483](https://github.com/python-poetry/tomlkit/issues/483))
+- Speed up parsing by making `Source` index-based: it now tracks an integer position over the input string instead of materializing a list of `(index, char)` tuples up front, so construction is O(1) and state save/restore no longer copies an iterator. ([#489](https://github.com/python-poetry/tomlkit/pull/489))
 
 ### Fixed
 
