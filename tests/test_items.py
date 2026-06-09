@@ -944,6 +944,48 @@ def test_deleting_inline_table_middle_element_does_not_leave_double_separator() 
     assert parse(rendered).as_string() == rendered
 
 
+def test_appending_to_comma_first_array_does_not_double_separator() -> None:
+    doc = parse(
+        """\
+a = [
+      1 # one
+     ,2
+    ]
+"""
+    )
+    doc["a"].append(99)
+
+    # The comma separating ``2`` from ``99`` is carried by the new item's
+    # comma-first indent; adding a trailing comma to ``2`` as well would
+    # produce an invalid ``2,\\n,99`` sequence.
+    rendered = doc.as_string()
+    assert parse(rendered)["a"] == [1, 2, 99]
+    assert parse(rendered).as_string() == rendered
+
+
+def test_inserting_into_comma_first_array_does_not_double_separator() -> None:
+    doc = parse(
+        """\
+a = [
+      1 # one
+     ,2
+    ]
+"""
+    )
+    doc["a"].insert(1, 99)
+
+    rendered = doc.as_string()
+    assert parse(rendered)["a"] == [1, 99, 2]
+    assert parse(rendered).as_string() == rendered
+
+    # Inserting at the front copies the first item's comma-less indent and
+    # must keep its usual trailing comma.
+    doc["a"].insert(0, 0)
+    rendered = doc.as_string()
+    assert parse(rendered)["a"] == [0, 1, 99, 2]
+    assert parse(rendered).as_string() == rendered
+
+
 def test_booleans_comparison() -> None:
     boolean = Bool(True, Trivia())
 
