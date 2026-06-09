@@ -226,6 +226,16 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     return self
                 elif isinstance(current, AoT):
                     if not item.is_aot_element():
+                        if item.is_super_table() and len(current.body):
+                            # A sub-table header such as `[fruit.apple.texture]`
+                            # appearing after the array `[[fruit]]` (possibly with
+                            # unrelated tables in between) extends the last element
+                            # of the array, per the TOML spec.
+                            last = current[-1]
+                            for k, v in item.value.body:
+                                last.value.append(k, v)
+
+                            return self
                         # Tried to define a table after an AoT with the same name.
                         raise KeyAlreadyPresent(key)
 
