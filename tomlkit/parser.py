@@ -426,8 +426,8 @@ class Parser:
             # Empty key
             raise self.parse_error(EmptyKeyError)
 
-        if " " in key_s:
-            # Bare key with spaces in it
+        if " " in key_s or "\t" in key_s:
+            # Bare key with whitespace in it
             raise self.parse_error(ParseError, f'Invalid key "{key_s}"')
 
         result: Key = SingleKey(key_s, KeyType.Bare, "", original)

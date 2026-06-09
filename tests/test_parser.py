@@ -3,6 +3,7 @@ import pytest
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
 from tomlkit.exceptions import InvalidUnicodeValueError
+from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
@@ -79,4 +80,18 @@ def test_parse_multiline_literal_string_with_crlf() -> None:
 def test_parser_rejects_surrogate_unicode_escapes(content: str) -> None:
     parser = Parser(content)
     with pytest.raises(InvalidUnicodeValueError):
+        parser.parse()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "a\tb = 1",
+        "[a\tb]",
+        "x.y\tz = 1",
+    ],
+)
+def test_parser_rejects_tab_in_bare_key(content: str) -> None:
+    parser = Parser(content)
+    with pytest.raises(ParseError):
         parser.parse()
