@@ -11,6 +11,7 @@
 ### Fixed
 
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
+- Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
 
 ## [0.15.0] - 2026-05-10
 

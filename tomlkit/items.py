@@ -1635,9 +1635,21 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
                 # Copy the comma from the last item if 1) it contains a value and
                 # 2) the array is multiline
                 comma = last_item.comma
-            if last_item.comma is None and not isinstance(last_item.value, Null):
-                # Add comma to the last item to separate it from the following items.
+            comma_in_indent = indent is not None and "," in indent.s
+            if (
+                last_item.comma is None
+                and not isinstance(last_item.value, Null)
+                and not comma_in_indent
+            ):
+                # Add comma to the last item to separate it from the following
+                # items, unless the new item's indent already starts with a
+                # comma (comma-first style).
                 last_item.comma = Whitespace(",")
+        if indent is not None and "," in indent.s:
+            # Comma-first style: the item that will follow the new one brings
+            # its own leading comma, so the new item must not add a trailing
+            # comma of its own.
+            comma = None
         if indent is None and (idx > 0 or "\n" in default_indent):
             # apply default indent if it isn't the first item or the array is multiline.
             indent = Whitespace(default_indent)
