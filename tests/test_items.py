@@ -944,6 +944,28 @@ def test_deleting_inline_table_middle_element_does_not_leave_double_separator() 
     assert parse(rendered).as_string() == rendered
 
 
+def test_adding_to_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c = 1}\n")
+    doc["a"]["b"]["d"] = 2
+
+    # The added key must stay attached to the ``b.`` prefix and be separated
+    # from the existing pair; the result must round-trip.
+    rendered = doc.as_string()
+    assert rendered == "a = {b.c = 1, b.d = 2}\n"
+    assert parse(rendered) == {"a": {"b": {"c": 1, "d": 2}}}
+    assert parse(rendered).as_string() == rendered
+
+
+def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c.e = 1}\n")
+    doc["a"]["b"]["c"]["g"] = 2
+
+    rendered = doc.as_string()
+    assert rendered == "a = {b.c.e = 1, b.c.g = 2}\n"
+    assert parse(rendered) == {"a": {"b": {"c": {"e": 1, "g": 2}}}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
     doc = parse(
         """\
