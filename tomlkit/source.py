@@ -143,6 +143,48 @@ class Source(str):
             raise self.parse_error(exception) from None
         return False
 
+    def advance_while(self, charset: frozenset) -> bool:
+        """Advance while the current character is in ``charset``.
+
+        Equivalent to ``while self.current in charset and self.inc(): pass`` but
+        it scans the underlying string in a single pass and updates the index
+        and current character only once, instead of paying a per-character
+        ``inc()`` call. On return ``current`` is the first character NOT in
+        ``charset`` (or EOF). Returns ``True`` if it stopped on a real
+        character, ``False`` at EOF — the same value contract as the loop.
+        """
+        i = self._idx
+        n = len(self)
+        while i < n and self[i] in charset:
+            i += 1
+        if i < n:
+            self._idx = i
+            self._current = TOMLChar(self[i])
+            return True
+        self._idx = n
+        self._current = self.EOF
+        return False
+
+    def advance_until(self, stopset: frozenset) -> bool:
+        """Advance while the current character is NOT in ``stopset``.
+
+        The mirror of :meth:`advance_while`: equivalent to
+        ``while self.current not in stopset and self.inc(): pass`` in a single
+        scan. On return ``current`` is the first character IN ``stopset`` (or
+        EOF), with the same return-value contract.
+        """
+        i = self._idx
+        n = len(self)
+        while i < n and self[i] not in stopset:
+            i += 1
+        if i < n:
+            self._idx = i
+            self._current = TOMLChar(self[i])
+            return True
+        self._idx = n
+        self._current = self.EOF
+        return False
+
     def inc_n(self, n: int, exception: type[ParseError] | None = None) -> bool:
         """
         Increments the parser by n characters
