@@ -1163,10 +1163,10 @@ class Parser:
             else:
                 extracted = self.extract()
 
-                try:
-                    codepoint = int(extracted, 16)
-                except ValueError:
+                if extracted.strip("0123456789abcdefABCDEF"):
                     return None, extracted
+
+                codepoint = int(extracted, 16)
 
                 # Unicode scalar values exclude the surrogate range
                 # (U+D800 to U+DFFF). The 8-digit \U form reaches this range

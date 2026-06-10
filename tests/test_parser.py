@@ -86,6 +86,23 @@ def test_parser_rejects_surrogate_unicode_escapes(content: str) -> None:
 @pytest.mark.parametrize(
     "content",
     [
+        r'a = "\u12_3"',
+        r'a = "\u 123"',
+        r'a = "\u+123"',
+        r'a = "\u1_23"',
+        r'a = "\U0010_FFFF"',
+        r'a = "\U0000_0041"',
+    ],
+)
+def test_parser_rejects_non_hex_unicode_escapes(content: str) -> None:
+    parser = Parser(content)
+    with pytest.raises(InvalidUnicodeValueError):
+        parser.parse()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
         "a\tb = 1",
         "[a\tb]",
         "x.y\tz = 1",
