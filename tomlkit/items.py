@@ -2118,14 +2118,18 @@ class InlineTable(AbstractTable):
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
-            buf += (
-                f"{v.trivia.indent}"
-                f"{k.as_string() + ('.' if k.is_dotted() else '')}"
-                f"{k.sep}"
-                f"{v.as_string()}"
-                f"{v.trivia.comment}"
-                f"{v_trivia_trail}"
-            )
+            if k.is_dotted() and isinstance(v, Table):
+                # A table materialized from a dotted key renders one
+                # `prefix.child = value` pair per child, so that keys added
+                # after parsing stay attached to the dotted prefix.
+                rendered = ", ".join(self._render_dotted(k, v))
+            else:
+                rendered = (
+                    f"{k.as_string() + ('.' if k.is_dotted() else '')}"
+                    f"{k.sep}"
+                    f"{v.as_string()}"
+                )
+            buf += f"{v.trivia.indent}{rendered}{v.trivia.comment}{v_trivia_trail}"
             emitted_key = True
             pending_separator = False
             if has_explicit_commas:
@@ -2143,6 +2147,25 @@ class InlineTable(AbstractTable):
         buf += "}"
 
         return buf
+
+    def _render_dotted(self, key: Key, table: Table) -> list[str]:
+        """Render a table materialized from a dotted key as a list of
+        ``prefix.child = value`` strings, recursing into nested dotted
+        children."""
+        prefix = f"{key.as_string()}.{key.sep}"
+        parts = []
+        for k, v in table.value.body:
+            if k is None:
+                continue
+            if isinstance(v, Table):
+                parts.extend(f"{prefix}{sub}" for sub in self._render_dotted(k, v))
+            else:
+                trail = v.trivia.trail.replace("\n", "")
+                parts.append(
+                    f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
+                    f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
+                )
+        return parts
 
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
         if hasattr(value, "trivia") and value.trivia.comment:
