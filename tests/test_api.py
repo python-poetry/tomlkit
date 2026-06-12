@@ -263,6 +263,22 @@ def test_datetime() -> None:
         tomlkit.time("1979-05-13")
 
 
+def test_comment_single_line() -> None:
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment("a comment"))
+    assert doc.as_string() == "# a comment\n"
+
+
+def test_comment_multiline_is_valid_toml() -> None:
+    """A multiline comment prefixes every line so the output re-parses (#449)."""
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment("line one\nline two\n\nline four"))
+    rendered = doc.as_string()
+    assert rendered == "# line one\n# line two\n#\n# line four\n"
+    # The rendered document must round-trip.
+    assert parse(rendered).as_string() == rendered
+
+
 def test_array() -> None:
     a = tomlkit.array()
 
