@@ -1004,7 +1004,11 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                 self._tables.append(_item)
                 table_idx = len(self._tables) - 1
                 for k, v in _item.value.body:
-                    self._internal_container._raw_append(k, v)
+                    merged = self._merge_aot_fragment(k, v)
+                    if merged is None:
+                        self._internal_container._raw_append(k, v)
+                    else:
+                        v = merged
                     key_indices = self._tables_map.setdefault(k, [])  # type: ignore[arg-type]
                     if table_idx not in key_indices:
                         key_indices.append(table_idx)
@@ -1012,6 +1016,34 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                         dict.__setitem__(self, k.key, v)
 
         self._internal_container._validate_out_of_order_table()
+
+    def _merge_aot_fragment(self, key: Key | None, item: Item) -> AoT | None:
+        """
+        Merge an array-of-tables fragment from a later out-of-order table part.
+
+        An AoT whose elements are split across out-of-order parts of the same
+        table arrives here once per part; ``_raw_append`` only knows how to
+        chain duplicate ``Table`` parts and would raise ``KeyAlreadyPresent``.
+        The fragments are presented as a new merged ``AoT`` referencing the
+        live element tables, without mutating either fragment (the parts keep
+        rendering their own elements).
+
+        Returns the merged ``AoT``, or ``None`` if this is not such a fragment.
+        """
+        internal = self._internal_container
+        if key is None or not isinstance(item, AoT) or key not in internal._map:
+            return None
+        idx = internal._map[key]
+        if isinstance(idx, tuple):
+            return None
+        existing = internal._body[idx][1]
+        if not isinstance(existing, AoT):
+            return None
+
+        merged = AoT([*existing.body, *item.body], parsed=True)
+        internal._body[idx] = (internal._body[idx][0], merged)
+        dict.__setitem__(internal, key.key, merged.value)
+        return merged
 
     def unwrap(self) -> dict[str, Any]:
         return self._internal_container.unwrap()
