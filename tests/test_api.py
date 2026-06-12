@@ -166,6 +166,25 @@ def test_mapping_types_can_be_dumped() -> None:
     assert dumps(x) == 'foo = "bar"\n'
 
 
+def test_dumps_wrapper_delegating_as_string_preserves_layout() -> None:
+    """Mapping-like wrappers around a parsed document dump it verbatim (#482)."""
+
+    class DocumentWrapper:
+        """Bare-bones stand-in for wrappers such as dotty_dict's Dotty."""
+
+        def __init__(self, document: TOMLDocument) -> None:
+            self._document = document
+
+        def __getitem__(self, key: str) -> Any:
+            return self._document[key]
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._document, name)
+
+    content = '[tool.a]\nx = 1\n\n[project]\nname = "demo"\n\n[tool.b]\ny = 2\n'
+    assert dumps(DocumentWrapper(parse(content))) == content  # type: ignore[arg-type]
+
+
 def test_parsed_document_can_be_dumped_with_sorted_keys() -> None:
     doc = loads('zzz = 1\naaa = "foo"')
 

@@ -63,8 +63,18 @@ def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
 
         return item(data, _sort_keys=True).as_string()
 
-    table = item(dict(data), _sort_keys=sort_keys)
-    return table.as_string()
+    if isinstance(data, Mapping):
+        return item(dict(data), _sort_keys=sort_keys).as_string()
+
+    try:
+        # mapping-like wrappers (e.g. dotty_dict's Dotty) delegate
+        # ``as_string`` to the document they wrap; rendering it directly
+        # preserves the original layout, which re-encoding through a plain
+        # dict would lose
+        return data.as_string()  # type: ignore[attr-defined]
+    except AttributeError as ex:
+        msg = f"Expecting Mapping or TOML Table or Container, {type(data)} given"
+        raise TypeError(msg) from ex
 
 
 def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:
