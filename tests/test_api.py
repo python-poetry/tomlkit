@@ -438,6 +438,32 @@ def test_value_rejects_values_with_appendage(raw: str) -> None:
         tomlkit.value(raw)
 
 
+def test_parse_many_dotted_keys_with_shared_prefix() -> None:
+    """Each dotted key adds a fragment to the same out-of-order key; parsing
+    validates incrementally instead of re-merging every fragment (#479)."""
+    content = "\n".join(f"a.b.c.key{i} = {i}" for i in range(200)) + "\n"
+    doc = parse(content)
+    assert doc["a"]["b"]["c"]["key0"] == 0
+    assert doc["a"]["b"]["c"]["key199"] == 199
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[a]\nb.c = 1\n[q]\nx = 1\n[a]\nb.c = 2",
+        "[t.a]\nk = 1\n[u]\nz = 1\n[t.a]\nk = 2",
+    ],
+)
+def test_parse_rejects_collisions_across_out_of_order_fragments(
+    content: str,
+) -> None:
+    """Key collisions between out-of-order table parts still fail at parse
+    time with the incremental validation (#479)."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        parse(content)
+
+
 def test_create_super_table_with_table() -> None:
     data = {"foo": {"bar": {"a": 1}}}
     assert dumps(data) == "[foo.bar]\na = 1\n"
