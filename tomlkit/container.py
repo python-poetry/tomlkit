@@ -258,17 +258,16 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                             return self
 
-                        # Create a new element to replace the old one
-                        current = copy.deepcopy(current)
+                        # Merge the new super table's body into the existing one
+                        # in place. Previously this deep-copied `current` before
+                        # appending, which is O(size of current) on every merge
+                        # and therefore O(n^2) when many subtables share a super
+                        # table (e.g. consecutive `[a.b.c]` / `[a.b.d]` headers).
+                        # Mutating in place is O(1) per merge. The defensive copy
+                        # that protected the out-of-order validation pass has been
+                        # moved into OutOfOrderTableProxy (its only consumer).
                         for k, v in item.value.body:
                             current.append(k, v)
-                        self._body[
-                            (
-                                current_idx[-1]
-                                if isinstance(current_idx, tuple)
-                                else current_idx
-                            )
-                        ] = (current_body_element[0], current)
 
                         return self
                     elif (
@@ -902,14 +901,20 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     @staticmethod
     def validate(container: Container, indices: tuple[int, ...]) -> None:
         """Validate out of order tables in the given container"""
-        # Append all items to a temp container to see if there is any error
+        # Append all items to a temp container to see if there is any error.
+        # We deep-copy each value before appending: appending a super table
+        # merges it in place into a matching one already in temp_container, and
+        # those values are the live subtables of `container`. Without the copy
+        # the merge would mutate the caller's tables (and corrupt a later
+        # validation pass). The container merge itself is now copy-free for
+        # speed, so this is where the isolation lives.
         temp_container = Container(True)
         for i in indices:
             _, item = container._body[i]
 
             if isinstance(item, Table):
                 for k, v in item.value.body:
-                    temp_container.append(k, v, validate=True)
+                    temp_container.append(k, copy.deepcopy(v), validate=True)
 
         temp_container._validate_out_of_order_table()
 
