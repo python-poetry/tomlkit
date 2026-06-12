@@ -17,6 +17,7 @@
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
 - Fix unparseable serialization when adding a key to a dotted-key table inside an inline table. ([#500](https://github.com/python-poetry/tomlkit/pull/500))
+- Fix a table replaced by a plain value being serialized inside the preceding table's body when other tables follow; the value now moves before the first table like other root-level values. ([#504](https://github.com/python-poetry/tomlkit/issues/504))
 
 ## [0.15.0] - 2026-05-10
 

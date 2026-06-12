@@ -783,14 +783,21 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             dict.__delitem__(self, k.key)
 
         if isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table)):
-            # new tables should appear after all non-table values
             self.remove(k)
-            for i in range(idx, len(self._body)):
-                if isinstance(self._body[i][1], (AoT, Table)):
-                    self._insert_at(i, new_key, value)
-                    idx = i
-                    break
+            if isinstance(value, (AoT, Table)):
+                # new tables should appear after all non-table values
+                for i in range(idx, len(self._body)):
+                    if isinstance(self._body[i][1], (AoT, Table)):
+                        self._insert_at(i, new_key, value)
+                        idx = i
+                        break
+                else:
+                    idx = -1
+                    self.append(new_key, value)
             else:
+                # the replaced table's slot lies in the table region, where a
+                # plain value would be captured by the preceding table on
+                # round-trip; append() puts it with the other root-level values
                 idx = -1
                 self.append(new_key, value)
         else:

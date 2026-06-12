@@ -831,6 +831,33 @@ a = 1
     )
 
 
+def test_replace_middle_table_with_value() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/504
+    content = """[a]
+aa = 1
+
+[b]
+bb = 2
+
+[c]
+cc = 3
+"""
+    doc = parse(content)
+    doc["b"] = 2
+    assert (
+        doc.as_string()
+        == """b = 2
+
+[a]
+aa = 1
+
+[c]
+cc = 3
+"""
+    )
+    assert parse(doc.as_string())["a"] == {"aa": 1}
+
+
 def test_replace_preserve_sep() -> None:
     content = """a   =   1
 
