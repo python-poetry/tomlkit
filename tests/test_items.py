@@ -19,6 +19,7 @@ from tests.util import assert_is_ppo
 from tests.util import elementary_test
 from tomlkit import api
 from tomlkit import parse
+from tomlkit.container import OutOfOrderTableProxy
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -1344,4 +1345,25 @@ def test_out_of_order_table_membership() -> None:
     assert "a" in table
     assert "b" in table
     assert "missing" not in table
+    assert doc.as_string() == content
+
+
+def test_out_of_order_table_proxy_membership() -> None:
+    # A top-level table split by another table (``a`` interrupted by ``foo``)
+    # resolves to an ``OutOfOrderTableProxy``; exercise its native
+    # ``__contains__`` directly (the test above goes through ``Table``).
+    content = "[a.x]\np = 1\n[foo]\nbar = 2\n[a.y]\nq = 3\n"
+    doc = parse(content)
+    table = doc["a"]
+    assert isinstance(table, OutOfOrderTableProxy)
+
+    assert "x" in table
+    assert "y" in table
+    assert "missing" not in table
+    # a Key is accepted just like __getitem__ does
+    assert Key("x") in table
+    # a non-str/non-Key argument is rejected like the other mapping types
+    with pytest.raises(TypeError):
+        _ = 123 in table
+    # membership must not resolve values or mutate the document
     assert doc.as_string() == content
