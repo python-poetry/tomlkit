@@ -954,6 +954,15 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     def value(self) -> dict[str, Any]:
         return self._internal_container.value
 
+    def __contains__(self, key: object) -> bool:
+        # Native membership test. The inherited ``MutableMapping.__contains__``
+        # resolves the value via ``__getitem__`` (and builds a ``NonExistentKey``
+        # on every absent key) only to discard it. Probe the internal container
+        # directly -- the same predicate ``__getitem__`` already uses -- which is
+        # itself a native ``_map`` lookup that still rebuilds the proxy for an
+        # out-of-order key so its validation runs exactly as before.
+        return key in self._internal_container
+
     def __getitem__(self, key: Key | str) -> Any:
         if key not in self._internal_container:
             raise NonExistentKey(key)
