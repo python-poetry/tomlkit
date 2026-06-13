@@ -37,6 +37,7 @@ from tomlkit.items import Integer
 from tomlkit.items import Key
 from tomlkit.items import Table
 from tomlkit.items import Time
+from tomlkit.parser import Parser
 from tomlkit.toml_document import TOMLDocument
 
 
@@ -503,3 +504,28 @@ def test_parse_empty_quoted_table_name() -> None:
     parsed = loads(content)
     assert parsed == {"": {"x": 1}}
     assert dumps(parsed) == content
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "x = " + "[" * 500 + "1" + "]" * 500,
+        "x = " + "{a = " * 500 + "1" + "}" * 500,
+        "x = " + "[{a = " * 500 + "1" + "}]" * 500,
+        ".".join(["a"] * 500) + " = 1",
+        "[" + ".".join(["a"] * 500) + "]\nx = 1",
+        "[[" + ".".join(["a"] * 500) + "]]\nx = 1",
+    ],
+)
+def test_parse_rejects_deeply_nested_documents(payload: str) -> None:
+    """Nesting beyond the depth limit raises ParseError, not RecursionError."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        parse(payload)
+
+
+def test_parse_accepts_nesting_at_the_depth_limit() -> None:
+    depth = Parser.MAX_NESTING_DEPTH
+    array = "x = " + "[" * depth + "1" + "]" * depth
+    assert parse(array).as_string() == array
+    dotted = ".".join(["a"] * depth) + " = 1"
+    assert parse(dotted).as_string() == dotted

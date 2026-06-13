@@ -5,6 +5,7 @@ import re
 import string
 
 from typing import Any
+from typing import Callable
 
 from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE
@@ -82,11 +83,17 @@ class Parser:
     Parser for TOML documents.
     """
 
+    # Deeply nested documents would overflow the interpreter stack: arrays and
+    # inline tables are parsed recursively, and every fragment of a dotted key
+    # adds a level of nested containers. Refuse documents beyond this depth.
+    MAX_NESTING_DEPTH = 100
+
     def __init__(self, string: str | bytes) -> None:
         # Input to parse
         self._src = Source(decode(string))
 
         self._aot_stack: list[Key] = []
+        self._nesting_depth = 0
 
     @property
     def _state(self) -> _StateHandler:
@@ -390,6 +397,24 @@ class Parser:
         Parses a Key at the current position;
         WS before the key must be exhausted first at the callsite.
         """
+        key = self._parse_simple_key()
+        fragments = 1
+        while self._current == ".":
+            fragments += 1
+            if fragments > self.MAX_NESTING_DEPTH:
+                raise self.parse_error(
+                    ParseError,
+                    f"TOML key nested more than {self.MAX_NESTING_DEPTH} levels deep",
+                )
+            self.inc()
+            key = key.concat(self._parse_simple_key())
+
+        return key
+
+    def _parse_simple_key(self) -> Key:
+        """
+        Parses a single (non-dotted) key fragment.
+        """
         self.mark()
         # Skip any leading whitespace (bulk scan)
         self._src.advance_while(_SPACES)
@@ -419,12 +444,8 @@ class Parser:
         self.mark()
         self._src.advance_while(_SPACES)
         original += self.extract()
-        result: Key = SingleKey(str(key_str), t=key_type, sep="", original=original)
-        if self._current == ".":
-            self.inc()
-            result = result.concat(self._parse_key())
 
-        return result
+        return SingleKey(str(key_str), t=key_type, sep="", original=original)
 
     def _parse_bare_key(self) -> Key:
         """
@@ -442,13 +463,7 @@ class Parser:
             # Bare key with whitespace in it
             raise self.parse_error(ParseError, f'Invalid key "{key_s}"')
 
-        result: Key = SingleKey(key_s, KeyType.Bare, "", original)
-
-        if self._current == ".":
-            self.inc()
-            result = result.concat(self._parse_key())
-
-        return result
+        return SingleKey(key_s, KeyType.Bare, "", original)
 
     def _parse_value(self) -> Item:
         """
@@ -467,9 +482,9 @@ class Parser:
         elif c == BoolType.FALSE.value[0]:
             return self._parse_false()
         elif c == "[":
-            return self._parse_array()
+            return self._parse_nested(self._parse_array)
         elif c == "{":
-            return self._parse_inline_table()
+            return self._parse_nested(self._parse_inline_table)
         elif c in "+-" or self._peek(4) in {
             "+inf",
             "-inf",
@@ -587,6 +602,21 @@ class Parser:
                 self.consume(c, min=1, max=1)
 
             return Bool(style, Trivia())
+
+    def _parse_nested(self, parse: Callable[[], Item]) -> Item:
+        """
+        Parses an array or inline table, enforcing the nesting depth limit.
+        """
+        self._nesting_depth += 1
+        if self._nesting_depth > self.MAX_NESTING_DEPTH:
+            raise self.parse_error(
+                ParseError,
+                f"TOML value nested more than {self.MAX_NESTING_DEPTH} levels deep",
+            )
+        try:
+            return parse()
+        finally:
+            self._nesting_depth -= 1
 
     def _parse_array(self) -> Array:
         # Consume opening bracket, EOF here is an issue (middle of array)
