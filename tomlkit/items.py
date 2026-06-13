@@ -2072,6 +2072,10 @@ class InlineTable(AbstractTable):
             None,
         )
         pending_separator = False
+        # Buffer position right after the last rendered value, used to place a
+        # deferred separator comma after the value rather than after a trailing
+        # comment/whitespace.
+        last_value_end = len(buf)
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
                 if isinstance(v, Whitespace) and "," in v.s:
@@ -2113,8 +2117,10 @@ class InlineTable(AbstractTable):
                 continue
 
             if has_explicit_commas and needs_separator:
-                stripped = buf.rstrip()
-                buf = f"{stripped},{buf[len(stripped) :]}"
+                # Insert the deferred separator right after the previous value,
+                # not after any trailing comment/whitespace -- otherwise the
+                # comma is swallowed by a trailing comment (see #512).
+                buf = f"{buf[:last_value_end]},{buf[last_value_end:]}"
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
@@ -2129,7 +2135,9 @@ class InlineTable(AbstractTable):
                     f"{k.sep}"
                     f"{v.as_string()}"
                 )
-            buf += f"{v.trivia.indent}{rendered}{v.trivia.comment}{v_trivia_trail}"
+            buf += f"{v.trivia.indent}{rendered}"
+            last_value_end = len(buf)
+            buf += f"{v.trivia.comment}{v_trivia_trail}"
             emitted_key = True
             pending_separator = False
             if has_explicit_commas:

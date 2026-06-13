@@ -931,6 +931,19 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_append_key_after_inline_table_trailing_comment() -> None:
+    doc = parse("tbl = {\n    p = { k = 1 },\n    q = { k = 2 }  # comment\n}\n")
+    doc["tbl"]["added"] = 3
+
+    # The separator for the new key must be placed after the previous value,
+    # not after the trailing comment -- otherwise the comma becomes part of the
+    # comment and the result no longer round-trips. See #512.
+    rendered = doc.as_string()
+    assert "# comment," not in rendered
+    assert parse(rendered) == {"tbl": {"p": {"k": 1}, "q": {"k": 2}, "added": 3}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_deleting_inline_table_middle_element_does_not_leave_double_separator() -> None:
     doc = parse("a = {foo = 1, bar = 2, baz = 3}\n")
     del doc["a"]["bar"]
