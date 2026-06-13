@@ -579,6 +579,37 @@ z = 1
     assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}
 
 
+def test_out_of_order_table_merges_aot_fragments() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/505
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = ".*"
+
+[unrelated]
+x = 1
+
+[[hooks.Stop]]
+matcher = "second"
+
+[hooks.state]
+y = 2
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert len(hooks["Stop"]) == 2
+    assert hooks["Stop"][1]["matcher"] == "second"
+    assert hooks["state"]["y"] == 2
+
+    # element-level mutation still writes through to the document
+    hooks["Stop"][1]["matcher"] = "patched"
+    assert 'matcher = "patched"' in doc.as_string()
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
