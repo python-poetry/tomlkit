@@ -19,6 +19,7 @@
 - Fix unparseable serialization when adding a key to a dotted-key table inside an inline table. ([#500](https://github.com/python-poetry/tomlkit/pull/500))
 - Fix a table replaced by a plain value being serialized inside the preceding table's body when other tables follow; the value now moves before the first table like other root-level values. ([#504](https://github.com/python-poetry/tomlkit/issues/504))
 - Restore `dumps()` rendering mapping-like wrappers around a parsed document (e.g. `dotty_dict`'s `Dotty`) through their delegated `as_string`, preserving the original table order and layout instead of re-encoding through a plain dict — a 0.15.0 regression. ([#482](https://github.com/python-poetry/tomlkit/issues/482))
+- Fix uncontrolled recursion when parsing deeply nested documents: crafted input could crash the process with a `RecursionError`. Values nested more than 100 levels deep and keys with more than 100 dotted fragments now raise `ParseError`. ([#459](https://github.com/python-poetry/tomlkit/issues/459))
 
 ## [0.15.0] - 2026-05-10
 
