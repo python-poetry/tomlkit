@@ -11,6 +11,7 @@
 - Speed up parsing by removing the internal `TOMLChar` wrapper: the parser now reads plain `str` characters from `Source` and detects end-of-input positionally, avoiding a per-character object construction and method dispatch. ([#492](https://github.com/python-poetry/tomlkit/pull/492))
 - Speed up parsing by comparing `StringType` members by identity (`is`) instead of building a set on every `is_basic`/`is_literal`/`is_singleline`/`is_multiline` call, avoiding millions of enum hashes while parsing. ([#502](https://github.com/python-poetry/tomlkit/pull/502))
 - Speed up merging super tables by merging in place instead of deep-copying the growing target on every merge, turning the parse of documents with many subtables under a shared super table (e.g. consecutive `[a.b.c]` / `[a.b.d]` headers) from O(n²) into O(n). ([#503](https://github.com/python-poetry/tomlkit/pull/503))
+- Speed up parsing documents with many dotted keys or table headers sharing a prefix by validating out-of-order tables incrementally: each new fragment is merged into a cached validation container once, instead of re-merging (and deep-copying) every earlier fragment on each append, turning a super-cubic worst case into linear time (80 shared-prefix dotted keys: ~8 s → ~10 ms). ([#479](https://github.com/python-poetry/tomlkit/issues/479))
 
 ### Fixed
 
