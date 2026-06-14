@@ -339,6 +339,14 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
                     raise TOMLKitError("Redefinition of an existing table")
+                if isinstance(existing, Table) and isinstance(v, Table):
+                    if not existing.is_super_table() and not v.is_super_table():
+                        # Both sides are concrete `[table]` definitions of the
+                        # same name; the table is declared twice.
+                        raise KeyAlreadyPresent(k)
+                    # One side is still an implicit/super table, so a duplicate
+                    # (if any) is nested deeper - keep checking the subtree.
+                    self._validate_table_candidate(existing, v)
                 continue
 
             if not k.is_dotted():
