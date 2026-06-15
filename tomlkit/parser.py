@@ -1041,8 +1041,12 @@ class Parser:
 
         self.inc()  # Skip closing bracket
         if is_aot:
-            # TODO: Verify close bracket
-            self.inc()
+            if self.end():
+                raise self.parse_error(UnexpectedEofError)
+            elif self._current != "]":
+                raise self.parse_error(UnexpectedCharError, self._current)
+
+            self.inc()  # Skip second closing bracket
 
         cws, comment, trail = self._parse_comment_trail()
 
