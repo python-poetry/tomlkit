@@ -646,7 +646,13 @@ class Parser:
                 continue
 
             # consume value
-            if not prev_value:
+            # Skip the value attempt when sitting on the closing bracket: a
+            # value-less position followed by "]" (an empty or trailing-comma
+            # array) would otherwise call _parse_value() only for it to raise
+            # UnexpectedCharError immediately -- and building that discarded
+            # exception eagerly computes a line/column, which scans the whole
+            # source. On a large file with many arrays this is a big, pure waste.
+            if not prev_value and self._current != "]":
                 try:
                     elems.append(self._parse_value())
                     prev_value = True
