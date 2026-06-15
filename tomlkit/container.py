@@ -44,6 +44,15 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self._body: list[tuple[Key | None, Item]] = []
         self._parsed = parsed
         self._table_keys: list[Key] = []
+        # number of already-validated fragments and the temp container they
+        # were merged into, per out-of-order key; lets parse-time validation
+        # resume where the previous pass stopped instead of re-merging every
+        # fragment (quadratic) on each append
+        self._validation_cache: dict[Key, tuple[int, Container]] = {}
+        # superset of the keys mapped to an index tuple, so validating all
+        # out-of-order tables doesn't have to scan every key in the map;
+        # stale entries are filtered by the per-key isinstance check
+        self._out_of_order_keys: set[Key] = set()
 
     @property
     def body(self) -> list[tuple[Key | None, Item]]:
@@ -89,6 +98,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def parsing(self, parsing: bool) -> None:
         self._parsed = parsing
+        self._validation_cache.clear()
 
         for _, v in self._body:
             if isinstance(v, Table):
@@ -153,7 +163,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def _validate_out_of_order_table(self, key: Key | None = None) -> None:
         if key is None:
-            for k in self._map:
+            for k in list(self._out_of_order_keys):
                 assert k is not None
                 self._validate_out_of_order_table(k)
             return
@@ -161,6 +171,27 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             return
         current_idx = self._map[key]
         if not isinstance(current_idx, tuple):
+            return
+        if self._parsed:
+            # while parsing, every fragment appended to an out-of-order key
+            # triggers a validation pass; resume from the cached temp
+            # container so each fragment is merged (and deep-copied) once
+            # instead of on every later pass. Fragments are only ever
+            # appended during parsing, so a count prefix stays valid; any
+            # other mutation clears the cache.
+            validated, temp = self._validation_cache.get(key, (0, None))
+            if validated > len(current_idx):
+                validated, temp = 0, None
+            try:
+                temp = OutOfOrderTableProxy.validate(
+                    self, current_idx[validated:], temp
+                )
+            except Exception:
+                # the temp container may be partially mutated; don't let a
+                # caught-and-retried failure resume from a poisoned cache
+                self._validation_cache.pop(key, None)
+                raise
+            self._validation_cache[key] = (len(current_idx), temp)
             return
         OutOfOrderTableProxy.validate(self, current_idx)
 
@@ -367,6 +398,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 raise KeyAlreadyPresent(key)
 
             self._map[key] = (*current_idx, len(self._body))
+            self._out_of_order_keys.add(key)
         elif key is not None:
             self._map[key] = len(self._body)
 
@@ -383,6 +415,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         index = self._map.get(key)
         if index is None:
             raise NonExistentKey(key)
+        self._validation_cache.clear()
         self._body[idx] = (None, Null())
 
         if isinstance(index, tuple):
@@ -405,6 +438,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if idx is None:
             raise NonExistentKey(key)
 
+        self._validation_cache.clear()
         if isinstance(idx, tuple):
             for i in idx:
                 self._body[i] = (None, Null())
@@ -500,6 +534,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             if not isinstance(current_idx, tuple):
                 current_idx = (current_idx,)
             self._map[key] = (*current_idx, idx)
+            self._out_of_order_keys.add(key)
         else:
             self._map[key] = idx
         self._body.insert(idx, (key, item))
@@ -735,7 +770,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if idx is None:
             return False
         if isinstance(idx, tuple):
-            OutOfOrderTableProxy(self, idx)
+            # during parsing every fragment append re-probes membership;
+            # if the validation cache covers exactly these fragments they
+            # are already known to merge cleanly, so skip rebuilding the
+            # proxy (which is linear in the number of fragments)
+            validated, _ = self._validation_cache.get(key, (0, None))
+            if not (self._parsed and validated == len(idx)):
+                OutOfOrderTableProxy(self, idx)
         return True
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
@@ -767,6 +808,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self, idx: int | tuple[int, ...], new_key: Key | str, value: Item
     ) -> None:
         value = _item(value)
+        self._validation_cache.clear()
 
         if isinstance(idx, tuple):
             for i in idx[1:]:
@@ -872,6 +914,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self._body = state[1]
         self._parsed = state[2]
         self._table_keys = state[3]
+        self._out_of_order_keys = {
+            k for k, v in self._map.items() if isinstance(v, tuple)
+        }
 
         for key, item in self._body:
             if key is not None:
@@ -887,6 +932,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._out_of_order_keys |= self._out_of_order_keys
 
         return c
 
@@ -914,7 +960,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
 class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     @staticmethod
-    def validate(container: Container, indices: tuple[int, ...]) -> None:
+    def validate(
+        container: Container,
+        indices: tuple[int, ...],
+        temp_container: Container | None = None,
+    ) -> Container:
         """Validate out of order tables in the given container"""
         # Append all items to a temp container to see if there is any error.
         # We deep-copy each value before appending: appending a super table
@@ -923,7 +973,11 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         # the merge would mutate the caller's tables (and corrupt a later
         # validation pass). The container merge itself is now copy-free for
         # speed, so this is where the isolation lives.
-        temp_container = Container(True)
+        # Passing a previous pass's temp container back in (with the already
+        # validated indices stripped from `indices`) resumes the validation
+        # incrementally.
+        if temp_container is None:
+            temp_container = Container(True)
         for i in indices:
             _, item = container._body[i]
 
@@ -932,6 +986,7 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                     temp_container.append(k, copy.deepcopy(v), validate=True)
 
         temp_container._validate_out_of_order_table()
+        return temp_container
 
     def __init__(self, container: Container, indices: tuple[int, ...]) -> None:
         self._container = container
