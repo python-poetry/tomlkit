@@ -112,3 +112,18 @@ def test_parser_rejects_tab_in_bare_key(content: str) -> None:
     parser = Parser(content)
     with pytest.raises(ParseError):
         parser.parse()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[a.b]\n[a]\n[a.b]",
+        "[a.b]\nx = 1\n[a]\n[a.b]\ny = 2",
+        "[a.b.c]\n[a]\n[a.b.c]",
+        "[a.b]\n[a.c]\n[a]\n[a.b]",
+    ],
+)
+def test_parser_rejects_table_redefined_after_parent(content: str) -> None:
+    parser = Parser(content)
+    with pytest.raises(ParseError):
+        parser.parse()
