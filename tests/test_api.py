@@ -365,6 +365,22 @@ def test_add_dotted_key() -> None:
     assert table.as_string() == "foo.bar = 1\n"
 
 
+def test_key_with_single_element_list_is_a_single_key() -> None:
+    # Regression test for
+    # https://github.com/python-poetry/tomlkit/issues/430: a one-element key
+    # list should behave like a plain key, not a single-element dotted key.
+    doc = tomlkit.document()
+    doc.append(tomlkit.key(["foo"]), "value")
+    assert "foo" in doc
+    assert doc["foo"] == "value"
+    assert doc.as_string() == 'foo = "value"\n'
+
+    # Multi-element key lists are still dotted keys.
+    doc = tomlkit.document()
+    doc.add(tomlkit.key(["foo", "bar"]), 1)
+    assert doc.as_string() == "foo.bar = 1\n"
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [

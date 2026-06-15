@@ -262,7 +262,10 @@ def key(k: str | Iterable[str]) -> Key:
     """
     if isinstance(k, str):
         return SingleKey(k)
-    return DottedKey([SingleKey(_k) for _k in k])
+    keys = [SingleKey(_k) for _k in k]
+    if len(keys) == 1:
+        return keys[0]
+    return DottedKey(keys)
 
 
 def value(raw: str) -> _Item:
