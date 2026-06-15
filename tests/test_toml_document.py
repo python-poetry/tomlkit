@@ -16,6 +16,7 @@ from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
+from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.toml_document import TOMLDocument
 
@@ -577,6 +578,28 @@ z = 1
     doc = parse(content)
     assert doc.as_string() == content
     assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}
+
+
+def test_unwrap_out_of_order_tables() -> None:
+    # unwrap() resolves out-of-order tables through the same proxy as item
+    # access, so the fragments are merged into one dict.
+    doc = parse("[a.x]\np = 1\n[foo]\nbar = 2\n[a.y]\nq = 3\n")
+    assert doc.unwrap() == {"a": {"x": {"p": 1}, "y": {"q": 3}}, "foo": {"bar": 2}}
+
+
+def test_unwrap_preserves_raise_on_invalid_out_of_order_fragment() -> None:
+    # Regression guard for the unwrap() fast path: this document is actually
+    # *invalid* TOML -- `b` is a value under [a], then reopened as a table by
+    # the out-of-order [a.b]. Ideally tomlkit would reject it at parse (it does
+    # for the in-order form, and so does the stdlib tomllib); today the conflict
+    # is only detected lazily when the out-of-order proxy is built, so it
+    # surfaces at access/unwrap time. This test does NOT bless that deferred
+    # timing -- it only pins that the faster unwrap() keeps going through the
+    # proxy and still raises, rather than silently merging the conflict into a
+    # corrupted dict.
+    doc = parse("[a]\nb = true\n[zz]\nq = 9\n[a.b]\narr = [1, 2]\n")
+    with pytest.raises(KeyAlreadyPresent):
+        doc.unwrap()
 
 
 def test_out_of_order_tables_are_still_dicts() -> None:

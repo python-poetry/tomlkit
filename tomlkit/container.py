@@ -61,17 +61,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def unwrap(self) -> dict[str, Any]:
         """Returns as pure python object (ppo)"""
         unwrapped: dict[str, Any] = {}
-        for k, v in self.items():
-            if k is None:
-                continue
-
-            key_str: str = k.key if isinstance(k, Key) else k
-            val: Any = v.unwrap() if hasattr(v, "unwrap") else v
-
-            if key_str in unwrapped:
-                merge_dicts(unwrapped[key_str], val)
+        # Resolve each key straight from _map, which already holds the parsed
+        # Key objects and their body index, instead of via self.items(): the
+        # inherited MutableMapping iteration goes through __getitem__, which
+        # rebuilds a SingleKey from the bare string on every key only to throw
+        # it away. Out-of-order keys (a tuple index) still go through
+        # OutOfOrderTableProxy so their validation (and fragment merge) runs
+        # exactly as before. _map iterates in the same insertion order as the
+        # old self.items().
+        for key, idx in self._map.items():
+            if isinstance(idx, tuple):
+                value: Any = OutOfOrderTableProxy(self, idx)
             else:
-                unwrapped[key_str] = val
+                value = self._body[idx][1]
+            unwrapped[key.key] = value.unwrap() if hasattr(value, "unwrap") else value
 
         return unwrapped
 

@@ -1747,15 +1747,11 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
                 dict.__setitem__(self, k.key, v)
 
     def unwrap(self) -> dict[str, Any]:
-        unwrapped = {}
-        for k, v in self.items():
-            if isinstance(k, Key):
-                k = k.key
-            if hasattr(v, "unwrap"):
-                v = v.unwrap()
-            unwrapped[k] = v
-
-        return unwrapped
+        # Delegate to the inner container's unwrap, which walks its _body
+        # directly instead of re-resolving every key through items()/__getitem__
+        # (which rebuilds a SingleKey, and an OutOfOrderTableProxy for
+        # out-of-order keys, per key just to throw it away).
+        return self._value.unwrap()
 
     @property
     def value(self) -> container.Container:
