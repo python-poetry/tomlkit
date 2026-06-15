@@ -12,6 +12,7 @@
 - Speed up parsing by comparing `StringType` members by identity (`is`) instead of building a set on every `is_basic`/`is_literal`/`is_singleline`/`is_multiline` call, avoiding millions of enum hashes while parsing. ([#502](https://github.com/python-poetry/tomlkit/pull/502))
 - Speed up merging super tables by merging in place instead of deep-copying the growing target on every merge, turning the parse of documents with many subtables under a shared super table (e.g. consecutive `[a.b.c]` / `[a.b.d]` headers) from O(n²) into O(n). ([#503](https://github.com/python-poetry/tomlkit/pull/503))
 - Speed up membership tests (`key in ...`) on out-of-order tables with a native `OutOfOrderTableProxy.__contains__`, completing [#483](https://github.com/python-poetry/tomlkit/issues/483) for the last mapping type that still inherited the slow `MutableMapping` mixin (which resolves the value and builds an exception on every absent key). ([#515](https://github.com/python-poetry/tomlkit/pull/515))
+- Speed up parsing of arrays that close right after a value (e.g. the `files = [...]` blocks that dominate lock files): the parser no longer attempts to read a value while sitting on the closing `]`, which previously built an `UnexpectedCharError` just to discard it — and constructing that exception eagerly computes a line/column by scanning the whole document, making it O(document size) per such array. ([#517](https://github.com/python-poetry/tomlkit/pull/517))
 
 ### Fixed
 

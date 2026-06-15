@@ -45,6 +45,34 @@ a {c = 1, d = 2}
         parser.parse()
 
 
+def test_array_close_after_value_round_trips() -> None:
+    # The parser skips the value attempt when it is sitting on the closing
+    # "]" (a value-less position: an empty or trailing-comma array). This is a
+    # pure optimisation -- valid arrays going through that branch must still
+    # round-trip byte-for-byte.
+    for content in (
+        "a = []",
+        "a = [ ]",
+        "a = [1]",
+        "a = [1,]",
+        "a = [1, 2]",
+        "a = [1, 2, ]",
+        "a = [\n  1,\n  2,\n]",
+        "a = [[1], [2]]",
+        "a = [{b = 1}]",
+    ):
+        assert Parser(content).parse().as_string() == content
+
+
+def test_malformed_array_still_raises() -> None:
+    # ...and malformed arrays must still raise: the skip applies only to "]",
+    # never to a real value start (which must still be parsed) nor to "," (so a
+    # leading/double comma keeps erroring).
+    for content in ("a = [, 1]", "a = [1 2]", "a = [1, , 2]", "a = [@]"):
+        with pytest.raises(UnexpectedCharError):
+            Parser(content).parse()
+
+
 def test_parse_multiline_string_ignore_the_first_newline() -> None:
     content = 'a = """\nfoo\n"""'
     parser = Parser(content)
