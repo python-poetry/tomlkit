@@ -602,6 +602,71 @@ def test_unwrap_preserves_raise_on_invalid_out_of_order_fragment() -> None:
         doc.unwrap()
 
 
+def test_out_of_order_table_merges_aot_fragments() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/505
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = ".*"
+
+[unrelated]
+x = 1
+
+[[hooks.Stop]]
+matcher = "second"
+
+[hooks.state]
+y = 2
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert len(hooks["Stop"]) == 2
+    assert hooks["Stop"][1]["matcher"] == "second"
+    assert hooks["state"]["y"] == 2
+
+    # element-level mutation still writes through to the document
+    hooks["Stop"][1]["matcher"] = "patched"
+    assert 'matcher = "patched"' in doc.as_string()
+
+
+def test_out_of_order_table_merges_three_aot_fragments() -> None:
+    # An AoT split across more than two out-of-order parts merges into a single
+    # AoT: each later fragment is appended to the growing element list, so the
+    # parts keep their order and every element is reachable.
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = "a"
+
+[unrelated1]
+x = 1
+
+[[hooks.Stop]]
+matcher = "b"
+
+[unrelated2]
+y = 2
+
+[[hooks.Stop]]
+matcher = "c"
+
+[hooks.state]
+z = 3
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert [t["matcher"] for t in hooks["Stop"]] == ["a", "b", "c"]
+    assert hooks["state"]["z"] == 3
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]

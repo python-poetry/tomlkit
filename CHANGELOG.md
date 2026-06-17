@@ -26,6 +26,7 @@
 - Fix uncontrolled recursion when parsing deeply nested documents: crafted input could crash the process with a `RecursionError`. Values nested more than 100 levels deep and keys with more than 100 dotted fragments now raise `ParseError`. ([#459](https://github.com/python-poetry/tomlkit/issues/459))
 - Fix `comment()` producing invalid TOML for a multiline string by prefixing every line with `#`, not just the first. ([#449](https://github.com/python-poetry/tomlkit/issues/449))
 - Fix the separator comma being swallowed by a trailing comment when appending a key to a multiline inline table, leaving the new key without a separator so the result no longer round-trips. ([#512](https://github.com/python-poetry/tomlkit/issues/512))
+- Fix a `KeyAlreadyPresent` error when parsing or accessing an out-of-order table whose array-of-tables elements are split across the table's parts. ([#505](https://github.com/python-poetry/tomlkit/issues/505))
 
 ## [0.15.0] - 2026-05-10
 
