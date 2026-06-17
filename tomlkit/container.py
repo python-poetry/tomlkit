@@ -1035,6 +1035,11 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
             return None
         idx = internal._map[key]
         if isinstance(idx, tuple):
+            # A tuple index means the key already resolved to several body
+            # positions, which here only happens for a degenerate collision
+            # (e.g. a non-AoT part sharing the key). Three or more genuine AoT
+            # fragments do not reach this branch: each later fragment merges
+            # into the single growing AoT below, so ``idx`` stays an int.
             return None
         existing = internal._body[idx][1]
         if not isinstance(existing, AoT):

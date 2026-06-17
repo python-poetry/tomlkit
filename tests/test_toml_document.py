@@ -633,6 +633,40 @@ y = 2
     assert 'matcher = "patched"' in doc.as_string()
 
 
+def test_out_of_order_table_merges_three_aot_fragments() -> None:
+    # An AoT split across more than two out-of-order parts merges into a single
+    # AoT: each later fragment is appended to the growing element list, so the
+    # parts keep their order and every element is reachable.
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = "a"
+
+[unrelated1]
+x = 1
+
+[[hooks.Stop]]
+matcher = "b"
+
+[unrelated2]
+y = 2
+
+[[hooks.Stop]]
+matcher = "c"
+
+[hooks.state]
+z = 3
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert [t["matcher"] for t in hooks["Stop"]] == ["a", "b", "c"]
+    assert hooks["state"]["z"] == 3
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
