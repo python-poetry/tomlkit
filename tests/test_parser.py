@@ -182,3 +182,18 @@ def test_parser_rejects_table_redefined_after_parent(content: str) -> None:
     parser = Parser(content)
     with pytest.raises(ParseError):
         parser.parse()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[[a]b",
+        "[[a]",
+        "[[a]x\ny = 1",
+        "[[a.b]x",
+    ],
+)
+def test_parser_rejects_aot_header_missing_second_bracket(content: str) -> None:
+    parser = Parser(content)
+    with pytest.raises(ParseError):
+        parser.parse()
