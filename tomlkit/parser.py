@@ -665,12 +665,9 @@ class Parser:
             # exception eagerly computes a line/column, which scans the whole
             # source. On a large file with many arrays this is a big, pure waste.
             if not prev_value and self._current != "]":
-                try:
-                    elems.append(self._parse_value())
-                    prev_value = True
-                    continue
-                except UnexpectedCharError:
-                    pass
+                elems.append(self._parse_value())
+                prev_value = True
+                continue
 
             # consume comma
             if prev_value and self._current == ",":
