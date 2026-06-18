@@ -16,8 +16,9 @@ from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
-from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.exceptions import ParseError
+from tomlkit.exceptions import TOMLKitError
 from tomlkit.toml_document import TOMLDocument
 
 
@@ -588,18 +589,39 @@ def test_unwrap_out_of_order_tables() -> None:
 
 
 def test_unwrap_preserves_raise_on_invalid_out_of_order_fragment() -> None:
-    # Regression guard for the unwrap() fast path: this document is actually
-    # *invalid* TOML -- `b` is a value under [a], then reopened as a table by
-    # the out-of-order [a.b]. Ideally tomlkit would reject it at parse (it does
-    # for the in-order form, and so does the stdlib tomllib); today the conflict
-    # is only detected lazily when the out-of-order proxy is built, so it
-    # surfaces at access/unwrap time. This test does NOT bless that deferred
-    # timing -- it only pins that the faster unwrap() keeps going through the
-    # proxy and still raises, rather than silently merging the conflict into a
-    # corrupted dict.
-    doc = parse("[a]\nb = true\n[zz]\nq = 9\n[a.b]\narr = [1, 2]\n")
-    with pytest.raises(KeyAlreadyPresent):
-        doc.unwrap()
+    # Regression guard: this document is actually *invalid* TOML -- `b` is a value
+    # under [a], then reopened as a table by the out-of-order [a.b].  The in-order
+    # form and stdlib tomllib both reject it.  Since the Container.append concrete-
+    # +super fix, tomlkit now rejects it at parse time as well.
+    with pytest.raises(ParseError):
+        parse("[a]\nb = true\n[zz]\nq = 9\n[a.b]\narr = [1, 2]\n")
+
+
+def test_reject_out_of_order_dotted_key_redefinition_at_parse() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/523
+    # A dotted key (b.c) creates an implicit table definition that is later
+    # redefined by an explicit [a.b] table header after an unrelated table [zz].
+    # This is invalid TOML (defining a table multiple times) and must be rejected
+    # at parse, not silently accepted.
+    with pytest.raises(ParseError):
+        parse("[a]\nb.c = 1\n[zz]\nq = 9\n[a.b]\nd = 2\n")
+
+
+def test_reject_out_of_order_dotted_prefix_at_parse() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/523
+    # A non-dotted candidate key (b) that is a prefix of an existing dotted key
+    # (b.c) means the table would be defined twice — once implicitly by the
+    # dotted key and once explicitly by the table header.  This must raise.
+    with pytest.raises((ParseError, TOMLKitError)):
+        parse("[a]\nb.c=1\n[a.b]\nd=2\n")
+
+
+def test_valid_out_of_order_independent_tables() -> None:
+    # [zz] splits unrelated tables; the concrete+super merge must not break
+    # valid out-of-order extensions.
+    doc = parse("[a]\nx=1\n[zz]\n[a.b]\nc=1\n")
+    assert doc.unwrap() == {"a": {"x": 1, "b": {"c": 1}}, "zz": {}}
+    assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
 def test_out_of_order_table_merges_aot_fragments() -> None:
