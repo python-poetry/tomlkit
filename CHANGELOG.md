@@ -15,6 +15,7 @@
 - Speed up parsing documents with many dotted keys or table headers sharing a prefix by validating out-of-order tables incrementally: each new fragment is merged into a cached validation container once, instead of re-merging (and deep-copying) every earlier fragment on each append, turning a super-cubic worst case into linear time (80 shared-prefix dotted keys: ~8 s → ~10 ms). ([#479](https://github.com/python-poetry/tomlkit/issues/479))
 - Speed up parsing of arrays that close right after a value (e.g. the `files = [...]` blocks that dominate lock files): the parser no longer attempts to read a value while sitting on the closing `]`, which previously built an `UnexpectedCharError` just to discard it — and constructing that exception eagerly computes a line/column by scanning the whole document, making it O(document size) per such array. ([#517](https://github.com/python-poetry/tomlkit/pull/517))
 - Speed up parsing of multiline strings by bulk-appending the run of ordinary characters — across raw line feeds and tabs — up to the next delimiter, backslash, carriage return or control character, instead of one character at a time. This extends to `"""`/`'''` bodies the single-line fast path added in [#491](https://github.com/python-poetry/tomlkit/pull/491); a `\r` still stops the scan so `\r\n` stays validated and byte-for-byte preserved. ([#518](https://github.com/python-poetry/tomlkit/pull/518))
+- Speed up `unwrap()` (converting a parsed document to a plain `dict`) by resolving each key directly from the container's key map instead of iterating the inherited `MutableMapping` view, which rebuilt a `SingleKey` from the bare string for every key just to re-look-up the value. Out-of-order tables still resolve through their proxy, so their validation is unchanged. ([#521](https://github.com/python-poetry/tomlkit/pull/521))
 
 ### Fixed
 
@@ -26,6 +27,7 @@
 - Fix uncontrolled recursion when parsing deeply nested documents: crafted input could crash the process with a `RecursionError`. Values nested more than 100 levels deep and keys with more than 100 dotted fragments now raise `ParseError`. ([#459](https://github.com/python-poetry/tomlkit/issues/459))
 - Fix `comment()` producing invalid TOML for a multiline string by prefixing every line with `#`, not just the first. ([#449](https://github.com/python-poetry/tomlkit/issues/449))
 - Fix the separator comma being swallowed by a trailing comment when appending a key to a multiline inline table, leaving the new key without a separator so the result no longer round-trips. ([#512](https://github.com/python-poetry/tomlkit/issues/512))
+- Fix a `KeyAlreadyPresent` error when parsing or accessing an out-of-order table whose array-of-tables elements are split across the table's parts. ([#505](https://github.com/python-poetry/tomlkit/issues/505))
 
 ## [0.15.0] - 2026-05-10
 
