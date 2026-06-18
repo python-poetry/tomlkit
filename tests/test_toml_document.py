@@ -1021,6 +1021,75 @@ def test_replace_with_aot_of_nested() -> None:
     assert doc.as_string().strip() == dedent(expected).strip()
 
 
+def test_replace_dotted_key_with_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/524
+    content = "fruit.apple = true\n"
+    doc = parse(content)
+    doc["fruit"] = {"a": 1}
+    # The dotted prefix must be dropped instead of duplicated onto the header.
+    assert (
+        doc.as_string()
+        == """[fruit]
+a = 1
+"""
+    )
+    assert parse(doc.as_string())["fruit"] == {"a": 1}
+
+
+def test_replace_dotted_key_with_empty_table_keeps_following_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/513
+    content = """a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["a"] = {}
+    # ``[a]`` must not swallow the following ``c.d`` dotted key.
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[a]
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "a": {}}
+
+
+def test_replace_dotted_key_with_table_keeps_following_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/513
+    content = """a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["a"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[a]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "a": {"x": 9}}
+
+
+def test_replace_value_with_table_keeps_following_dotted_sibling() -> None:
+    # A plain value turning into a table must likewise clear the inline region
+    # (including dotted keys) before emitting its header.
+    content = """x = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["x"] = {}
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[x]
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "x": {}}
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)
