@@ -260,6 +260,37 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     return self
                 elif isinstance(current, AoT):
                     if not item.is_aot_element():
+                        if item.is_super_table():
+                            # A dotted-key header like [fruit.apple.texture]
+                            # appearing after an unrelated table extends the last
+                            # element of the AoT (TOML spec: the [[fruit]]
+                            # header preceding the dotted key is implied).
+                            # Walk the super-table and merge into the last
+                            # element, bypassing the normal append path which
+                            # would trip over raw_append-created keys (they lack
+                            # the _dotted flag that _handle_dotted_key sets).
+                            def _deep_merge_into(
+                                target: Container, source: Table
+                            ) -> None:
+                                for sk, sv in source.value.body:
+                                    if sk is None:
+                                        continue
+                                    if sk in target:
+                                        existing = target.item(sk)
+                                        if isinstance(existing, Table) and isinstance(
+                                            sv, Table
+                                        ):
+                                            _deep_merge_into(
+                                                existing.value,
+                                                sv,  # type: ignore[arg-type]
+                                            )
+                                        else:
+                                            target._replace_at(target._map[sk], sk, sv)
+                                    else:
+                                        target._raw_append(sk, sv)
+
+                            _deep_merge_into(current[-1].value, item)
+                            return self
                         # Tried to define a table after an AoT with the same name.
                         raise KeyAlreadyPresent(key)
 

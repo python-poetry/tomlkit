@@ -667,6 +667,29 @@ z = 3
     assert hooks["state"]["z"] == 3
 
 
+def test_aot_extension_via_dotted_key_after_unrelated_table() -> None:
+    """A dotted-key header like [fruit.apple.texture] that appears after an
+    unrelated table should extend the last element of the AoT, not raise
+    KeyAlreadyPresent (#261)."""
+    content = """\
+[[fruit]]
+apple.color = "red"
+
+[potato]
+
+[fruit.apple.texture]
+smooth = true
+"""
+    doc = parse(content)
+    fruit = doc["fruit"]
+    assert len(fruit) == 1
+    assert fruit[0]["apple"]["color"] == "red"
+    assert fruit[0]["apple"]["texture"]["smooth"] is True
+    assert "potato" in doc
+    # Round-trip
+    assert parse(doc.as_string())["fruit"][0]["apple"]["texture"]["smooth"] is True
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
