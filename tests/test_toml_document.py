@@ -668,9 +668,6 @@ z = 3
 
 
 def test_aot_extension_via_dotted_key_after_unrelated_table() -> None:
-    """A dotted-key header like [fruit.apple.texture] that appears after an
-    unrelated table should extend the last element of the AoT, not raise
-    KeyAlreadyPresent (#261)."""
     content = """\
 [[fruit]]
 apple.color = "red"
@@ -688,6 +685,49 @@ smooth = true
     assert "potato" in doc
     # Round-trip
     assert parse(doc.as_string())["fruit"][0]["apple"]["texture"]["smooth"] is True
+
+
+def test_aot_extension_deep_merges_existing_nested_table() -> None:
+    content = """\
+[[fruit]]
+apple.texture.rough = false
+
+[potato]
+
+[fruit.apple.texture]
+smooth = true
+"""
+    texture = parse(content)["fruit"][0]["apple"]["texture"]
+    assert texture["rough"] is False
+    assert texture["smooth"] is True
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        """\
+[[fruit]]
+apple.texture = "rough"
+
+[potato]
+
+[fruit.apple.texture]
+smooth = true
+""",
+        """\
+[[fruit]]
+apple.texture.smooth = false
+
+[potato]
+
+[fruit.apple.texture.smooth]
+value = true
+""",
+    ],
+)
+def test_aot_extension_keeps_redefinition_errors(content: str) -> None:
+    with pytest.raises(tomlkit.exceptions.ParseError, match=r'Key ".*" already exists'):
+        parse(content)
 
 
 def test_out_of_order_tables_are_still_dicts() -> None:

@@ -285,7 +285,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                                                 sv,  # type: ignore[arg-type]
                                             )
                                         else:
-                                            target._replace_at(target._map[sk], sk, sv)
+                                            raise KeyAlreadyPresent(sk)
                                     else:
                                         target._raw_append(sk, sv)
 
