@@ -95,6 +95,33 @@ def test_parse_multiline_literal_string_with_crlf() -> None:
     assert parser.parse() == {"a": "foo\r\nbar"}
 
 
+def test_multiline_string_body_round_trips() -> None:
+    # The multiline body is consumed by a bulk scan that stops at the
+    # delimiter / escape / CR / invalid control char, leaving raw LF and tab
+    # inside the run. Bodies spanning many lines must round-trip byte-for-byte,
+    # incl. mixed LF/CRLF, tabs and a lone (non-closing) quote inside.
+    for delim in ('"""', "'''"):
+        for body in (
+            "line1\nline2\nline3\n",
+            "with\ttabs\tand\nnewlines\n",
+            "crlf\r\nand\r\nlf\nmixed",
+            f"a lone {delim[0]} quote inside",
+            f"two {delim[0] * 2} quotes inside",
+            "trailing spaces   \n   leading",
+        ):
+            content = f"a = {delim}{body}{delim}"
+            assert Parser(content).parse().as_string() == content
+
+
+def test_multiline_string_still_rejects_control_chars() -> None:
+    # The bulk scan must stop at a bare CR and at other control chars so the
+    # per-char branches still reject them (raw LF and tab stay allowed).
+    for bad in ("\r", "\x00", "\x0c", "\x1f", "\x7f"):
+        content = f'a = """ok{bad}bad"""'
+        with pytest.raises(ParseError):
+            Parser(content).parse()
+
+
 @pytest.mark.parametrize(
     "content",
     [

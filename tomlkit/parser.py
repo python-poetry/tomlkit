@@ -77,6 +77,18 @@ _CTRL_SINGLE = frozenset(chr(c) for c in range(0x20) if c != CTRL_I) | {chr(CHR_
 _SINGLE_LITERAL_STOP = _CTRL_SINGLE | {"'"}  # literal: only the closing quote
 _SINGLE_BASIC_STOP = _CTRL_SINGLE | {'"', "\\"}  # basic: quote or escape
 
+# Same idea for multiline string bodies. A multiline string may contain raw tab,
+# line feed and carriage return, so those are NOT in the control-reject set; but
+# the bulk scan must still stop at CR (the per-char loop validates the \r\n pair
+# and rejects a lone \r) and at the control chars that DO raise. LF and tab are
+# left out of the stop-set entirely, so a multiline body is scanned in one slice
+# across newlines up to the next delimiter / backslash / CR / invalid control.
+_CTRL_MULTI = frozenset(
+    chr(c) for c in range(0x20) if c not in (CTRL_I, CTRL_J, CTRL_M)
+) | {chr(CHR_DEL)}
+_MULTI_LITERAL_STOP = _CTRL_MULTI | {"'", "\r"}  # literal: closing quote or CR
+_MULTI_BASIC_STOP = _CTRL_MULTI | {'"', "\\", "\r"}  # basic: quote, escape or CR
+
 
 class Parser:
     """
@@ -883,14 +895,15 @@ class Parser:
                 if cur == "\r\n":
                     self.inc_n(2, exception=UnexpectedEofError)
 
-        # PERF: stop-set for the single-line string-body bulk fast-path (None for
-        # multiline, which keeps the per-char loop because of \r\n handling).
+        # PERF: stop-set for the string-body bulk fast-path. The body run is
+        # appended in a single slice up to the next delimiter / escape / control
+        # char (and, for multiline, CR); that stop char is then handled by the
+        # branches above on the next iteration.
         src = self._src
-        single_stop = None
         if delim.is_singleline():
-            single_stop = (
-                _SINGLE_BASIC_STOP if delim.is_basic() else _SINGLE_LITERAL_STOP
-            )
+            body_stop = _SINGLE_BASIC_STOP if delim.is_basic() else _SINGLE_LITERAL_STOP
+        else:
+            body_stop = _MULTI_BASIC_STOP if delim.is_basic() else _MULTI_LITERAL_STOP
 
         escaped = False  # whether the previous key was ESCAPE
         while True:
@@ -966,25 +979,20 @@ class Parser:
                 self.inc(exception=UnexpectedEofError)
             else:
                 # this is either a literal string where we keep everything as is,
-                # or this is not a special escaped char in a basic string
-                if single_stop is not None:
-                    # PERF fast-path: bulk-append the run of ordinary characters
-                    # up to the next delimiter / backslash / control char, instead
-                    # of one `value += cur; inc()` iteration per character. The
-                    # stop char is then handled by the branches above on the next
-                    # iteration (single-line only; multiline keeps the per-char
-                    # loop for CRLF handling).
-                    run_start = src._idx
-                    src.advance_until(single_stop)
-                    if src.end():
-                        # mid-string EOF — same error as the per-char inc()
-                        raise self.parse_error(UnexpectedEofError)
-                    value += src[run_start : src._idx]
-                else:
-                    value += self._current
-
-                    # consume this char, EOF here is an issue (middle of string)
-                    self.inc(exception=UnexpectedEofError)
+                # or this is not a special escaped char in a basic string.
+                # PERF fast-path: bulk-append the run of ordinary characters up to
+                # the next delimiter / backslash / control char (and CR for
+                # multiline) in one slice, instead of one `value += cur; inc()`
+                # iteration per character. The stop char is then handled by the
+                # branches above on the next iteration. For multiline, raw LF and
+                # tab are not stop chars, so a whole multi-line body is consumed
+                # in a single pass.
+                run_start = src._idx
+                src.advance_until(body_stop)
+                if src.end():
+                    # mid-string EOF — same error as the per-char inc()
+                    raise self.parse_error(UnexpectedEofError)
+                value += src[run_start : src._idx]
 
     def _parse_table(
         self, parent_name: Key | None = None, parent: Table | None = None
