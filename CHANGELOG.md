@@ -28,6 +28,7 @@
 - Fix `comment()` producing invalid TOML for a multiline string by prefixing every line with `#`, not just the first. ([#449](https://github.com/python-poetry/tomlkit/issues/449))
 - Fix the separator comma being swallowed by a trailing comment when appending a key to a multiline inline table, leaving the new key without a separator so the result no longer round-trips. ([#512](https://github.com/python-poetry/tomlkit/issues/512))
 - Fix a `KeyAlreadyPresent` error when parsing or accessing an out-of-order table whose array-of-tables elements are split across the table's parts. ([#505](https://github.com/python-poetry/tomlkit/issues/505))
+- Fix a stale dotted-key prefix when replacing a dotted-key table value with a plain dict, where ``fruit.apple = true`` followed by ``doc['fruit'] = {'a': 1}`` would render a ``[fruit]`` header followed by the wrongly dotted ``fruit.a = 1`` instead of ``a = 1``. ([#524](https://github.com/python-poetry/tomlkit/issues/524))
 
 ## [0.15.0] - 2026-05-10
 

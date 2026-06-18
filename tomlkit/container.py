@@ -829,6 +829,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 new_key = SingleKey(new_key)
             else:  # Inherit the sep of the old key
                 new_key = k
+                new_key._dotted = False  # Reset dotted heritage on full replacement
 
         del self._map[k]
         self._map[new_key] = idx

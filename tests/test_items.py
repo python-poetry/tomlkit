@@ -1236,6 +1236,18 @@ def test_serialize_table_with_dotted_key() -> None:
     assert parent.as_string() == "[a]\nb.c = 1\n"
 
 
+def test_replacing_dotted_key_table_clears_prefix() -> None:
+    """Replacing a dotted-key table with a plain dict should not carry
+    over the dotted prefix to the new children (#524)."""
+    doc = parse("fruit.apple = true\n")
+    doc["fruit"] = {"a": 1}
+    rendered = doc.as_string()
+    assert rendered == "[fruit]\na = 1\n"
+    # Round-trip
+    doc2 = parse(rendered)
+    assert doc2["fruit"]["a"] == 1
+
+
 def test_not_showing_parent_header_for_super_table() -> None:
     doc = api.document()
 
