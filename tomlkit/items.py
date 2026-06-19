@@ -2035,6 +2035,8 @@ class InlineTable(AbstractTable):
         if not isinstance(_item, Item):
             _item = item(_item, _parent=self)
 
+        self._validate_child(_item)
+
         if not isinstance(_item, (Whitespace, Comment)):
             if not _item.trivia.indent and len(self._value) > 0 and not self._new:
                 _item.trivia.indent = " "
@@ -2050,6 +2052,10 @@ class InlineTable(AbstractTable):
             dict.__setitem__(self, key, _item)
 
         return self
+
+    def _validate_child(self, _item: Item) -> None:
+        if isinstance(_item, Table):
+            raise ValueError("Inline tables cannot contain a table")
 
     def as_string(self) -> str:
         buf = "{"
@@ -2174,6 +2180,9 @@ class InlineTable(AbstractTable):
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
+        if not isinstance(value, Item):
+            value = item(value, _parent=self)
+        self._validate_child(value)
         super().__setitem__(key, value)
 
     def __copy__(self) -> InlineTable:
