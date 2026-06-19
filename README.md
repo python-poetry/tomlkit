@@ -26,6 +26,15 @@ Part of the implementation has been adapted, improved and fixed from [Molten](ht
 
 See the [documentation](https://tomlkit.readthedocs.io/) for more information.
 
+## Limitations
+
+`tomlkit` preserves the layout of parsed documents where it can. One known
+exception is an out-of-order sub-table that extends the last element of an array
+of tables, such as `[fruit.apple.texture]` appearing after an unrelated table
+following `[[fruit]]`. When the document is serialized again, that sub-table is
+emitted inside the array element it belongs to. Its data is preserved, but its
+physical position in the file is normalized.
+
 ## Installation
 
 If you are using [uv](https://docs.astral.sh/uv), you can
