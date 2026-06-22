@@ -352,6 +352,15 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 return self._insert_at(last_index, key, item)
             else:
                 previous_item = self._body[-1][1]
+                if isinstance(previous_item, Table) and previous_item.is_super_table():
+                    previous_child = previous_item.value._previous_item()
+                    if (
+                        previous_child is not None
+                        and not isinstance(previous_child, Whitespace)
+                        and "\n" in previous_item.trivia.trail
+                        and "\n" not in previous_child.trivia.trail
+                    ):
+                        previous_child.trivia.trail += previous_item.trivia.trail
                 if not (
                     isinstance(previous_item, Whitespace)
                     or ends_with_whitespace(previous_item)

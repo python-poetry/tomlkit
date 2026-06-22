@@ -1418,6 +1418,19 @@ name = "Nail"
     }
 
 
+def test_add_key_after_dotted_inline_table_without_ending_newline() -> None:
+    content = "[x]\na.b = {}"
+    doc = parse(content)
+    doc["x"]["c"] = 3
+
+    assert doc.as_string() == "[x]\na.b = {}\nc = 3\n"
+
+    doc = parse(f"{content}\n")
+    doc["x"]["c"] = 3
+
+    assert doc.as_string() == "[x]\na.b = {}\nc = 3\n"
+
+
 def test_appending_to_super_table() -> None:
     content = """\
 [a.b]
