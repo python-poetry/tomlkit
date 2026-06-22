@@ -511,6 +511,10 @@ def test_create_super_table_with_aot() -> None:
         ({"multiline": True}, 'My""String', '"""My""String"""'),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
         ({"multiline": True}, 'My""""String', '"""My""\\""String"""'),
+        # a lone CR is a control char and is escaped, but a CRLF line ending is
+        # left intact
+        ({"multiline": True}, "My\rString", '"""My\\rString"""'),
+        ({"multiline": True}, "My\r\nString", '"""My\r\nString"""'),
         (
             {"multiline": True},
             '"""My"""Str"""ing"""',
@@ -548,6 +552,9 @@ def test_create_string(kwargs: dict[str, Any], example: str, expected: str) -> N
         ({"literal": True}, "My\x0cString"),
         ({"literal": True}, "My\x7fString"),
         ({"multiline": True, "literal": True}, "My'''String"),
+        # a lone CR cannot be represented in a multiline literal string
+        ({"multiline": True, "literal": True}, "My\rString"),
+        ({"multiline": True, "literal": True}, "My\r\nMy\rString"),
     ],
 )
 def test_create_string_with_invalid_characters(
