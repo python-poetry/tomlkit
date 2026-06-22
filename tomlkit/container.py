@@ -928,7 +928,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 value.trivia.trail = v.trivia.trail
             self._body[idx] = (new_key, value)
 
-        if hasattr(value, "invalidate_display_name"):
+        if value is not v and hasattr(value, "invalidate_display_name"):
             value.invalidate_display_name()
 
         if isinstance(value, Table):
