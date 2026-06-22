@@ -232,6 +232,12 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
 
 
+# A carriage return that is not the CR of a CRLF line ending. Inside a multiline
+# string only a raw line feed or a CRLF pair is a valid line ending; a lone CR is
+# a control character. Literal strings cannot escape it, basic strings must.
+_BARE_CR = re.compile(r"\r(?!\n)")
+
+
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -2243,8 +2249,14 @@ class String(str, Item):
         if any(c in value for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
 
+        if type_ is StringType.MLL and _BARE_CR.search(value):
+            raise InvalidStringError(value, {"\r"}, type_.value)
+
         escaped = type_.escaped_sequences
         string_value = escape_string(value, escaped) if escape and escaped else value
+
+        if type_ is StringType.MLB and escape:
+            string_value = _BARE_CR.sub(r"\\r", string_value)
 
         if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
             # A newline immediately following the opening delimiter of a
