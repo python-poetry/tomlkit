@@ -572,16 +572,24 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
+        scope_is_root = True
         for k, v in self._body:
             if k is not None:
                 if isinstance(v, Table):
+                    force_table_header = (
+                        not scope_is_root and self._renders_dotted_items(v)
+                    )
                     if (
                         s.strip(" ")
                         and not s.strip(" ").endswith("\n")
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_table(k, v)
+                    s += self._render_table(
+                        k, v, force_table_header, dotted_scope_valid=scope_is_root
+                    )
+                    if self._renders_table_header(k, v, force_table_header):
+                        scope_is_root = False
                 elif isinstance(v, AoT):
                     if (
                         s.strip(" ")
@@ -590,6 +598,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     ):
                         s += "\n"
                     s += self._render_aot(k, v)
+                    scope_is_root = False
                 else:
                     s += self._render_simple_item(k, v)
             else:
@@ -597,19 +606,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return s
 
-    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
-        cur = ""
-
-        if table.display_name is not None:
-            _key = table.display_name
-        else:
-            _key = key.as_string()
-
-            if prefix is not None:
-                _key = prefix + "." + _key
-
-        if (
-            not table.is_super_table()
+    def _renders_table_header(
+        self, key: Key, table: Table, force: bool = False
+    ) -> bool:
+        return (
+            force
+            or not table.is_super_table()
             or (
                 any(
                     not isinstance(v, (Table, AoT, Whitespace, Null))
@@ -625,7 +627,44 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 )
                 and not key.is_dotted()
             )
-        ):
+        )
+
+    def _renders_dotted_items(self, table: Table) -> bool:
+        if not table.is_super_table():
+            return False
+
+        for k, v in table.value.body:
+            if isinstance(v, Table):
+                if self._renders_dotted_items(v):
+                    return True
+            elif isinstance(v, AoT):
+                continue
+            elif k is not None and not isinstance(v, (Whitespace, Null)):
+                return True
+
+        return False
+
+    def _render_table(
+        self,
+        key: Key,
+        table: Table,
+        force_header: bool = False,
+        prefix: str | None = None,
+        dotted_scope_valid: bool = True,
+    ) -> str:
+        cur = ""
+
+        if table.display_name is not None:
+            _key = table.display_name
+        else:
+            _key = key.as_string()
+
+            if prefix is not None:
+                _key = prefix + "." + _key
+
+        scope_is_current = self._renders_table_header(key, table, force_header)
+        dotted_scope_valid = dotted_scope_valid or scope_is_current
+        if scope_is_current:
             open_, close = "[", "]"
             if table.is_aot_element():
                 open_, close = "[[", "]]"
@@ -648,6 +687,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         for k, v in table.value.body:
             if isinstance(v, Table):
+                force_child_header = (
+                    not dotted_scope_valid and self._renders_dotted_items(v)
+                )
                 if (
                     cur.strip(" ")
                     and not cur.strip(" ").endswith("\n")
@@ -656,13 +698,23 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     cur += "\n"
                 assert k is not None
                 if v.is_super_table():
-                    if k.is_dotted() and not key.is_dotted():
+                    if k.is_dotted() and not key.is_dotted() and not force_child_header:
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(
+                            k, v, dotted_scope_valid=dotted_scope_valid
+                        )
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k,
+                            v,
+                            force_child_header,
+                            prefix=_key,
+                            dotted_scope_valid=dotted_scope_valid,
+                        )
                 else:
                     cur += self._render_table(k, v, prefix=_key)
+                if self._renders_table_header(k, v, force_child_header):
+                    dotted_scope_valid = False
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -672,9 +724,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     cur += "\n"
                 assert k is not None
                 cur += self._render_aot(k, v, prefix=_key)
+                dotted_scope_valid = False
             else:
                 cur += self._render_simple_item(
-                    k, v, prefix=_key if key.is_dotted() else None
+                    k,
+                    v,
+                    prefix=_key if key.is_dotted() and not scope_is_current else None,
                 )
 
         return cur

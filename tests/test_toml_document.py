@@ -1212,6 +1212,46 @@ foo = "bar"
     }
 
 
+def test_replace_dotted_key_table_does_not_capture_following_dotted_key() -> None:
+    content = """\
+a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+
+    doc["a"] = {}
+
+    expected = """\
+[a]
+
+[c]
+d = 2
+"""
+    assert doc.as_string() == expected
+    assert parse(doc.as_string()) == {"a": {}, "c": {"d": 2}}
+
+
+def test_replace_nested_dotted_key_table_keeps_following_dotted_key() -> None:
+    content = """\
+[a]
+b.c = 1
+d.e = 2
+"""
+    doc = parse(content)
+
+    doc["a"]["b"] = {}
+
+    expected = """\
+[a]
+[a.b]
+
+[a.d]
+e = 2
+"""
+    assert doc.as_string() == expected
+    assert parse(doc.as_string()) == {"a": {"b": {}, "d": {"e": 2}}}
+
+
 def test_parse_subtables_no_extra_indent() -> None:
     expected = """\
 [a]
