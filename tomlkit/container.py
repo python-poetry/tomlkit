@@ -1057,6 +1057,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     def value(self) -> dict[str, Any]:
         return self._internal_container.value
 
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return repr(self.value)
+
     def __contains__(self, key: object) -> bool:
         # Native membership test. The inherited ``MutableMapping.__contains__``
         # resolves the value via ``__getitem__`` (and builds a ``NonExistentKey``

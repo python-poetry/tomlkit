@@ -846,6 +846,17 @@ inline = {"foo" = "bar", "bar" = "baz"}
     assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
 
 
+def test_repr_out_of_order_table_proxy() -> None:
+    doc = parse("""\
+a.b.c = "d"
+a.b.e = "f"
+""")
+    expected = "{'b': {'c': 'd', 'e': 'f'}}"
+
+    assert repr(doc["a"]) == expected
+    assert str(doc["a"]) == expected
+
+
 def test_deepcopy() -> None:
     content = """
 [tool]
