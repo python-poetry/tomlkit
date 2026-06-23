@@ -280,16 +280,16 @@ class StringType(Enum):
         return self.value[0]
 
     def is_basic(self) -> bool:
-        return self in {StringType.SLB, StringType.MLB}
+        return self is StringType.SLB or self is StringType.MLB
 
     def is_literal(self) -> bool:
-        return self in {StringType.SLL, StringType.MLL}
+        return self is StringType.SLL or self is StringType.MLL
 
     def is_singleline(self) -> bool:
-        return self in {StringType.SLB, StringType.SLL}
+        return self is StringType.SLB or self is StringType.SLL
 
     def is_multiline(self) -> bool:
-        return self in {StringType.MLB, StringType.MLL}
+        return self is StringType.MLB or self is StringType.MLL
 
     def toggle(self) -> StringType:
         return {
@@ -1747,15 +1747,11 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
                 dict.__setitem__(self, k.key, v)
 
     def unwrap(self) -> dict[str, Any]:
-        unwrapped = {}
-        for k, v in self.items():
-            if isinstance(k, Key):
-                k = k.key
-            if hasattr(v, "unwrap"):
-                v = v.unwrap()
-            unwrapped[k] = v
-
-        return unwrapped
+        # Delegate to the inner container's unwrap, which walks its _body
+        # directly instead of re-resolving every key through items()/__getitem__
+        # (which rebuilds a SingleKey, and an OutOfOrderTableProxy for
+        # out-of-order keys, per key just to throw it away).
+        return self._value.unwrap()
 
     @property
     def value(self) -> container.Container:
@@ -2072,6 +2068,10 @@ class InlineTable(AbstractTable):
             None,
         )
         pending_separator = False
+        # Buffer position right after the last rendered value, used to place a
+        # deferred separator comma after the value rather than after a trailing
+        # comment/whitespace.
+        last_value_end = len(buf)
         for i, (k, v) in enumerate(self._value.body):
             if k is None:
                 if isinstance(v, Whitespace) and "," in v.s:
@@ -2113,19 +2113,27 @@ class InlineTable(AbstractTable):
                 continue
 
             if has_explicit_commas and needs_separator:
-                stripped = buf.rstrip()
-                buf = f"{stripped},{buf[len(stripped) :]}"
+                # Insert the deferred separator right after the previous value,
+                # not after any trailing comment/whitespace -- otherwise the
+                # comma is swallowed by a trailing comment (see #512).
+                buf = f"{buf[:last_value_end]},{buf[last_value_end:]}"
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
-            buf += (
-                f"{v.trivia.indent}"
-                f"{k.as_string() + ('.' if k.is_dotted() else '')}"
-                f"{k.sep}"
-                f"{v.as_string()}"
-                f"{v.trivia.comment}"
-                f"{v_trivia_trail}"
-            )
+            if k.is_dotted() and isinstance(v, Table):
+                # A table materialized from a dotted key renders one
+                # `prefix.child = value` pair per child, so that keys added
+                # after parsing stay attached to the dotted prefix.
+                rendered = ", ".join(self._render_dotted(k, v))
+            else:
+                rendered = (
+                    f"{k.as_string() + ('.' if k.is_dotted() else '')}"
+                    f"{k.sep}"
+                    f"{v.as_string()}"
+                )
+            buf += f"{v.trivia.indent}{rendered}"
+            last_value_end = len(buf)
+            buf += f"{v.trivia.comment}{v_trivia_trail}"
             emitted_key = True
             pending_separator = False
             if has_explicit_commas:
@@ -2143,6 +2151,25 @@ class InlineTable(AbstractTable):
         buf += "}"
 
         return buf
+
+    def _render_dotted(self, key: Key, table: Table) -> list[str]:
+        """Render a table materialized from a dotted key as a list of
+        ``prefix.child = value`` strings, recursing into nested dotted
+        children."""
+        prefix = f"{key.as_string()}.{key.sep}"
+        parts = []
+        for k, v in table.value.body:
+            if k is None:
+                continue
+            if isinstance(v, Table):
+                parts.extend(f"{prefix}{sub}" for sub in self._render_dotted(k, v))
+            else:
+                trail = v.trivia.trail.replace("\n", "")
+                parts.append(
+                    f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
+                    f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
+                )
+        return parts
 
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
         if hasattr(value, "trivia") and value.trivia.comment:

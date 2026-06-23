@@ -16,6 +16,7 @@ from tomlkit import parse
 from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
+from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.toml_document import TOMLDocument
 
@@ -598,6 +599,93 @@ z = 1
     assert doc["a"]["a"] == {"b": {"x": 1}, "c": {"y": 1}, "d": {"z": 1}}
 
 
+def test_unwrap_out_of_order_tables() -> None:
+    # unwrap() resolves out-of-order tables through the same proxy as item
+    # access, so the fragments are merged into one dict.
+    doc = parse("[a.x]\np = 1\n[foo]\nbar = 2\n[a.y]\nq = 3\n")
+    assert doc.unwrap() == {"a": {"x": {"p": 1}, "y": {"q": 3}}, "foo": {"bar": 2}}
+
+
+def test_unwrap_preserves_raise_on_invalid_out_of_order_fragment() -> None:
+    # Regression guard for the unwrap() fast path: this document is actually
+    # *invalid* TOML -- `b` is a value under [a], then reopened as a table by
+    # the out-of-order [a.b]. Ideally tomlkit would reject it at parse (it does
+    # for the in-order form, and so does the stdlib tomllib); today the conflict
+    # is only detected lazily when the out-of-order proxy is built, so it
+    # surfaces at access/unwrap time. This test does NOT bless that deferred
+    # timing -- it only pins that the faster unwrap() keeps going through the
+    # proxy and still raises, rather than silently merging the conflict into a
+    # corrupted dict.
+    doc = parse("[a]\nb = true\n[zz]\nq = 9\n[a.b]\narr = [1, 2]\n")
+    with pytest.raises(KeyAlreadyPresent):
+        doc.unwrap()
+
+
+def test_out_of_order_table_merges_aot_fragments() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/505
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = ".*"
+
+[unrelated]
+x = 1
+
+[[hooks.Stop]]
+matcher = "second"
+
+[hooks.state]
+y = 2
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert len(hooks["Stop"]) == 2
+    assert hooks["Stop"][1]["matcher"] == "second"
+    assert hooks["state"]["y"] == 2
+
+    # element-level mutation still writes through to the document
+    hooks["Stop"][1]["matcher"] = "patched"
+    assert 'matcher = "patched"' in doc.as_string()
+
+
+def test_out_of_order_table_merges_three_aot_fragments() -> None:
+    # An AoT split across more than two out-of-order parts merges into a single
+    # AoT: each later fragment is appended to the growing element list, so the
+    # parts keep their order and every element is reachable.
+    content = """\
+[hooks]
+
+[[hooks.Stop]]
+matcher = "a"
+
+[unrelated1]
+x = 1
+
+[[hooks.Stop]]
+matcher = "b"
+
+[unrelated2]
+y = 2
+
+[[hooks.Stop]]
+matcher = "c"
+
+[hooks.state]
+z = 3
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    hooks = doc["hooks"]
+    assert list(hooks.keys()) == ["Stop", "state"]
+    assert [t["matcher"] for t in hooks["Stop"]] == ["a", "b", "c"]
+    assert hooks["state"]["z"] == 3
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
@@ -848,6 +936,33 @@ a = 1
 
 """
     )
+
+
+def test_replace_middle_table_with_value() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/504
+    content = """[a]
+aa = 1
+
+[b]
+bb = 2
+
+[c]
+cc = 3
+"""
+    doc = parse(content)
+    doc["b"] = 2
+    assert (
+        doc.as_string()
+        == """b = 2
+
+[a]
+aa = 1
+
+[c]
+cc = 3
+"""
+    )
+    assert parse(doc.as_string())["a"] == {"aa": 1}
 
 
 def test_replace_preserve_sep() -> None:

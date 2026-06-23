@@ -63,8 +63,18 @@ def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
 
         return item(data, _sort_keys=True).as_string()
 
-    table = item(dict(data), _sort_keys=sort_keys)
-    return table.as_string()
+    if isinstance(data, Mapping):
+        return item(dict(data), _sort_keys=sort_keys).as_string()
+
+    try:
+        # mapping-like wrappers (e.g. dotty_dict's Dotty) delegate
+        # ``as_string`` to the document they wrap; rendering it directly
+        # preserves the original layout, which re-encoding through a plain
+        # dict would lose
+        return data.as_string()  # type: ignore[attr-defined]
+    except AttributeError as ex:
+        msg = f"Expecting Mapping or TOML Table or Container, {type(data)} given"
+        raise TypeError(msg) from ex
 
 
 def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:
@@ -252,7 +262,10 @@ def key(k: str | Iterable[str]) -> Key:
     """
     if isinstance(k, str):
         return SingleKey(k)
-    return DottedKey([SingleKey(_k) for _k in k])
+    keys = [SingleKey(_k) for _k in k]
+    if len(keys) == 1:
+        return keys[0]
+    return DottedKey(keys)
 
 
 def value(raw: str) -> _Item:
@@ -296,8 +309,14 @@ def nl() -> Whitespace:
 
 
 def comment(string: str) -> Comment:
-    """Create a comment item."""
-    return Comment(Trivia(comment_ws="  ", comment="# " + string))
+    """Create a comment item.
+
+    A multiline string produces one ``#``-prefixed line per line so that the
+    result is still valid TOML.
+    """
+    lines = string.split("\n")
+    rendered = "\n".join(f"# {line}" if line else "#" for line in lines)
+    return Comment(Trivia(comment_ws="  ", comment=rendered))
 
 
 def register_encoder(encoder: E) -> E:

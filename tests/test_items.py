@@ -19,6 +19,7 @@ from tests.util import assert_is_ppo
 from tests.util import elementary_test
 from tomlkit import api
 from tomlkit import parse
+from tomlkit.container import OutOfOrderTableProxy
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -931,6 +932,19 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_append_key_after_inline_table_trailing_comment() -> None:
+    doc = parse("tbl = {\n    p = { k = 1 },\n    q = { k = 2 }  # comment\n}\n")
+    doc["tbl"]["added"] = 3
+
+    # The separator for the new key must be placed after the previous value,
+    # not after the trailing comment -- otherwise the comma becomes part of the
+    # comment and the result no longer round-trips. See #512.
+    rendered = doc.as_string()
+    assert "# comment," not in rendered
+    assert parse(rendered) == {"tbl": {"p": {"k": 1}, "q": {"k": 2}, "added": 3}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_deleting_inline_table_middle_element_does_not_leave_double_separator() -> None:
     doc = parse("a = {foo = 1, bar = 2, baz = 3}\n")
     del doc["a"]["bar"]
@@ -941,6 +955,28 @@ def test_deleting_inline_table_middle_element_does_not_leave_double_separator() 
     assert ", ," not in rendered
     assert ",," not in rendered
     assert parse(rendered) == {"a": {"foo": 1, "baz": 3}}
+    assert parse(rendered).as_string() == rendered
+
+
+def test_adding_to_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c = 1}\n")
+    doc["a"]["b"]["d"] = 2
+
+    # The added key must stay attached to the ``b.`` prefix and be separated
+    # from the existing pair; the result must round-trip.
+    rendered = doc.as_string()
+    assert rendered == "a = {b.c = 1, b.d = 2}\n"
+    assert parse(rendered) == {"a": {"b": {"c": 1, "d": 2}}}
+    assert parse(rendered).as_string() == rendered
+
+
+def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c.e = 1}\n")
+    doc["a"]["b"]["c"]["g"] = 2
+
+    rendered = doc.as_string()
+    assert rendered == "a = {b.c.e = 1, b.c.g = 2}\n"
+    assert parse(rendered) == {"a": {"b": {"c": {"e": 1, "g": 2}}}}
     assert parse(rendered).as_string() == rendered
 
 
@@ -1322,4 +1358,25 @@ def test_out_of_order_table_membership() -> None:
     assert "a" in table
     assert "b" in table
     assert "missing" not in table
+    assert doc.as_string() == content
+
+
+def test_out_of_order_table_proxy_membership() -> None:
+    # A top-level table split by another table (``a`` interrupted by ``foo``)
+    # resolves to an ``OutOfOrderTableProxy``; exercise its native
+    # ``__contains__`` directly (the test above goes through ``Table``).
+    content = "[a.x]\np = 1\n[foo]\nbar = 2\n[a.y]\nq = 3\n"
+    doc = parse(content)
+    table = doc["a"]
+    assert isinstance(table, OutOfOrderTableProxy)
+
+    assert "x" in table
+    assert "y" in table
+    assert "missing" not in table
+    # a Key is accepted just like __getitem__ does
+    assert Key("x") in table
+    # a non-str/non-Key argument is rejected like the other mapping types
+    with pytest.raises(TypeError):
+        _ = 123 in table
+    # membership must not resolve values or mutate the document
     assert doc.as_string() == content

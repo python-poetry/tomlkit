@@ -37,6 +37,7 @@ from tomlkit.items import Integer
 from tomlkit.items import Key
 from tomlkit.items import Table
 from tomlkit.items import Time
+from tomlkit.parser import Parser
 from tomlkit.toml_document import TOMLDocument
 
 
@@ -166,6 +167,25 @@ def test_mapping_types_can_be_dumped() -> None:
     assert dumps(x) == 'foo = "bar"\n'
 
 
+def test_dumps_wrapper_delegating_as_string_preserves_layout() -> None:
+    """Mapping-like wrappers around a parsed document dump it verbatim (#482)."""
+
+    class DocumentWrapper:
+        """Bare-bones stand-in for wrappers such as dotty_dict's Dotty."""
+
+        def __init__(self, document: TOMLDocument) -> None:
+            self._document = document
+
+        def __getitem__(self, key: str) -> Any:
+            return self._document[key]
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._document, name)
+
+    content = '[tool.a]\nx = 1\n\n[project]\nname = "demo"\n\n[tool.b]\ny = 2\n'
+    assert dumps(DocumentWrapper(parse(content))) == content  # type: ignore[arg-type]
+
+
 def test_parsed_document_can_be_dumped_with_sorted_keys() -> None:
     doc = loads('zzz = 1\naaa = "foo"')
 
@@ -241,6 +261,22 @@ def test_datetime() -> None:
 
     with pytest.raises(ValueError):
         tomlkit.time("1979-05-13")
+
+
+def test_comment_single_line() -> None:
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment("a comment"))
+    assert doc.as_string() == "# a comment\n"
+
+
+def test_comment_multiline_is_valid_toml() -> None:
+    """A multiline comment prefixes every line so the output re-parses (#449)."""
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment("line one\nline two\n\nline four"))
+    rendered = doc.as_string()
+    assert rendered == "# line one\n# line two\n#\n# line four\n"
+    # The rendered document must round-trip.
+    assert parse(rendered).as_string() == rendered
 
 
 def test_array() -> None:
@@ -329,6 +365,22 @@ def test_add_dotted_key() -> None:
     assert table.as_string() == "foo.bar = 1\n"
 
 
+def test_key_with_single_element_list_is_a_single_key() -> None:
+    # Regression test for
+    # https://github.com/python-poetry/tomlkit/issues/430: a one-element key
+    # list should behave like a plain key, not a single-element dotted key.
+    doc = tomlkit.document()
+    doc.append(tomlkit.key(["foo"]), "value")
+    assert "foo" in doc
+    assert doc["foo"] == "value"
+    assert doc.as_string() == 'foo = "value"\n'
+
+    # Multi-element key lists are still dotted keys.
+    doc = tomlkit.document()
+    doc.add(tomlkit.key(["foo", "bar"]), 1)
+    assert doc.as_string() == "foo.bar = 1\n"
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
@@ -400,6 +452,32 @@ def test_value_rejects_values_with_appendage(raw: str) -> None:
     """Values that appear valid at the beginning but leave chars unparsed are rejected."""
     with pytest.raises(tomlkit.exceptions.ParseError):
         tomlkit.value(raw)
+
+
+def test_parse_many_dotted_keys_with_shared_prefix() -> None:
+    """Each dotted key adds a fragment to the same out-of-order key; parsing
+    validates incrementally instead of re-merging every fragment (#479)."""
+    content = "\n".join(f"a.b.c.key{i} = {i}" for i in range(200)) + "\n"
+    doc = parse(content)
+    assert doc["a"]["b"]["c"]["key0"] == 0
+    assert doc["a"]["b"]["c"]["key199"] == 199
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[a]\nb.c = 1\n[q]\nx = 1\n[a]\nb.c = 2",
+        "[t.a]\nk = 1\n[u]\nz = 1\n[t.a]\nk = 2",
+    ],
+)
+def test_parse_rejects_collisions_across_out_of_order_fragments(
+    content: str,
+) -> None:
+    """Key collisions between out-of-order table parts still fail at parse
+    time with the incremental validation (#479)."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        parse(content)
 
 
 def test_create_super_table_with_table() -> None:
@@ -484,3 +562,28 @@ def test_parse_empty_quoted_table_name() -> None:
     parsed = loads(content)
     assert parsed == {"": {"x": 1}}
     assert dumps(parsed) == content
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "x = " + "[" * 500 + "1" + "]" * 500,
+        "x = " + "{a = " * 500 + "1" + "}" * 500,
+        "x = " + "[{a = " * 500 + "1" + "}]" * 500,
+        ".".join(["a"] * 500) + " = 1",
+        "[" + ".".join(["a"] * 500) + "]\nx = 1",
+        "[[" + ".".join(["a"] * 500) + "]]\nx = 1",
+    ],
+)
+def test_parse_rejects_deeply_nested_documents(payload: str) -> None:
+    """Nesting beyond the depth limit raises ParseError, not RecursionError."""
+    with pytest.raises(tomlkit.exceptions.ParseError):
+        parse(payload)
+
+
+def test_parse_accepts_nesting_at_the_depth_limit() -> None:
+    depth = Parser.MAX_NESTING_DEPTH
+    array = "x = " + "[" * depth + "1" + "]" * depth
+    assert parse(array).as_string() == array
+    dotted = ".".join(["a"] * depth) + " = 1"
+    assert parse(dotted).as_string() == dotted
