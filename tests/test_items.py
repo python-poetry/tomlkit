@@ -887,6 +887,17 @@ def test_trim_comments_when_building_inline_table() -> None:
     assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
 
 
+def test_append_table_to_inline_table_raises() -> None:
+    table = api.table()
+    table.append("a", 1)
+    inline_table = api.inline_table()
+
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        inline_table.append("table", table)
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        inline_table["table"] = table
+
+
 def test_deleting_inline_table_element_does_not_leave_trailing_separator() -> None:
     table = api.inline_table()
     table["foo"] = "bar"
