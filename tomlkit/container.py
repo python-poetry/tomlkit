@@ -831,10 +831,30 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         k, v = self._body[idx]
         assert k is not None
+        # A dotted key renders its value inline (e.g. ``a.b = 1``), which is only
+        # consistent with a super table. When the replacement value renders with
+        # its own ``[header]`` instead (a non-super table), keeping the dotted key
+        # duplicates the prefix onto the header (#524). Drop the dotted key so the
+        # replacement renders as a plain table.
+        dotted_to_header = (
+            k.is_dotted() and isinstance(value, Table) and not value.is_super_table()
+        )
+        # That new header also captures every sibling that renders inline -- plain
+        # values and dotted keys -- if any still follow it (#513), so it must be
+        # moved past them, exactly as a value-to-table change already is.
+        reposition_dotted = dotted_to_header and any(
+            not isinstance(cur_val, (Null, Whitespace))
+            and not (
+                isinstance(cur_val, (Table, AoT))
+                and (cur_key is None or not cur_key.is_dotted())
+            )
+            for cur_key, cur_val in self._body[idx + 1 :]
+        )
         if not isinstance(new_key, Key):
             if (
                 isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table))
                 or new_key != k.key
+                or dotted_to_header
             ):
                 new_key = SingleKey(new_key)
             else:  # Inherit the sep of the old key
@@ -845,12 +865,21 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if new_key != k:
             dict.__delitem__(self, k.key)
 
-        if isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table)):
+        if (
+            isinstance(value, (AoT, Table)) != isinstance(v, (AoT, Table))
+            or reposition_dotted
+        ):
             self.remove(k)
             if isinstance(value, (AoT, Table)):
-                # new tables should appear after all non-table values
+                # New tables must appear after all entries that render inline:
+                # plain values and dotted keys (which are super tables). Skip
+                # those and insert before the first real ``[header]`` so the new
+                # table cannot swallow a following sibling on round-trip.
                 for i in range(idx, len(self._body)):
-                    if isinstance(self._body[i][1], (AoT, Table)):
+                    cur_key, cur_val = self._body[i]
+                    if isinstance(cur_val, (AoT, Table)) and not (
+                        cur_key is not None and cur_key.is_dotted()
+                    ):
                         self._insert_at(i, new_key, value)
                         idx = i
                         break
