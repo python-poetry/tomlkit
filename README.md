@@ -26,6 +26,15 @@ Part of the implementation has been adapted, improved and fixed from [Molten](ht
 
 See the [documentation](https://tomlkit.readthedocs.io/) for more information.
 
+## Limitations
+
+`tomlkit` preserves the original layout of a document, with one exception: a
+sub-table that extends an array of tables out of order — for example a
+`[fruit.apple.texture]` header that appears after `[[fruit]]` with an unrelated
+table in between — is normalized into the array's last element when the document
+is re-serialized, rather than kept at its original position. The data is
+preserved; only the physical placement of that sub-table changes.
+
 ## Installation
 
 If you are using [uv](https://docs.astral.sh/uv), you can

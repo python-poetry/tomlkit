@@ -239,6 +239,25 @@ name = "Test 1"
     assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"
 
 
+def test_subtable_of_aot_element_after_other_table() -> None:
+    # A sub-table header that extends the last element of an array of tables
+    # is valid even when an unrelated table appears in between (issue #261).
+    content = """[[fruit]]
+apple.color = "red"
+
+[potato]
+
+[fruit.apple.texture]
+smooth = true
+"""
+
+    doc = parse(content)
+
+    assert doc["fruit"][0]["apple"]["color"] == "red"
+    assert doc["fruit"][0]["apple"]["texture"]["smooth"] is True
+    assert doc["potato"] == {}
+
+
 def test_document_with_new_sub_table_after_other_table() -> None:
     content = """[foo]
 name = "Bar"
