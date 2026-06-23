@@ -327,6 +327,16 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         self._validate_table_candidate(current, item)
                 elif not item.is_super_table():
                     raise KeyAlreadyPresent(key)
+                else:
+                    # An existing concrete table (current) is being extended by
+                    # a super-table (item) — e.g. [a] b=1 then [a.b] c=2 out of
+                    # order, or [a] b.c=1 then [a.b] d=2.  Validate that the
+                    # super-table does not redefine any existing key, raising
+                    # early at parse time.  When validation passes, fall through
+                    # — _raw_append below will create an out-of-order entry and
+                    # preserve table ordering in the document.
+                    assert isinstance(current, Table)
+                    self._validate_table_candidate(current, item)
             elif isinstance(item, AoT):
                 if not isinstance(current, AoT):
                     # Tried to define an AoT after a table with the same name.
@@ -370,6 +380,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     previous_item.trivia.trail += "\n"
 
         self._raw_append(key, item)
+        if validate and key is not None:
+            self._validate_out_of_order_table(key)
         return self
 
     def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
@@ -394,6 +406,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 continue
 
             if not k.is_dotted():
+                # Even when the candidate key itself is not dotted, an
+                # existing dotted key may already use it as a prefix —
+                # e.g.  [a] b.c=1 then [a.b] d=2  (b prefixes b.c).
+                for existing_key in current.value._map:
+                    if existing_key.is_dotted() and next(iter(existing_key)) == k:
+                        raise TOMLKitError("Redefinition of an existing table")
                 continue
 
             head = next(iter(k))
