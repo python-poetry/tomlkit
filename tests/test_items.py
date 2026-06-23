@@ -958,6 +958,28 @@ def test_deleting_inline_table_middle_element_does_not_leave_double_separator() 
     assert parse(rendered).as_string() == rendered
 
 
+def test_inline_table_render_after_edits() -> None:
+    # InlineTable.as_string() precomputes the last-key / last-Null indices in a
+    # single pass instead of rescanning the tail on every separator comma.
+    # Deleting keys (which leaves Null placeholders and dangling separators) is
+    # the path that exercises those lookups, so pin the exact rendered output.
+    def edited(src: str, *dels: str) -> str:
+        doc = parse(src)
+        for key in dels:
+            del doc["t"][key]
+        out = doc.as_string()
+        # whatever the spacing, the result must be valid and round-trip
+        assert ",," not in out and ", ," not in out
+        assert parse(out).as_string() == out
+        return out
+
+    assert edited("t = {a = 1, b = 2, c = 3}", "c") == "t = {a = 1, b = 2 }"
+    assert edited("t = {a = 1, b = 2, c = 3}", "b") == "t = {a = 1,  c = 3}"
+    assert edited("t = {a = 1, b = 2}", "b") == "t = {a = 1 }"
+    assert edited("t = {a = 1, b = 2}", "a") == "t = { b = 2}"
+    assert edited("t = {a = 1, b = 2, c = 3}", "b", "c") == "t = {a = 1  }"
+
+
 def test_adding_to_dotted_key_inside_inline_table() -> None:
     doc = parse("a = {b.c = 1}\n")
     doc["a"]["b"]["d"] = 2
