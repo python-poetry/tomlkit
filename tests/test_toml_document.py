@@ -1006,6 +1006,20 @@ b  =  "how"
     )
 
 
+def test_replace_table_with_itself_preserves_display_name() -> None:
+    content = """\
+[keys.a]
+[keys .'a'.'c']
+  'd'\t= 'e'
+"""
+    doc = parse(content)
+
+    for mode in doc["keys"]:
+        doc["keys"][mode] = doc["keys"][mode]
+
+    assert doc.as_string() == content
+
+
 def test_replace_with_table_of_nested() -> None:
     example = """\
     [a]
