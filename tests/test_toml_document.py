@@ -240,6 +240,25 @@ name = "Test 1"
     assert doc["foo"]["bar"]["tests"][0]["name"] == "Test 1"
 
 
+def test_subtable_of_aot_element_after_other_table() -> None:
+    # A sub-table header that extends the last element of an array of tables
+    # is valid even when an unrelated table appears in between (issue #261).
+    content = """[[fruit]]
+apple.color = "red"
+
+[potato]
+
+[fruit.apple.texture]
+smooth = true
+"""
+
+    doc = parse(content)
+
+    assert doc["fruit"][0]["apple"]["color"] == "red"
+    assert doc["fruit"][0]["apple"]["texture"]["smooth"] is True
+    assert doc["potato"] == {}
+
+
 def test_document_with_new_sub_table_after_other_table() -> None:
     content = """[foo]
 name = "Bar"
@@ -1041,6 +1060,75 @@ def test_replace_with_aot_of_nested() -> None:
     w = 2
     """
     assert doc.as_string().strip() == dedent(expected).strip()
+
+
+def test_replace_dotted_key_with_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/524
+    content = "fruit.apple = true\n"
+    doc = parse(content)
+    doc["fruit"] = {"a": 1}
+    # The dotted prefix must be dropped instead of duplicated onto the header.
+    assert (
+        doc.as_string()
+        == """[fruit]
+a = 1
+"""
+    )
+    assert parse(doc.as_string())["fruit"] == {"a": 1}
+
+
+def test_replace_dotted_key_with_empty_table_keeps_following_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/513
+    content = """a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["a"] = {}
+    # ``[a]`` must not swallow the following ``c.d`` dotted key.
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[a]
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "a": {}}
+
+
+def test_replace_dotted_key_with_table_keeps_following_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/513
+    content = """a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["a"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[a]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "a": {"x": 9}}
+
+
+def test_replace_value_with_table_keeps_following_dotted_sibling() -> None:
+    # A plain value turning into a table must likewise clear the inline region
+    # (including dotted keys) before emitting its header.
+    content = """x = 1
+c.d = 2
+"""
+    doc = parse(content)
+    doc["x"] = {}
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[x]
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "x": {}}
 
 
 def test_replace_with_comment() -> None:

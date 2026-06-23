@@ -2035,6 +2035,8 @@ class InlineTable(AbstractTable):
         if not isinstance(_item, Item):
             _item = item(_item, _parent=self)
 
+        self._validate_child(_item)
+
         if not isinstance(_item, (Whitespace, Comment)):
             if not _item.trivia.indent and len(self._value) > 0 and not self._new:
                 _item.trivia.indent = " "
@@ -2051,22 +2053,29 @@ class InlineTable(AbstractTable):
 
         return self
 
+    def _validate_child(self, _item: Item) -> None:
+        if isinstance(_item, Table):
+            raise ValueError("Inline tables cannot contain a table")
+
     def as_string(self) -> str:
         buf = "{"
         emitted_key = False
         needs_separator = False
-        has_explicit_commas = any(
-            k is None and isinstance(v, Whitespace) and "," in v.s
-            for k, v in self._value.body
-        )
-        last_item_idx = next(
-            (
-                i
-                for i in range(len(self._value.body) - 1, -1, -1)
-                if self._value.body[i][0] is not None
-            ),
-            None,
-        )
+        # Single pass over the body to precompute everything the render loop
+        # needs, instead of rescanning the tail on every separator comma (which
+        # was O(n^2) on large inline tables): whether any explicit-comma
+        # whitespace is present, the index of the last real key, and the index
+        # of the last Null (deleted) element.
+        has_explicit_commas = False
+        last_item_idx = None
+        last_null_idx = -1
+        for _i, (_k, _v) in enumerate(self._value.body):
+            if _k is not None:
+                last_item_idx = _i
+            elif isinstance(_v, Whitespace) and "," in _v.s:
+                has_explicit_commas = True
+            if isinstance(_v, Null):
+                last_null_idx = _i
         pending_separator = False
         # Buffer position right after the last rendered value, used to place a
         # deferred separator comma after the value rather than after a trailing
@@ -2079,13 +2088,10 @@ class InlineTable(AbstractTable):
                         buf += v.as_string().replace(",", "", 1)
                         continue
 
-                    has_following_null = any(
-                        isinstance(next_v, Null)
-                        for _, next_v in self._value.body[i + 1 :]
-                    )
-                    has_following_key = any(
-                        next_k is not None for next_k, _ in self._value.body[i + 1 :]
-                    )
+                    # Equivalent to scanning body[i + 1 :] for a Null / a real
+                    # key, but O(1) using the indices precomputed above.
+                    has_following_null = last_null_idx > i
+                    has_following_key = last_item_idx is not None and last_item_idx > i
                     if has_following_null and not has_following_key:
                         buf += v.as_string().replace(",", "", 1)
                         continue
@@ -2174,6 +2180,9 @@ class InlineTable(AbstractTable):
     def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
+        if not isinstance(value, Item):
+            value = item(value, _parent=self)
+        self._validate_child(value)
         super().__setitem__(key, value)
 
     def __copy__(self) -> InlineTable:

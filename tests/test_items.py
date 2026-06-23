@@ -887,6 +887,17 @@ def test_trim_comments_when_building_inline_table() -> None:
     assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
 
 
+def test_append_table_to_inline_table_raises() -> None:
+    table = api.table()
+    table.append("a", 1)
+    inline_table = api.inline_table()
+
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        inline_table.append("table", table)
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        inline_table["table"] = table
+
+
 def test_deleting_inline_table_element_does_not_leave_trailing_separator() -> None:
     table = api.inline_table()
     table["foo"] = "bar"
@@ -956,6 +967,28 @@ def test_deleting_inline_table_middle_element_does_not_leave_double_separator() 
     assert ",," not in rendered
     assert parse(rendered) == {"a": {"foo": 1, "baz": 3}}
     assert parse(rendered).as_string() == rendered
+
+
+def test_inline_table_render_after_edits() -> None:
+    # InlineTable.as_string() precomputes the last-key / last-Null indices in a
+    # single pass instead of rescanning the tail on every separator comma.
+    # Deleting keys (which leaves Null placeholders and dangling separators) is
+    # the path that exercises those lookups, so pin the exact rendered output.
+    def edited(src: str, *dels: str) -> str:
+        doc = parse(src)
+        for key in dels:
+            del doc["t"][key]
+        out = doc.as_string()
+        # whatever the spacing, the result must be valid and round-trip
+        assert ",," not in out and ", ," not in out
+        assert parse(out).as_string() == out
+        return out
+
+    assert edited("t = {a = 1, b = 2, c = 3}", "c") == "t = {a = 1, b = 2 }"
+    assert edited("t = {a = 1, b = 2, c = 3}", "b") == "t = {a = 1,  c = 3}"
+    assert edited("t = {a = 1, b = 2}", "b") == "t = {a = 1 }"
+    assert edited("t = {a = 1, b = 2}", "a") == "t = { b = 2}"
+    assert edited("t = {a = 1, b = 2, c = 3}", "b", "c") == "t = {a = 1  }"
 
 
 def test_adding_to_dotted_key_inside_inline_table() -> None:
