@@ -232,6 +232,21 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
 
 
+def _format_comment(comment: str) -> str:
+    """Prefix every line of ``comment`` with ``#`` so a multi-line comment
+    stays valid TOML.
+
+    Only the first line was prefixed before, so the second line onward of a
+    comment with embedded newlines rendered without a ``#`` and produced
+    output that no longer re-parses. A line that already starts with ``#`` is
+    left untouched and an empty line becomes a bare ``#``.
+    """
+    return "\n".join(
+        line if line.lstrip().startswith("#") else f"# {line}" if line else "#"
+        for line in comment.split("\n")
+    )
+
+
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -500,11 +515,8 @@ class Item:
 
     def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
-        if not comment.strip().startswith("#"):
-            comment = "# " + comment
-
         self._trivia.comment_ws = " "
-        self._trivia.comment = comment
+        self._trivia.comment = _format_comment(comment)
 
         return self
 
@@ -1550,7 +1562,9 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         if comment:
             indent = " " if items else ""
             new_values.append(
-                Comment(Trivia(indent=indent, comment=f"# {comment}", trail=""))
+                Comment(
+                    Trivia(indent=indent, comment=_format_comment(comment), trail="")
+                )
             )
         list.extend(self, data_values)
         if len(self._value) > 0:
