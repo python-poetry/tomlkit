@@ -1168,7 +1168,18 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                         table[key] = value
                         break
                 else:
-                    self._tables[0][key] = value
+                    # No part holds a plain value yet, so the chosen part must
+                    # start rendering its own ``[key]`` header. Prefer a part
+                    # that is not a super table (it already renders that header):
+                    # turning a header-less super part concrete here would emit a
+                    # second, duplicate header next to an existing concrete part
+                    # and produce TOML that no longer parses.
+                    for table in self._tables:
+                        if not table.is_super_table():
+                            table[key] = value
+                            break
+                    else:
+                        self._tables[0][key] = value
             else:
                 self._tables[0][key] = value
         else:
