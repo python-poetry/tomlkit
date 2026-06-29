@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- Fix `item()` reordering a dict's keys — placing dict-valued keys after scalar keys — even with the default `sort_keys=False`, due to a misplaced parenthesis in the list-of-dicts sort key. ([#546](https://github.com/python-poetry/tomlkit/issues/546))
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
 - Fix `ParseError` when a sub-table extends the last element of an array of tables after an unrelated table. ([#261](https://github.com/python-poetry/tomlkit/issues/261))

@@ -603,6 +603,17 @@ bar = "baz"
     )
 
 
+def test_item_list_of_dicts_preserves_key_order() -> None:
+    # With the default sort_keys=False, item() must preserve the insertion
+    # order of a dict's keys. A misplaced paren in the list-of-dicts branch
+    # only guarded the secondary sort term, leaving dict-valued keys sorted
+    # after scalar keys even when sort_keys=False (visible in inline tables,
+    # which are not relocated on render). See issue #546.
+    a = item([[{"a": {"x": 1}, "b": 2}]])
+
+    assert a.as_string() == "[[{a = {x = 1}, b = 2}]]"
+
+
 def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
