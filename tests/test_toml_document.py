@@ -1113,6 +1113,28 @@ x = 9
     assert parse(doc.as_string()) == {"c": {"d": 2}, "a": {"x": 9}}
 
 
+def test_replace_dotted_key_with_aot_keeps_following_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/542
+    content = """a.b = 1
+c.d = 2
+"""
+    doc = parse(content)
+    arr = tomlkit.aot()
+    tbl = tomlkit.table()
+    tbl["x"] = 9
+    arr.append(tbl)
+    doc["a"] = arr
+    assert (
+        doc.as_string()
+        == """c.d = 2
+
+[[a]]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"c": {"d": 2}, "a": [{"x": 9}]}
+
+
 def test_replace_value_with_table_keeps_following_dotted_sibling() -> None:
     # A plain value turning into a table must likewise clear the inline region
     # (including dotted keys) before emitting its header.
