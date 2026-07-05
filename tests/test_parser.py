@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from tomlkit.exceptions import EmptyTableNameError
@@ -201,6 +203,10 @@ def test_parser_rejects_aot_header_missing_second_bracket(content: str) -> None:
         parser.parse()
 
 
+@pytest.mark.skipif(
+    not hasattr(sys, "get_int_max_str_digits"),
+    reason="requires the int-from-string digit limit (3.9.14+/3.10.7+/3.11+)",
+)
 def test_parser_rejects_overlong_decimal_integer() -> None:
     # A decimal integer with more digits than Python's int-from-string limit
     # raises ValueError in int(); it must be reported as an invalid number, not
