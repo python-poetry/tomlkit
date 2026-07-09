@@ -686,8 +686,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         # in order, followed by the promoted headers, in order.
         kept = [i for i in range(run_end) if kinds[i] != "promoted"]
         reordered = kept + promoted
+        # ``kept`` and ``promoted`` partition ``range(run_end)``, so ``reordered``
+        # is a permutation of it with exactly ``run_end`` entries.
         order = list(range(len(body)))
-        for pos, src in zip(range(run_end), reordered, strict=True):
+        for pos, src in enumerate(reordered):
             order[pos] = src
 
         return [body[i] for i in order]
