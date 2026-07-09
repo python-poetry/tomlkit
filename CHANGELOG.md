@@ -34,6 +34,7 @@
 - Fix a `KeyAlreadyPresent` error when parsing or accessing an out-of-order table whose array-of-tables elements are split across the table's parts. ([#505](https://github.com/python-poetry/tomlkit/issues/505))
 - Out-of-order value-vs-table and dotted-key-vs-table redefinitions are now rejected at parse time instead of being silently accepted or raising only on access. The parser also detects when a non-dotted key is a prefix of an existing dotted key, matching the stdlib `tomllib` behaviour. ([#523](https://github.com/python-poetry/tomlkit/issues/523))
 - Reject tables inserted into inline tables instead of serializing invalid TOML. ([#531](https://github.com/python-poetry/tomlkit/issues/531))
+- Fix replacing a dotted-key value with a table (e.g. `doc["a"]["b"] = {...}` where `a.b`/`a.c`/`a.d` were parsed as separate root fragments) capturing the sibling dotted keys that follow it. Promoting `a.b` to a `[a.b]` header used to leave the trailing root dotted keys (whether the same prefix `a.c`/`a.d` or a different one such as `p.q`) rendered after the header, so they were re-parsed as its children. Those inline entries now render before the promoted header, preserving the round-trip. ([#556](https://github.com/python-poetry/tomlkit/issues/556))
 
 ## [0.15.0] - 2026-05-10
 

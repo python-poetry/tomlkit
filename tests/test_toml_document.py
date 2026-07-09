@@ -1131,6 +1131,71 @@ c.d = 2
     assert parse(doc.as_string()) == {"c": {"d": 2}, "x": {}}
 
 
+def test_replace_dotted_key_keeps_following_same_name_siblings() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    # Promoting ``a.b`` to a ``[a.b]`` header must not capture the sibling
+    # dotted keys ``a.c``/``a.d`` that render afterwards; they are emitted
+    # before the header so the round-trip is preserved.
+    assert (
+        doc.as_string()
+        == """a.c = 2
+a.d = 3
+
+[a.b]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": {"x": 9}, "c": 2, "d": 3}}
+
+
+def test_replace_middle_dotted_key_keeps_following_same_name_siblings() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["c"] = {"x": 9}
+    # Only the sibling that renders after the promoted ``[a.c]`` header needs
+    # to move ahead of it; ``a.b`` already precedes the header and stays put.
+    assert (
+        doc.as_string()
+        == """a.b = 1
+a.d = 3
+
+[a.c]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": 1, "c": {"x": 9}, "d": 3}}
+
+
+def test_replace_dotted_key_keeps_following_other_dotted_key() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # A promoted ``[a.b]`` header must not capture a differently-named dotted
+    # key (``p.q``) that renders after it either.
+    content = """a.b = 1
+p.q = 5
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """p.q = 5
+
+[a.b]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"p": {"q": 5}, "a": {"b": {"x": 9}}}
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)

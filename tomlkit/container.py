@@ -32,6 +32,29 @@ from tomlkit.items import item as _item
 _NOT_SET = object()
 
 
+def _dotted_fragment_emits_header(item: Item) -> bool:
+    """Whether rendering a dotted table fragment emits a ``[table]`` header.
+
+    Out-of-order fragments of the same dotted key (e.g. the three ``a`` parts
+    parsed from ``a.b``/``a.c``/``a.d``) are stored as separate super-table
+    ``Table`` items. A fragment that only holds scalars renders as dotted keys
+    (``a.c = 2``); one that (transitively) holds a real table or array-of-tables
+    renders a header line (``[a.b]``). A header emitted before a sibling dotted
+    fragment would visually capture that sibling, so callers use this to keep
+    the header-emitting fragments last -- see :meth:`Container._render_ordering`.
+    """
+    if not isinstance(item, Table) or not item.is_super_table():
+        return True
+    for _, v in item.value.body:
+        if isinstance(v, AoT):
+            return True
+        if isinstance(v, Table) and (
+            not v.is_super_table() or _dotted_fragment_emits_header(v)
+        ):
+            return True
+    return False
+
+
 class Container(_CustomDict):  # type: ignore[type-arg]
     """
     A container for items within a TOMLDocument.
@@ -606,10 +629,73 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             return self._body[-1][1]
         return None
 
+    def _render_ordering(
+        self, body: list[tuple[Key | None, Item]]
+    ) -> list[tuple[Key | None, Item]]:
+        """Order dotted table headers after the inline entries they would capture.
+
+        When a dotted key (``a.b``) is replaced by a table it is promoted to a
+        ``[a.b]`` header, but dotted-key siblings that happen to sit later in the
+        body -- whether the same top-level name (``a.c``/``a.d``) or a different
+        one (``p.q``) -- still render as bare dotted keys. A ``[a.b]`` header
+        emitted before them would capture them as its children on re-parse
+        (https://github.com/python-poetry/tomlkit/issues/556). Within the leading
+        run of root entries (before the first real ``[table]``/array-of-tables
+        header), stably move every header-emitting dotted fragment after the
+        scalar-rendering entries that follow it, preserving relative order and
+        leaving everything from the first real header onward untouched. The
+        reordering only kicks in when a header-emitting dotted fragment precedes
+        such an entry, so ordinary documents are left as-is.
+        """
+
+        def kind(k: Key | None, v: Item) -> str:
+            if isinstance(v, AoT) or (
+                isinstance(v, Table) and k is not None and not k.is_dotted()
+            ):
+                return "header"  # real ``[table]`` / array-of-tables section
+            if (
+                isinstance(v, Table)
+                and k is not None
+                and k.is_dotted()
+                and _dotted_fragment_emits_header(v)
+            ):
+                return "promoted"  # dotted key promoted to a ``[a.b]`` header
+            if k is not None and not isinstance(v, Whitespace):
+                return "inline"  # renders as a value / dotted key at this level
+            return "other"  # whitespace, comments, deletion placeholders
+
+        kinds = [kind(k, v) for k, v in body]
+
+        # Only the leading root run (up to the first real header) can capture
+        # trailing inline entries; genuine sections keep their own ordering.
+        run_end = len(body)
+        for i, kd in enumerate(kinds):
+            if kd == "header":
+                run_end = i
+                break
+
+        promoted = [i for i in range(run_end) if kinds[i] == "promoted"]
+        last_inline = max(
+            (i for i in range(run_end) if kinds[i] == "inline"), default=-1
+        )
+        # Nothing to do unless a promoted header precedes an inline entry.
+        if not promoted or promoted[0] > last_inline:
+            return body
+
+        # Stable partition of the run: everything that is not a promoted header,
+        # in order, followed by the promoted headers, in order.
+        kept = [i for i in range(run_end) if kinds[i] != "promoted"]
+        reordered = kept + promoted
+        order = list(range(len(body)))
+        for pos, src in zip(range(run_end), reordered, strict=True):
+            order[pos] = src
+
+        return [body[i] for i in order]
+
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
-        for k, v in self._body:
+        for k, v in self._render_ordering(self._body):
             if k is not None:
                 if isinstance(v, Table):
                     if (
