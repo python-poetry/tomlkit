@@ -1006,6 +1006,24 @@ b  =  "how"
     )
 
 
+def test_replace_super_table_preserves_whitespace() -> None:
+    content = """\
+[env.pro1.rst]
+name = "x7"
+
+[env2]
+name = 2
+
+[env3]
+name = 3
+"""
+    doc = parse(content)
+
+    doc["env"] = doc["env"]
+
+    assert doc.as_string() == content
+
+
 def test_replace_with_table_of_nested() -> None:
     example = """\
     [a]
