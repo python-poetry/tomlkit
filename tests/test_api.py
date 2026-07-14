@@ -362,10 +362,11 @@ def test_item_inline_table_preserves_key_order() -> None:
         tomlkit.item([{"a": {"x": 1}, "b": 2}]).as_string() == "b = 2\n\n[a]\nx = 1\n"
     )
 
-    # Sorting is still honoured when explicitly requested.
+    # Sorting is purely alphabetical when explicitly requested: inline tables
+    # have no capture concern, so dict-valued keys are not forced last.
     assert (
-        tomlkit.item([[{"b": 2, "a": {"x": 1}}]], _sort_keys=True).as_string().strip()
-        == "[[{b = 2, a = {x = 1}}]]"
+        tomlkit.item([{"b": 2, "a": {"x": 1}}, "s"], _sort_keys=True).as_string()
+        == '[{a = {x = 1}, b = 2}, "s"]'
     )
 
 

@@ -167,10 +167,11 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             def _sort_key(i: tuple[Any, Any]) -> Any:
                 return (isinstance(i[1], dict), i[0] if _sort_keys else 1)
         else:
-            # Inline tables cannot capture, so preserve insertion order unless
-            # explicitly sorting (matching the dict branch above). See #546.
+            # Inline tables cannot capture, so there is no need to put
+            # dict-valued keys last: preserve insertion order, or sort purely
+            # by key when explicitly requested. See #546.
             def _sort_key(i: tuple[Any, Any]) -> Any:
-                return (isinstance(i[1], dict), i[0]) if _sort_keys else 1
+                return i[0] if _sort_keys else 1
 
         for v in value:
             if isinstance(v, dict):
