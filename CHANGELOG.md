@@ -35,6 +35,10 @@
 - Out-of-order value-vs-table and dotted-key-vs-table redefinitions are now rejected at parse time instead of being silently accepted or raising only on access. The parser also detects when a non-dotted key is a prefix of an existing dotted key, matching the stdlib `tomllib` behaviour. ([#523](https://github.com/python-poetry/tomlkit/issues/523))
 - Reject tables inserted into inline tables instead of serializing invalid TOML. ([#531](https://github.com/python-poetry/tomlkit/issues/531))
 - Fix a table's display name (its exact header spelling, including whitespace and quoting) being normalised when the table is assigned onto itself, e.g. `doc[k] = doc[k]` rewriting `[keys .'a'.'c']` to `[keys.a.'c']`. ([#291](https://github.com/python-poetry/tomlkit/issues/291))
+- Fix missing newlines when appending a key after a dotted inline table, including when the original document has no trailing newline. ([#533](https://github.com/python-poetry/tomlkit/pull/533))
+- Preserve trailing whitespace when replacing a super table, including assigning it onto itself. ([#534](https://github.com/python-poetry/tomlkit/pull/534))
+- Fix `str()` and `repr()` of out-of-order table proxies to show their merged values. ([#536](https://github.com/python-poetry/tomlkit/pull/536))
+- Reject decimal integer literals that exceed Python's integer-string conversion limit instead of coercing them to infinity. ([#538](https://github.com/python-poetry/tomlkit/pull/538))
 
 ## [0.15.0] - 2026-05-10
 
