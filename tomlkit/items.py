@@ -500,6 +500,8 @@ class Item:
 
     def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
+        if "\n" in comment or "\r" in comment:
+            raise ValueError("Comment cannot contain line breaks")
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -1521,6 +1523,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             4, 5, 6,
         ]
         """
+        if comment and ("\n" in comment or "\r" in comment):
+            raise ValueError("Comment cannot contain line breaks")
         new_values: list[Item] = []
         first_indent = f"\n{indent}" if newline else indent
         if first_indent:
