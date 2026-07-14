@@ -783,10 +783,19 @@ class Parser:
         try:
             return Integer(int(sign + clean, base), trivia, sign + raw)
         except ValueError:
+            pass
+
+        # Only fall back to float for an actual float literal (a fractional
+        # dot, a base-10 exponent, or inf/nan). A decimal integer whose digit
+        # count exceeds Python's int-from-string conversion limit also raises
+        # ValueError above; it must be rejected, not silently coerced to inf.
+        if base == 10 and ("." in clean or "e" in clean or clean in ("inf", "nan")):
             try:
                 return Float(float(sign + clean), trivia, sign + raw)
             except ValueError:
                 return None
+
+        return None
 
     def _parse_literal_string(self) -> String:
         with self._state:

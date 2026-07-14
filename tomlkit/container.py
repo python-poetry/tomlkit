@@ -928,7 +928,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 value.trivia.trail = v.trivia.trail
             self._body[idx] = (new_key, value)
 
-        if hasattr(value, "invalidate_display_name"):
+        if value is not v and hasattr(value, "invalidate_display_name"):
             value.invalidate_display_name()
 
         if isinstance(value, Table):
@@ -1123,6 +1123,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     def value(self) -> dict[str, Any]:
         return self._internal_container.value
 
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return repr(self.value)
+
     def __contains__(self, key: object) -> bool:
         # Native membership test. The inherited ``MutableMapping.__contains__``
         # resolves the value via ``__getitem__`` (and builds a ``NonExistentKey``
@@ -1229,9 +1235,12 @@ def ends_with_whitespace(it: Any) -> bool:
     """Returns ``True`` if the given item ``it`` is a ``Table`` or ``AoT`` object
     ending with a ``Whitespace``.
     """
-    return (
-        isinstance(it, Table) and isinstance(it.value._previous_item(), Whitespace)
-    ) or (isinstance(it, AoT) and len(it) > 0 and isinstance(it[-1], Whitespace))
+    if isinstance(it, Whitespace):
+        return True
+    if isinstance(it, Table):
+        previous = it.value._previous_item()
+        return previous is not None and ends_with_whitespace(previous)
+    return isinstance(it, AoT) and len(it) > 0 and ends_with_whitespace(it[-1])
 
 
 def _equal_with_nan(left: Any, right: Any) -> bool:

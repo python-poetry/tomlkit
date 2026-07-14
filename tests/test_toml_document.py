@@ -901,6 +901,17 @@ inline = {"foo" = "bar", "bar" = "baz"}
     assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
 
 
+def test_repr_out_of_order_table_proxy() -> None:
+    doc = parse("""\
+a.b.c = "d"
+a.b.e = "f"
+""")
+    expected = "{'b': {'c': 'd', 'e': 'f'}}"
+
+    assert repr(doc["a"]) == expected
+    assert str(doc["a"]) == expected
+
+
 def test_deepcopy() -> None:
     content = """
 [tool]
@@ -1018,6 +1029,38 @@ b  =  "what"
 b  =  "how"
 """
     )
+
+
+def test_replace_super_table_preserves_whitespace() -> None:
+    content = """\
+[env.pro1.rst]
+name = "x7"
+
+[env2]
+name = 2
+
+[env3]
+name = 3
+"""
+    doc = parse(content)
+
+    doc["env"] = doc["env"]
+
+    assert doc.as_string() == content
+
+
+def test_replace_table_with_itself_preserves_display_name() -> None:
+    content = """\
+[keys.a]
+[keys .'a'.'c']
+  'd'	= 'e'
+"""
+    doc = parse(content)
+
+    for mode in doc["keys"]:
+        doc["keys"][mode] = doc["keys"][mode]
+
+    assert doc.as_string() == content
 
 
 def test_replace_with_table_of_nested() -> None:
