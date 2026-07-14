@@ -1,10 +1,14 @@
+import sys
+
 import pytest
 
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.items import Integer
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
 
@@ -214,3 +218,20 @@ def test_parser_rejects_aot_header_missing_second_bracket(content: str) -> None:
     parser = Parser(content)
     with pytest.raises(ParseError):
         parser.parse()
+
+
+@pytest.mark.skipif(
+    not hasattr(sys, "get_int_max_str_digits"),
+    reason="requires the int-from-string digit limit (3.9.14+/3.10.7+/3.11+)",
+)
+def test_parser_rejects_overlong_decimal_integer() -> None:
+    # A decimal integer with more digits than Python's int-from-string limit
+    # raises ValueError in int(); it must be reported as an invalid number, not
+    # silently fall through to float() and become inf.
+    parser = Parser("a = " + "9" * 4301)
+    with pytest.raises(InvalidNumberError):
+        parser.parse()
+
+    # the value just under the limit is still a normal integer
+    value = Parser("a = " + "9" * 4300).parse()["a"]
+    assert isinstance(value, Integer)
