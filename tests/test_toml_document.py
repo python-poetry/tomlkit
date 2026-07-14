@@ -643,6 +643,20 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
+    # A super table defined after its sub-table (the "defining a super-table
+    # afterward is ok" spec example) leaves an empty concrete `[x]` part.
+    # Adding a plain value must land in that concrete part, not turn the
+    # header-less super part into a second `[x]` header -- which produced
+    # output with a duplicate header that no longer parsed.
+    doc = parse("[x.y.z.w]\n\n[x]\n")
+    doc["x"]["c"] = 3
+
+    assert doc["x"]["c"] == 3
+    assert doc.as_string() == "[x.y.z.w]\n\n[x]\nc = 3\n"
+    assert parse(doc.as_string()).unwrap() == {"x": {"y": {"z": {"w": {}}}, "c": 3}}
+
+
 def test_out_of_order_table_merges_aot_fragments() -> None:
     # https://github.com/python-poetry/tomlkit/issues/505
     content = """\
