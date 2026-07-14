@@ -248,7 +248,7 @@ def _format_time(value: time) -> str:
 
 # A carriage return that is not the CR of a CRLF line ending. Inside a multiline
 # string only a raw line feed or a CRLF pair is a valid line ending; a lone CR is
-# a control character. Literal strings cannot escape it, basic strings must.
+# a control character that a basic string must escape.
 _BARE_CR = re.compile(r"\r(?!\n)")
 
 
@@ -287,12 +287,13 @@ class StringType(Enum):
     def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
         forbidden_in_literal = CONTROL_CHARS - {"\t"}
-        allowed_in_multiline = {"\n", "\r"}
+        # CR stays forbidden in multiline: the value is checked with CRLF
+        # pairs collapsed, so any remaining CR is a lone control character
         return {
             StringType.SLB: (),
             StringType.MLB: (),
             StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
+            StringType.MLL: (forbidden_in_literal | {"'''"}) - {"\n"},
         }[self]
 
     @property
@@ -2274,11 +2275,10 @@ class String(str, Item):
         value = decode(value)
 
         invalid = type_.invalid_sequences
-        if any(c in value for c in invalid):
+        # collapse CRLF line endings so only a lone CR trips the CR check
+        checked = value.replace("\r\n", "\n")
+        if any(c in checked for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
-
-        if type_ is StringType.MLL and _BARE_CR.search(value):
-            raise InvalidStringError(value, {"\r"}, type_.value)
 
         escaped = type_.escaped_sequences
         string_value = escape_string(value, escaped) if escape and escaped else value
