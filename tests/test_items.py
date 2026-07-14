@@ -515,6 +515,13 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_multiline_comment_is_rejected() -> None:
+    t = api.array()
+    with pytest.raises(ValueError, match="line breaks"):
+        t.add_line(1, 2, 3, comment="first line\nsecond line")
+    assert t.as_string() == "[]"
+
+
 def test_array_add_line_invalid_value() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="is not allowed"):
@@ -885,6 +892,21 @@ def test_trim_comments_when_building_inline_table() -> None:
     table.append("baz", value)
     assert "# Another comment" not in table.as_string()
     assert table.as_string() == '{foo = "bar", baz = "foobaz"}'
+
+
+def test_comment_method_multiline_comment_is_rejected() -> None:
+    doc = api.document()
+    doc["x"] = 1
+    with pytest.raises(ValueError, match="line breaks"):
+        doc["x"].comment("first line\nsecond line")
+    assert doc.as_string() == "x = 1\n"
+
+
+def test_comment_method_keeps_existing_hash_prefix() -> None:
+    doc = api.document()
+    doc["x"] = 1
+    doc["x"].comment("# already a comment")
+    assert doc.as_string() == "x = 1 # already a comment\n"
 
 
 def test_append_table_to_inline_table_raises() -> None:
