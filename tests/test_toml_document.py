@@ -643,6 +643,20 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
+    # A super table defined after its sub-table (the "defining a super-table
+    # afterward is ok" spec example) leaves an empty concrete `[x]` part.
+    # Adding a plain value must land in that concrete part, not turn the
+    # header-less super part into a second `[x]` header -- which produced
+    # output with a duplicate header that no longer parsed.
+    doc = parse("[x.y.z.w]\n\n[x]\n")
+    doc["x"]["c"] = 3
+
+    assert doc["x"]["c"] == 3
+    assert doc.as_string() == "[x.y.z.w]\n\n[x]\nc = 3\n"
+    assert parse(doc.as_string()).unwrap() == {"x": {"y": {"z": {"w": {}}}, "c": 3}}
+
+
 def test_out_of_order_table_merges_aot_fragments() -> None:
     # https://github.com/python-poetry/tomlkit/issues/505
     content = """\
@@ -887,6 +901,17 @@ inline = {"foo" = "bar", "bar" = "baz"}
     assert repr(doc["namespace"]) == "{'key1': 'value1', 'key2': 'value2'}"
 
 
+def test_repr_out_of_order_table_proxy() -> None:
+    doc = parse("""\
+a.b.c = "d"
+a.b.e = "f"
+""")
+    expected = "{'b': {'c': 'd', 'e': 'f'}}"
+
+    assert repr(doc["a"]) == expected
+    assert str(doc["a"]) == expected
+
+
 def test_deepcopy() -> None:
     content = """
 [tool]
@@ -1004,6 +1029,38 @@ b  =  "what"
 b  =  "how"
 """
     )
+
+
+def test_replace_super_table_preserves_whitespace() -> None:
+    content = """\
+[env.pro1.rst]
+name = "x7"
+
+[env2]
+name = 2
+
+[env3]
+name = 3
+"""
+    doc = parse(content)
+
+    doc["env"] = doc["env"]
+
+    assert doc.as_string() == content
+
+
+def test_replace_table_with_itself_preserves_display_name() -> None:
+    content = """\
+[keys.a]
+[keys .'a'.'c']
+  'd'	= 'e'
+"""
+    doc = parse(content)
+
+    for mode in doc["keys"]:
+        doc["keys"][mode] = doc["keys"][mode]
+
+    assert doc.as_string() == content
 
 
 def test_replace_with_table_of_nested() -> None:
