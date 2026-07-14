@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- Fix `string()` dropping a leading newline of a multiline string on round-trip: a value beginning with a newline is now rendered with an extra leading newline (the one the parser trims after the opening delimiter) so it survives re-parsing.
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
 - Fix `ParseError` when a sub-table extends the last element of an array of tables after an unrelated table. ([#261](https://github.com/python-poetry/tomlkit/issues/261))

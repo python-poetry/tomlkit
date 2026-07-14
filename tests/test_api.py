@@ -506,7 +506,7 @@ def test_create_super_table_with_aot() -> None:
         ({}, "My String\x12", '"My String\\u0012"'),
         ({}, "My String\x7f", '"My String\\u007f"'),
         ({"escape": False}, "My String\u0001", '"My String\u0001"'),
-        ({"multiline": True}, "\nMy\nString\n", '"""\nMy\nString\n"""'),
+        ({"multiline": True}, "\nMy\nString\n", '"""\n\nMy\nString\n"""'),
         ({"multiline": True}, 'My"String', '"""My"String"""'),
         ({"multiline": True}, 'My""String', '"""My""String"""'),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
@@ -535,6 +535,30 @@ def test_create_super_table_with_aot() -> None:
 def test_create_string(kwargs: dict[str, Any], example: str, expected: str) -> None:
     value = tomlkit.string(example, **kwargs)
     assert value.as_string() == expected
+
+
+@pytest.mark.parametrize(
+    "kwargs, example",
+    [
+        ({"multiline": True}, "\n"),
+        ({"multiline": True}, "\nMy\nString\n"),
+        ({"multiline": True}, "\r\nMy\nString"),
+        ({"multiline": True, "literal": True}, "\nMy\nString"),
+        ({"multiline": True, "literal": True}, "\r\nMy\nString"),
+    ],
+)
+def test_create_multiline_string_with_leading_newline_round_trips(
+    kwargs: dict[str, Any], example: str
+) -> None:
+    """A multiline string whose value starts with a newline must survive a
+    round-trip. The parser trims a newline immediately following the opening
+    delimiter, so the rendered form has to account for it (otherwise the
+    leading newline is silently dropped when the output is parsed again).
+    """
+    value = tomlkit.string(example, **kwargs)
+    assert str(value) == example
+    reparsed = parse(f"k = {value.as_string()}\n")["k"]
+    assert str(reparsed) == example
 
 
 @pytest.mark.parametrize(

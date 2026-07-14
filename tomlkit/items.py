@@ -2251,6 +2251,13 @@ class String(str, Item):  # type: ignore[misc]
         escaped = type_.escaped_sequences
         string_value = escape_string(value, escaped) if escape and escaped else value
 
+        if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
+            # A newline immediately following the opening delimiter of a
+            # multiline string is trimmed by the parser, so a value that
+            # starts with a newline would otherwise lose it on round-trip.
+            # Emit an extra leading newline (the trimmed one) to preserve it.
+            string_value = "\n" + string_value
+
         return cls(type_, decode(value), string_value, Trivia())
 
 
