@@ -1639,3 +1639,30 @@ value = 5
 """
 
     assert doc.as_string() == expected
+
+
+def test_scalar_is_not_captured_by_table_rendered_from_dotted_key() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/543
+    # A dotted-key super table renders inline (`a.b = 1`) until a child that
+    # renders a `[table]` header is added; a scalar appended after that must
+    # not land inside the table's scope.
+    doc = parse("a.b = 1\n")
+    doc["a"]["c"] = {}
+    doc["z"] = 2
+
+    expected = """\
+z = 2
+
+a.b = 1
+
+[a.c]
+"""
+
+    assert doc.as_string() == expected
+    assert parse(doc.as_string()) == {"z": 2, "a": {"b": 1, "c": {}}}
+
+    # A purely inline dotted key still gets the scalar appended after it.
+    doc = parse("a.b = 1\n")
+    doc["z"] = 2
+
+    assert doc.as_string() == "a.b = 1\nz = 2\n"

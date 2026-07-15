@@ -161,8 +161,32 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if isinstance(v, (Table, AoT)) and k is not None and not k.is_dotted():
                 break
+
+            if (
+                isinstance(v, Table)
+                and k is not None
+                and k.is_dotted()
+                and self._renders_table_header(v)
+            ):
+                # A dotted-key super table renders inline (`a.b = 1`) only as
+                # long as none of its children render a `[table]` header; once
+                # one does, anything appended after it would land inside that
+                # table's scope.
+                break
             last_index = i
         return last_index + 1
+
+    def _renders_table_header(self, table: Table) -> bool:
+        for k, v in table.value.body:
+            if isinstance(v, AoT):
+                return True
+            if isinstance(v, Table):
+                if k is not None and k.is_dotted() and v.is_super_table():
+                    if self._renders_table_header(v):
+                        return True
+                else:
+                    return True
+        return False
 
     def _validate_out_of_order_table(self, key: Key | None = None) -> None:
         if key is None:
