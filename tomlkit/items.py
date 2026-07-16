@@ -540,6 +540,7 @@ class Item:
     def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
         return self.__class__, self._getstate(protocol)
 
+
 class Whitespace(Item):
     """
     A whitespace literal.
@@ -1814,10 +1815,10 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def __len__(self) -> int:
         return len(self._value)
 
-    def __delitem__(self, key: Key | str) -> None:  # type: ignore[override]
+    def __delitem__(self, key: Key | str) -> None:
         self.remove(key)
 
-    def __getitem__(self, key: Key | str) -> Any:  # type: ignore[override]
+    def __getitem__(self, key: Key | str) -> Any:
         return self._value[key]
 
     def __contains__(self, key: object) -> bool:
@@ -1829,7 +1830,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
         # for an out-of-order entry, so validation runs exactly as before.
         return key in self._value
 
-    def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
+    def __setitem__(self, key: Key | str, value: Any) -> None:
         if not isinstance(value, Item):
             value = item(value, _parent=self)
 
@@ -2171,7 +2172,7 @@ class InlineTable(AbstractTable):
                 )
         return parts
 
-    def __setitem__(self, key: Key | str, value: Any) -> None:  # type: ignore[override]
+    def __setitem__(self, key: Key | str, value: Any) -> None:
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         if not isinstance(value, Item):
@@ -2186,7 +2187,7 @@ class InlineTable(AbstractTable):
         return (self._value, self._trivia)
 
 
-class String(str, Item):  # type: ignore[misc]
+class String(str, Item):
     """
     A string literal.
     """
