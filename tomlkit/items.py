@@ -540,16 +540,6 @@ class Item:
     def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
         return self.__class__, self._getstate(protocol)
 
-    def __getitem__(self, key: Key | str | int) -> Any:
-        raise TypeError(f"{type(self).__name__} does not support item access")
-
-    def __setitem__(self, key: Key | str | int, value: Any) -> None:
-        raise TypeError(f"{type(self).__name__} does not support item assignment")
-
-    def __delitem__(self, key: Key | str | int) -> None:
-        raise TypeError(f"{type(self).__name__} does not support item deletion")
-
-
 class Whitespace(Item):
     """
     A whitespace literal.
