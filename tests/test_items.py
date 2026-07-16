@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import ctypes
 import math
 import pickle
+import sys
 
 from collections.abc import Callable
 from datetime import date
@@ -99,6 +101,18 @@ def test_integer_unwrap() -> None:
 
 def test_float_unwrap() -> None:
     elementary_test(item(2.78), float)
+
+
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython", reason="PySequence_Check is CPython-specific"
+)
+def test_float_is_not_a_sequence() -> None:
+    value = parse("a = [1.0, 2.0, 3.0]")["a"][0]
+    py_sequence_check = ctypes.pythonapi.PySequence_Check
+    py_sequence_check.argtypes = [ctypes.py_object]
+    py_sequence_check.restype = ctypes.c_int
+
+    assert not py_sequence_check(value)
 
 
 def test_false_unwrap() -> None:
