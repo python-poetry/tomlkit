@@ -1,6 +1,6 @@
 # Change Log
 
-## [unreleased]
+## [0.15.1] - 2026-07-17
 
 ### Changed
 
@@ -502,7 +502,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.0...master
+[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.1...master
+[0.15.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.1
 [0.15.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.0
 [0.14.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.14.0
 [0.13.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.13.3
