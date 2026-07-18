@@ -263,6 +263,8 @@ def key(k: str | Iterable[str]) -> Key:
     if isinstance(k, str):
         return SingleKey(k)
     keys = [SingleKey(_k) for _k in k]
+    if not keys:
+        raise ValueError("key() requires at least one key part")
     if len(keys) == 1:
         return keys[0]
     return DottedKey(keys)
