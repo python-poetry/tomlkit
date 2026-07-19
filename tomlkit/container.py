@@ -630,10 +630,36 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             return self._body[-1][1]
         return None
 
+    def _is_empty_aot(self, item: Item) -> bool:
+        return isinstance(item, AoT) and not item.body
+
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
-        for k, v in self._body:
+        # An emptied array of tables has no ``[[key]]`` header left to render,
+        # so it falls back to the inline ``key = []`` form. TOML only reads
+        # bare key/value pairs before the first table header, so such keys are
+        # hoisted there instead of being rendered in body order.
+        hoisted = [
+            (k, v) for k, v in self._body if k is not None and self._is_empty_aot(v)
+        ]
+        first_header = next(
+            (
+                i
+                for i, (k, v) in enumerate(self._body)
+                if isinstance(v, (Table, AoT)) and not self._is_empty_aot(v)
+            ),
+            None,
+        )
+        if first_header is None or not hoisted:
+            hoisted = []
+
+        for i, (k, v) in enumerate(self._body):
+            if hoisted and i == first_header:
+                for hk, hv in hoisted:
+                    s += self._render_aot(hk, hv)
+            if hoisted and k is not None and self._is_empty_aot(v):
+                continue
             if k is not None:
                 if isinstance(v, Table):
                     if (
@@ -744,6 +770,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         _key = key.as_string()
         if prefix is not None:
             _key = prefix + "." + _key
+
+        if not aot.body:
+            # An array of tables with no elements has no ``[[key]]`` header to
+            # render, so fall back to the inline empty-array form. Rendering
+            # nothing would drop the key entirely.
+            trail = aot.trivia.trail or "\n"
+            return (
+                f"{aot.trivia.indent}"
+                f"{decode(_key)}"
+                f" = []"
+                f"{aot.trivia.comment_ws}"
+                f"{decode(aot.trivia.comment)}"
+                f"{trail}"
+            )
 
         cur = ""
         _key = decode(_key)
