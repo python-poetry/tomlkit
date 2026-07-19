@@ -1666,3 +1666,44 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_emptied_array_of_tables_renders_as_empty_array() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # An array of tables with no elements left has no `[[key]]` header to
+    # render, so it must fall back to the inline `key = []` form. Rendering
+    # nothing dropped the key entirely.
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert doc.as_string() == "a = []\n"
+    assert parse(doc.as_string()) == {"a": []}
+
+
+def test_emptied_array_of_tables_is_hoisted_above_table_headers() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # TOML only reads bare key/value pairs before the first table header, so
+    # the inline fallback has to be emitted there rather than in body order.
+    # Left in place it would be parsed back as a key of the preceding table.
+    doc = parse("[t]\nq = 2\n\n[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert parse(doc.as_string()) == {"t": {"q": 2}, "a": []}
+    assert doc.as_string().index("a = []") < doc.as_string().index("[t]")
+
+
+def test_emptied_array_of_tables_keeps_preceding_scalars() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    doc = parse("v = 9\n\n[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert parse(doc.as_string()) == {"v": 9, "a": []}
+
+
+def test_non_empty_array_of_tables_is_not_hoisted() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # Only emptied arrays of tables change form; ordinary ones must round-trip
+    # byte for byte.
+    content = "[t]\nq = 2\n\n[[a]]\nx = 1\n"
+
+    assert parse(content).as_string() == content
