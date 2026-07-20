@@ -658,16 +658,34 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return s
 
-    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
+    def _render_table(
+        self,
+        key: Key,
+        table: Table,
+        prefix: str | None = None,
+        header_prefix: str | None = None,
+    ) -> str:
         cur = ""
 
         if table.display_name is not None:
             _key = table.display_name
+            _hkey = _key
         else:
             _key = key.as_string()
 
             if prefix is not None:
                 _key = prefix + "." + _key
+
+            # ``_hkey`` is the absolute key path used for the headers of nested
+            # sub-tables. It can diverge from ``_key`` when this table was reached
+            # through a dotted key: the table's own leaf items render relative to
+            # the nearest real header (so ``a.b`` stays under ``[t]``), but a
+            # genuine sub-table nested inside it still needs the full path
+            # (``[t.a.c]``, not ``[a.c]``).
+            if header_prefix is not None:
+                _hkey = header_prefix + "." + key.as_string()
+            else:
+                _hkey = _key
 
         if (
             not table.is_super_table()
@@ -718,12 +736,21 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 assert k is not None
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
-                        # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        # Outermost dotted key inside a table: leaf items render
+                        # relative to this header, but a genuine sub-table nested
+                        # inside still needs the absolute path (carried by
+                        # ``header_prefix``).
+                        cur += self._render_table(k, v, header_prefix=_hkey)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        # Super-table continuing a chain: keep leaves relative
+                        # via ``_key`` while tracking the absolute header path.
+                        cur += self._render_table(
+                            k, v, prefix=_key, header_prefix=_hkey
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(
+                        k, v, prefix=_hkey, header_prefix=_hkey
+                    )
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -732,7 +759,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 ):
                     cur += "\n"
                 assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
+                cur += self._render_aot(k, v, prefix=_hkey)
             else:
                 cur += self._render_simple_item(
                     k, v, prefix=_key if key.is_dotted() else None
@@ -772,12 +799,18 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 assert k is not None
                 if v.is_super_table():
                     if k.is_dotted():
-                        # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        # Dotted key inside an array-of-tables element: leaf items
+                        # render relative to the ``[[...]]`` header, but a genuine
+                        # sub-table nested inside still needs the absolute path.
+                        cur += self._render_table(k, v, header_prefix=_key)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k, v, prefix=_key, header_prefix=_key
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(
+                        k, v, prefix=_key, header_prefix=_key
+                    )
             elif isinstance(v, AoT):
                 assert k is not None
                 cur += self._render_aot(k, v, prefix=_key)
