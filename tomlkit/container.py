@@ -748,9 +748,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                             k, v, prefix=_key, header_prefix=_hkey
                         )
                 else:
-                    cur += self._render_table(
-                        k, v, prefix=_hkey, header_prefix=_hkey
-                    )
+                    cur += self._render_table(k, v, prefix=_hkey, header_prefix=_hkey)
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -804,13 +802,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         # sub-table nested inside still needs the absolute path.
                         cur += self._render_table(k, v, header_prefix=_key)
                     else:
-                        cur += self._render_table(
-                            k, v, prefix=_key, header_prefix=_key
-                        )
+                        cur += self._render_table(k, v, prefix=_key, header_prefix=_key)
                 else:
-                    cur += self._render_table(
-                        k, v, prefix=_key, header_prefix=_key
-                    )
+                    cur += self._render_table(k, v, prefix=_key, header_prefix=_key)
             elif isinstance(v, AoT):
                 assert k is not None
                 cur += self._render_aot(k, v, prefix=_key)
