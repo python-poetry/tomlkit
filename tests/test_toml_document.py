@@ -643,6 +643,13 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_valid_nested_out_of_order_table_after_unrelated_table() -> None:
+    content = "[a]\n[a.b.c]\n[a.b]\n[[zz]]\n[a.b.d]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {"a": {"b": {"c": {}, "d": {}}}, "zz": [{}]}
+    assert doc.as_string() == content
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
