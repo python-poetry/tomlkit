@@ -177,7 +177,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
 
                 v = table
 
-            a.append(v)
+            a.append(v)  # pyright: ignore[reportArgumentType]
 
         return a
     elif isinstance(value, str):
@@ -455,10 +455,10 @@ class DottedKey(Key):
         if original is None:
             original = ".".join(k.as_string() for k in self._keys)
 
-        self.sep = " = " if sep is None else sep
+        self.sep: str = " = " if sep is None else sep
         self._original = original
         self._dotted = False
-        self.key = ".".join(k.key for k in self._keys)
+        self.key: str = ".".join(k.key for k in self._keys)
 
     def __hash__(self) -> int:
         return hash(tuple(self._keys))
@@ -1374,7 +1374,7 @@ class _ArrayItemGroup:
         return True
 
 
-class Array(Item, _CustomList):  # type: ignore[type-arg]
+class Array(Item, _CustomList[Any]):
     """
     An array literal
     """
@@ -1729,7 +1729,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         return list(self._iter_items()), self._trivia, self._multiline
 
 
-class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
+class AbstractTable(Item, _CustomDict[Key | str, Any]):
     """Common behaviour of both :class:`Table` and :class:`InlineTable`"""
 
     def __init__(self, value: container.Container, trivia: Trivia):
@@ -2158,7 +2158,7 @@ class InlineTable(AbstractTable):
         ``prefix.child = value`` strings, recursing into nested dotted
         children."""
         prefix = f"{key.as_string()}.{key.sep}"
-        parts = []
+        parts: list[str] = []
         for k, v in table.value.body:
             if k is None:
                 continue
@@ -2256,7 +2256,7 @@ class String(str, Item):
         return cls(type_, decode(value), string_value, Trivia())
 
 
-class AoT(Item, _CustomList):  # type: ignore[type-arg]
+class AoT(Item, _CustomList[Table]):
     """
     An array of table literal
     """
@@ -2279,7 +2279,7 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
             if hasattr(t, "unwrap"):
                 unwrapped.append(t.unwrap())
             else:
-                unwrapped.append(t)
+                unwrapped.append(t)  # type: ignore[arg-type]
         return unwrapped
 
     @property
@@ -2314,7 +2314,7 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
         list.__delitem__(self, key)
 
     def insert(self, index: int, value: dict[str, Any]) -> None:  # type: ignore[override]
-        value = item(value, _parent=self)
+        value = item(value, _parent=self)  # pyright: ignore[reportAssignmentType]
         if not isinstance(value, Table):
             raise ValueError(f"Unsupported insert value type: {type(value)}")
         length = len(self)
