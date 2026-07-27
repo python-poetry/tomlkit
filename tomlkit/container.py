@@ -32,7 +32,7 @@ from tomlkit.items import item as _item
 _NOT_SET = object()
 
 
-class Container(_CustomDict[str, Any]):
+class Container(_CustomDict):  # type: ignore[type-arg]
     """
     A container for items within a TOMLDocument.
 
@@ -1053,7 +1053,7 @@ class Container(_CustomDict[str, Any]):
         return prev[-1] if prev else None
 
 
-class OutOfOrderTableProxy(_CustomDict[Any, Any]):
+class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
     @staticmethod
     def validate(
         container: Container,
