@@ -304,7 +304,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     if item.is_super_table():
                         # We need to merge both super tables
                         if (
-                            key.is_dotted()
+                            isinstance(current_idx, tuple)
+                            or key.is_dotted()
                             or (
                                 current_body_element[0] is not None
                                 and current_body_element[0].is_dotted()
@@ -1111,7 +1112,7 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
 
     def _merge_aot_fragment(self, key: Key | None, item: Item) -> AoT | None:
         """
-        Merge an array-of-tables fragment from a later out-of-order table part.
+        Merge an array-of-tables fragment or extension from a later table part.
 
         An AoT whose elements are split across out-of-order parts of the same
         table arrives here once per part; ``_raw_append`` only knows how to
@@ -1120,10 +1121,15 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         live element tables, without mutating either fragment (the parts keep
         rendering their own elements).
 
+        A later super table can also extend the last element of an AoT, as in
+        ``[[x.items]]`` followed by ``[[x.items.children]]``. In that case the
+        last element is presented through another out-of-order proxy spanning
+        the live AoT element and its later extension.
+
         Returns the merged ``AoT``, or ``None`` if this is not such a fragment.
         """
         internal = self._internal_container
-        if key is None or not isinstance(item, AoT) or key not in internal._map:
+        if key is None or key not in internal._map:
             return None
         idx = internal._map[key]
         if isinstance(idx, tuple):
@@ -1137,10 +1143,70 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         if not isinstance(existing, AoT):
             return None
 
-        merged = AoT([*existing.body, *item.body], parsed=True)
+        if isinstance(item, AoT):
+            merged = AoT([*existing.body, *item.body], parsed=True)
+        elif isinstance(item, Table) and item.is_super_table() and existing.body:
+            # Container.append applies this same TOML rule for adjacent parts by
+            # mutating the last AoT element. These are out-of-order parts, so
+            # mutating either live source would make the document render the
+            # later header twice. Build a two-part proxy instead: reads merge
+            # both parts and writes still route to the original source table.
+            last = existing.body[-1]
+            fragments = Container(True)
+            fragment_key = SingleKey("__aot_element")
+            fragments._raw_append(fragment_key, last)
+            fragments._raw_append(fragment_key, item)
+            value = OutOfOrderTableProxy(fragments, (0, 1))
+            merged_last = Table(
+                value,  # type: ignore[arg-type]
+                copy.copy(last.trivia),
+                last.is_aot_element(),
+                last.is_super_table(),
+                last.name,
+                last.display_name,
+            )
+            merged = AoT([*existing.body[:-1], merged_last], parsed=True)
+        else:
+            return None
+
         internal._body[idx] = (internal._body[idx][0], merged)
         dict.__setitem__(internal, key.key, merged.value)
         return merged
+
+    @property
+    def body(self) -> list[tuple[Key | None, Item]]:
+        return self._internal_container.body
+
+    @property
+    def _map(self) -> dict[Key, int | tuple[int, ...]]:
+        return self._internal_container._map
+
+    def as_string(self) -> str:
+        return self._internal_container.as_string()
+
+    def copy(self) -> Container:
+        return self._internal_container.copy()
+
+    def append(
+        self, key: Key | str | None, item: Any, validate: bool = True
+    ) -> OutOfOrderTableProxy:
+        if key is None:
+            item = _item(item)
+            target = self._tables[0].value if self._tables else self._container
+            target.append(None, item, validate=validate)
+            self._internal_container.append(None, item, validate=validate)
+        else:
+            self[key] = item
+        return self
+
+    def remove(self, key: Key | str) -> OutOfOrderTableProxy:
+        del self[key]
+        return self
+
+    def _previous_item(
+        self, idx: int | None = None, ignore: tuple[type, ...] = (Null,)
+    ) -> Item | None:
+        return self._internal_container._previous_item(idx, ignore)
 
     def unwrap(self) -> dict[str, Any]:
         return self._internal_container.unwrap()

@@ -722,6 +722,53 @@ z = 3
     assert hooks["state"]["z"] == 3
 
 
+def test_out_of_order_table_merges_aot_element_extension() -> None:
+    content = """\
+[[y.a]]
+name = "first"
+
+[b.d.x]
+
+[[y.a.c]]
+kind = "child"
+
+[[y.a]]
+name = "second"
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+    assert doc.unwrap() == {
+        "y": {
+            "a": [
+                {"name": "first", "c": [{"kind": "child"}]},
+                {"name": "second"},
+            ]
+        },
+        "b": {"d": {"x": {}}},
+    }
+
+    element = doc["y"]["a"][0]
+    element["name"] = "patched"
+    element["c"][0]["kind"] = "patched-child"
+    element["added"] = 3
+
+    expected = """\
+[[y.a]]
+name = "patched"
+added = 3
+
+[b.d.x]
+
+[[y.a.c]]
+kind = "patched-child"
+
+[[y.a]]
+name = "second"
+"""
+    assert doc.as_string() == expected
+    assert parse(expected).unwrap() == doc.unwrap()
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
