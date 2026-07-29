@@ -1326,6 +1326,26 @@ a.c = 2
     assert parse(doc.as_string()).unwrap() == expected_data
 
 
+@pytest.mark.parametrize(
+    ("replacement", "expected_output", "expected_value"),
+    [
+        ({"x": 9}, "q.c = 2\n\n[a.b]\nx = 9\n", {"x": 9}),
+        ({}, "q.c = 2\n\n[a.b]\n", {}),
+        ([{"x": 9}], "q.c = 2\n\n[[a.b]]\nx = 9\n", [{"x": 9}]),
+    ],
+)
+def test_replace_dotted_key_child_keeps_later_unrelated_dotted_key(
+    replacement: Any, expected_output: str, expected_value: Any
+) -> None:
+    doc = parse("a.b = 1\nq.c = 2\n")
+    doc["a"]["b"] = replacement
+
+    assert doc.as_string() == expected_output
+    expected_data = {"q": {"c": 2}, "a": {"b": expected_value}}
+    assert doc.unwrap() == expected_data
+    assert parse(doc.as_string()).unwrap() == expected_data
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)

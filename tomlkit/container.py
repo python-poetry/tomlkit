@@ -516,23 +516,80 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def _reorder_body_entry(self, p_idx: int, target_pos: int, group_key: Key) -> None:
         entry = self._body.pop(p_idx)
         self._body.insert(target_pos - 1, entry)
+        self._rebuild_key_state()
 
+    def _rebuild_key_state(self) -> None:
         new_map: dict[Key, int | tuple[int, ...]] = {}
-        for k in self._map:
-            idxs = [i for i, (b_k, _) in enumerate(self._body) if b_k == k]
-            if idxs:
-                new_map[k] = idxs[0] if len(idxs) == 1 else tuple(idxs)
+        table_keys: list[Key] = []
+        for i, (k, v) in enumerate(self._body):
+            if k is None:
+                continue
 
-        for b_k, _ in self._body:
-            if b_k is not None and b_k not in new_map:
-                idxs = [j for j, (b_k2, _) in enumerate(self._body) if b_k2 == b_k]
-                new_map[b_k] = idxs[0] if len(idxs) == 1 else tuple(idxs)
+            current = new_map.get(k)
+            if current is None:
+                new_map[k] = i
+            elif isinstance(current, tuple):
+                new_map[k] = (*current, i)
+            else:
+                new_map[k] = (current, i)
+
+            if v.is_table():
+                table_keys.append(k)
 
         self._map = new_map
+        self._table_keys = table_keys
         self._out_of_order_keys = {
-            k for k, v in self._map.items() if isinstance(v, tuple)
+            k for k, idx in new_map.items() if isinstance(idx, tuple)
         }
         self._validation_cache.clear()
+
+    def _normalize_dotted_header_capture(self) -> None:
+        moved = False
+        i = 0
+        while i < len(self._body):
+            key, value = self._body[i]
+            if not (
+                key is not None
+                and key.is_dotted()
+                and isinstance(value, Table)
+                and self._renders_table_header(value)
+            ):
+                i += 1
+                continue
+
+            movable: list[int] = []
+            j = i + 1
+            while j < len(self._body):
+                next_key, next_value = self._body[j]
+                if next_key is None or isinstance(next_value, (Null, Whitespace)):
+                    j += 1
+                    continue
+
+                if isinstance(next_value, (Table, AoT)) and not (
+                    isinstance(next_value, Table)
+                    and next_key.is_dotted()
+                    and not self._renders_table_header(next_value)
+                ):
+                    break
+
+                movable.append(j)
+                j += 1
+
+            if not movable:
+                i += 1
+                continue
+
+            entries = [self._body[idx] for idx in movable]
+            for idx in reversed(movable):
+                del self._body[idx]
+            for offset, entry in enumerate(entries):
+                self._body.insert(i + offset, entry)
+
+            moved = True
+            i += len(entries) + 1
+
+        if moved:
+            self._rebuild_key_state()
 
     def _insert_after(
         self, key: Key | str, other_key: Key | str, item: Any
@@ -653,6 +710,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         """Render as TOML string."""
+        self._normalize_dotted_header_capture()
         s = ""
         for k, v in self._body:
             if k is not None:
