@@ -1210,6 +1210,142 @@ c.d = 2
     assert parse(doc.as_string()) == {"c": {"d": 2}, "x": {}}
 
 
+def test_replace_dotted_key_child_with_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.c = 2
+a.d = 3
+
+[a.b]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": {"x": 9}, "c": 2, "d": 3}}
+
+    a = doc["a"]
+    a["e"] = 4
+    assert doc["a"]["e"] == 4
+    assert parse(doc.as_string()) == {"a": {"b": {"x": 9}, "c": 2, "d": 3, "e": 4}}
+
+
+def test_replace_dotted_key_child_with_empty_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {}
+    assert (
+        doc.as_string()
+        == """a.c = 2
+a.d = 3
+
+[a.b]
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": {}, "c": 2, "d": 3}}
+
+
+def test_replace_dotted_key_child_with_aot() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = [{"x": 9}]
+    assert (
+        doc.as_string()
+        == """a.c = 2
+a.d = 3
+
+[[a.b]]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": [{"x": 9}], "c": 2, "d": 3}}
+
+
+def test_replace_dotted_key_child_with_interleaved_unrelated_group() -> None:
+    content = """a.b = 1
+z.q = 1
+a.c = 2
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert doc["z"] == {"q": 1}
+    doc["z"]["q"] = 5
+    expected_data = {"z": {"q": 5}, "a": {"c": 2, "b": {"x": 9}}}
+    assert doc.unwrap() == expected_data
+    assert parse(doc.as_string()).unwrap() == expected_data
+
+
+def test_replace_dotted_key_child_with_interleaved_plain_key() -> None:
+    content = """a.b = 1
+m = 0
+a.c = 2
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert doc["m"] == 0
+    doc["m"] = 7
+    assert doc["m"] == 7
+    expected_data = {"m": 7, "a": {"c": 2, "b": {"x": 9}}}
+    assert doc.unwrap() == expected_data
+    assert parse(doc.as_string()).unwrap() == expected_data
+
+
+@pytest.mark.parametrize(
+    "replacement, expected_b",
+    [
+        ({}, {}),
+        ([{"x": 9}], [{"x": 9}]),
+    ],
+)
+def test_replace_dotted_key_child_interleaved_empty_table_and_aot(
+    replacement: Any, expected_b: Any
+) -> None:
+    content = """a.b = 1
+z.q = 1
+a.c = 2
+"""
+    doc = parse(content)
+    doc["a"]["b"] = replacement
+    assert doc["z"] == {"q": 1}
+    doc["z"]["q"] = 5
+    expected_data = {"z": {"q": 5}, "a": {"c": 2, "b": expected_b}}
+    assert doc.unwrap() == expected_data
+    assert parse(doc.as_string()).unwrap() == expected_data
+
+
+@pytest.mark.parametrize(
+    ("replacement", "expected_output", "expected_value"),
+    [
+        ({"x": 9}, "q.c = 2\n\n[a.b]\nx = 9\n", {"x": 9}),
+        ({}, "q.c = 2\n\n[a.b]\n", {}),
+        ([{"x": 9}], "q.c = 2\n\n[[a.b]]\nx = 9\n", [{"x": 9}]),
+    ],
+)
+def test_replace_dotted_key_child_keeps_later_unrelated_dotted_key(
+    replacement: Any, expected_output: str, expected_value: Any
+) -> None:
+    doc = parse("a.b = 1\nq.c = 2\n")
+    doc["a"]["b"] = replacement
+
+    assert doc.as_string() == expected_output
+    expected_data = {"q": {"c": 2}, "a": {"b": expected_value}}
+    assert doc.unwrap() == expected_data
+    assert parse(doc.as_string()).unwrap() == expected_data
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)

@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Replacing a dotted-key child with a table or AoT no longer captures following dotted siblings on round-trip. ([#556](https://github.com/python-poetry/tomlkit/issues/556))
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed

@@ -513,6 +513,84 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return self
 
+    def _reorder_body_entry(self, p_idx: int, target_pos: int, group_key: Key) -> None:
+        entry = self._body.pop(p_idx)
+        self._body.insert(target_pos - 1, entry)
+        self._rebuild_key_state()
+
+    def _rebuild_key_state(self) -> None:
+        new_map: dict[Key, int | tuple[int, ...]] = {}
+        table_keys: list[Key] = []
+        for i, (k, v) in enumerate(self._body):
+            if k is None:
+                continue
+
+            current = new_map.get(k)
+            if current is None:
+                new_map[k] = i
+            elif isinstance(current, tuple):
+                new_map[k] = (*current, i)
+            else:
+                new_map[k] = (current, i)
+
+            if v.is_table():
+                table_keys.append(k)
+
+        self._map = new_map
+        self._table_keys = table_keys
+        self._out_of_order_keys = {
+            k for k, idx in new_map.items() if isinstance(idx, tuple)
+        }
+        self._validation_cache.clear()
+
+    def _normalize_dotted_header_capture(self) -> None:
+        moved = False
+        i = 0
+        while i < len(self._body):
+            key, value = self._body[i]
+            if not (
+                key is not None
+                and key.is_dotted()
+                and isinstance(value, Table)
+                and self._renders_table_header(value)
+            ):
+                i += 1
+                continue
+
+            movable: list[int] = []
+            j = i + 1
+            while j < len(self._body):
+                next_key, next_value = self._body[j]
+                if next_key is None or isinstance(next_value, (Null, Whitespace)):
+                    j += 1
+                    continue
+
+                if isinstance(next_value, (Table, AoT)) and not (
+                    isinstance(next_value, Table)
+                    and next_key.is_dotted()
+                    and not self._renders_table_header(next_value)
+                ):
+                    break
+
+                movable.append(j)
+                j += 1
+
+            if not movable:
+                i += 1
+                continue
+
+            entries = [self._body[idx] for idx in movable]
+            for idx in reversed(movable):
+                del self._body[idx]
+            for offset, entry in enumerate(entries):
+                self._body.insert(i + offset, entry)
+
+            moved = True
+            i += len(entries) + 1
+
+        if moved:
+            self._rebuild_key_state()
+
     def _insert_after(
         self, key: Key | str, other_key: Key | str, item: Any
     ) -> Container:
@@ -632,6 +710,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         """Render as TOML string."""
+        self._normalize_dotted_header_capture()
         s = ""
         for k, v in self._body:
             if k is not None:
@@ -1101,10 +1180,10 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                         self._internal_container._raw_append(k, v)
                     else:
                         v = merged
-                    key_indices = self._tables_map.setdefault(k, [])  # type: ignore[arg-type]
-                    if table_idx not in key_indices:
-                        key_indices.append(table_idx)
                     if k is not None:
+                        key_indices = self._tables_map.setdefault(k, [])
+                        if table_idx not in key_indices:
+                            key_indices.append(table_idx)
                         dict.__setitem__(self, k.key, v)
 
         self._internal_container._validate_out_of_order_table()
@@ -1192,6 +1271,92 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                 self[key] = value
                 return
             self._tables[map_indices[0]][key] = value
+            if not _is_table_or_aot(old_value) and _is_table_or_aot(value):
+                part_item = self._tables[map_indices[0]].item(key)
+                if isinstance(part_item, AoT) or (
+                    isinstance(part_item, Table)
+                    and (
+                        not part_item.is_super_table()
+                        or self._container._renders_table_header(part_item)
+                    )
+                ):
+                    group_key = next(
+                        (
+                            k
+                            for k, v in self._container._body
+                            if v is self._tables[map_indices[0]]
+                        ),
+                        None,
+                    )
+                    if group_key is not None:
+                        p_idx = -1
+                        last_inline_idx = -1
+                        first_later_header_idx = -1
+                        for idx, (k, v) in enumerate(self._container._body):
+                            if k == group_key:
+                                if v is self._tables[map_indices[0]]:
+                                    p_idx = idx
+                                else:
+                                    if p_idx != -1 and first_later_header_idx == -1:
+                                        first_later_header_idx = idx
+                            if (
+                                k is not None
+                                and k.key == group_key.key
+                                and k.is_dotted()
+                                and not (
+                                    isinstance(v, Table)
+                                    and self._container._renders_table_header(v)
+                                )
+                            ):
+                                last_inline_idx = idx
+
+                        if (
+                            p_idx != -1
+                            and last_inline_idx != -1
+                            and p_idx < last_inline_idx
+                        ):
+                            target_pos = (
+                                first_later_header_idx
+                                if (
+                                    first_later_header_idx != -1
+                                    and first_later_header_idx > last_inline_idx
+                                )
+                                else last_inline_idx + 1
+                            )
+                            self._container._reorder_body_entry(
+                                p_idx, target_pos, group_key
+                            )
+
+                            self._tables.clear()
+                            self._tables_map.clear()
+                            self._internal_container = Container(True)
+                            dict.clear(self)
+
+                            indices = self._container._map[group_key]
+                            if not isinstance(indices, tuple):
+                                indices = (indices,)
+
+                            for i in indices:
+                                _, _item = self._container._body[i]
+                                if isinstance(_item, Table):
+                                    self._tables.append(_item)
+                                    table_idx = len(self._tables) - 1
+                                    for k, v in _item.value.body:
+                                        merged = self._merge_aot_fragment(k, v)
+                                        if merged is None:
+                                            self._internal_container._raw_append(k, v)
+                                        else:
+                                            v = merged
+                                        if k is not None:
+                                            key_indices = self._tables_map.setdefault(
+                                                k, []
+                                            )
+                                            if table_idx not in key_indices:
+                                                key_indices.append(table_idx)
+                                            dict.__setitem__(self, k.key, v)
+
+                            self._internal_container._validate_out_of_order_table()
+                            return
         elif self._tables:
             if not _is_table_or_aot(value):  # if the value is a plain value
                 for table in self._tables:
