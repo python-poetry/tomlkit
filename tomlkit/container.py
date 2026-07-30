@@ -150,6 +150,16 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self.append(name, table)
         return
 
+    def _trail_table_separator_on(self, item: Item, before_index: int) -> None:
+        if before_index > 0:
+            previous = self._body[before_index - 1][1]
+            if not isinstance(previous, Whitespace) and previous.trivia.trail.endswith(
+                "\n\n"
+            ):
+                previous.trivia.trail = previous.trivia.trail[:-1]
+
+        item.trivia.trail += "\n"
+
     def _get_last_index_before_table(self) -> int:
         last_index = -1
         for i, (k, v) in enumerate(self._body):
@@ -388,7 +398,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if last_index < len(self._body):
                 after_item = self._body[last_index][1]
-                if not (
+                if (
+                    not is_table
+                    and isinstance(after_item, Table)
+                    and "\n" not in after_item.trivia.indent
+                ):
+                    self._trail_table_separator_on(item, before_index=last_index)
+                elif not (
                     isinstance(after_item, Whitespace)
                     or "\n" in after_item.trivia.indent
                 ):
