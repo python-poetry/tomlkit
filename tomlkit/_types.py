@@ -12,7 +12,6 @@ __all__ = [
     "_CustomFloat",
     "_CustomInt",
     "_CustomList",
-    "wrap_method",
 ]
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -31,12 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from builtins import float as _CustomFloat
     from builtins import int as _CustomInt
     from builtins import list as _CustomList
-    from typing import Callable
-    from typing import Concatenate
-    from typing import ParamSpec
     from typing import Protocol
-
-    P = ParamSpec("P")
 
     class WrapperType(Protocol):
         def _new(self: WT, value: Any) -> WT: ...
@@ -76,15 +70,3 @@ else:
 
     class _CustomFloat(Real, float):
         """Adds Real mixin while pretending to be a builtin float"""
-
-
-def wrap_method(
-    original_method: Callable[Concatenate[WT, P], Any],
-) -> Callable[Concatenate[WT, P], Any]:
-    def wrapper(self: WT, /, *args: P.args, **kwargs: P.kwargs) -> Any:
-        result = original_method(self, *args, **kwargs)
-        if result is NotImplemented:
-            return result
-        return self._new(result)
-
-    return wrapper
