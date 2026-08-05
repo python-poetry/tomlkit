@@ -1464,7 +1464,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         if not self._multiline or not self._value:
-            return f"[{''.join(v.as_string() for v in self._iter_items())}]"
+            rendered = list(self._iter_items())
+            inner = "".join(v.as_string() for v in rendered)
+            if rendered and isinstance(rendered[-1], Comment):
+                # A trailing comment (e.g. from add_line(comment=...)) carries
+                # no newline, so keep the closing bracket off the comment line
+                # to produce parseable output (GH #580).
+                inner += "\n" + self.trivia.indent
+            return f"[{inner}]"
 
         s = "[\n"
         s += "".join(

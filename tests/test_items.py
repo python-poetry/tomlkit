@@ -529,6 +529,16 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_single_line_comment_round_trips() -> None:
+    # A single-line array whose last rendered element is a trailing comment
+    # (from add_line(..., comment=...)) must keep the closing bracket off the
+    # comment line, otherwise the output does not round-trip (GH #580).
+    t = api.array()
+    t.add_line("foo", comment="bar")
+    rendered = t.as_string()
+    assert parse("a = " + rendered)["a"] == ["foo"]
+
+
 def test_array_add_line_multiline_comment_is_rejected() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="line breaks"):
