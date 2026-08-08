@@ -418,12 +418,34 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return self
 
     def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
-        for k, v in candidate.value.body:
+        self._validate_container_candidate(current.value, candidate.value)
+
+    def _validate_container_candidate(
+        self, current: Container, candidate: Container
+    ) -> None:
+        for k, v in candidate.body:
             if k is None:
                 continue
 
-            if k in current.value._map:
-                existing = current.value.item(k)
+            if k in current._map:
+                existing = current.item(k)
+                if isinstance(existing, OutOfOrderTableProxy):
+                    # `k` is itself already split across out-of-order parts, so
+                    # `item()` hands back a proxy rather than a Table. Compare
+                    # against the merged view the proxy holds instead of
+                    # treating it as a non-table value.
+                    if not isinstance(v, Table):
+                        raise KeyAlreadyPresent(k)
+                    if k.is_dotted():
+                        raise TOMLKitError("Redefinition of an existing table")
+                    if not v.is_super_table() and any(
+                        not part.is_super_table() for part in existing._tables
+                    ):
+                        raise KeyAlreadyPresent(k)
+                    self._validate_container_candidate(
+                        existing._internal_container, v.value
+                    )
+                    continue
                 if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
@@ -435,20 +457,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         raise KeyAlreadyPresent(k)
                     # One side is still an implicit/super table, so a duplicate
                     # (if any) is nested deeper - keep checking the subtree.
-                    self._validate_table_candidate(existing, v)
+                    self._validate_container_candidate(existing.value, v.value)
                 continue
 
             if not k.is_dotted():
                 # Even when the candidate key itself is not dotted, an
                 # existing dotted key may already use it as a prefix —
                 # e.g.  [a] b.c=1 then [a.b] d=2  (b prefixes b.c).
-                for existing_key in current.value._map:
+                for existing_key in current._map:
                     if existing_key.is_dotted() and next(iter(existing_key)) == k:
                         raise TOMLKitError("Redefinition of an existing table")
                 continue
 
             head = next(iter(k))
-            if head in current.value._map:
+            if head in current._map:
                 raise TOMLKitError("Redefinition of an existing table")
 
     def _raw_append(self, key: Key | None, item: Item) -> None:

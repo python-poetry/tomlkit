@@ -643,6 +643,64 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_extend_out_of_order_child_of_out_of_order_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/571
+    # `lint` is itself out of order inside `ruff` ([tool.ruff.lint.a] then
+    # [tool.ruff.lint]), so validating the later [tool.ruff.lint.b] fragment
+    # looks `lint` up and gets an OutOfOrderTableProxy back rather than a
+    # Table. That must not be read as a type change.
+    content = """\
+[tool.ruff]
+[tool.ruff.lint.a]
+[tool.ruff.lint]
+[[tool.poetry.source]]
+[tool.ruff.lint.b]
+"""
+    doc = parse(content)
+
+    assert doc.unwrap() == {
+        "tool": {
+            "ruff": {"lint": {"a": {}, "b": {}}},
+            "poetry": {"source": [{}]},
+        }
+    }
+    assert doc.as_string() == content
+
+
+def test_reject_duplicate_child_of_out_of_order_table() -> None:
+    # The counterpart of the above: the last header redefines the concrete
+    # [tool.ruff.lint] table, which is invalid and must still be rejected
+    # even though `lint` is reached through a proxy.
+    with pytest.raises(ParseError):
+        parse(
+            "[tool.ruff]\n"
+            "[tool.ruff.lint.a]\n"
+            "[tool.ruff.lint]\n"
+            "[[tool.poetry.source]]\n"
+            "[tool.ruff.lint]\n"
+        )
+
+
+def test_extend_out_of_order_child_at_depth() -> None:
+    content = """\
+[t.r]
+[t.r.l.a]
+[t.r.l]
+[z]
+[t.r.l.b.c]
+[q]
+[t.r.l.b.d]
+"""
+    doc = parse(content)
+
+    assert doc.unwrap() == {
+        "t": {"r": {"l": {"a": {}, "b": {"c": {}, "d": {}}}}},
+        "z": {},
+        "q": {},
+    }
+    assert doc.as_string() == content
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
