@@ -1464,7 +1464,13 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         if not self._multiline or not self._value:
-            return f"[{''.join(v.as_string() for v in self._iter_items())}]"
+            items = list(self._iter_items())
+            body = "".join(v.as_string() for v in items)
+            if items and isinstance(items[-1], Comment):
+                # A comment runs to the end of the line, so the closing bracket
+                # has to start a new one or it would be commented out.
+                body += "\n" + self.trivia.indent
+            return f"[{body}]"
 
         s = "[\n"
         s += "".join(

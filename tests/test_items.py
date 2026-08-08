@@ -529,6 +529,35 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_trailing_comment_does_not_hide_bracket() -> None:
+    t = api.array()
+    t.add_line("foo", comment="bar")
+
+    assert (
+        t.as_string()
+        == """[
+    "foo", # bar
+]"""
+    )
+
+    doc = api.document()
+    doc.add("array", t)
+    assert parse(doc.as_string())["array"] == ["foo"]
+
+
+def test_array_add_line_trailing_comment_closing_line_is_not_doubled() -> None:
+    t = api.array()
+    t.add_line("foo", comment="bar")
+    t.add_line(indent="")
+
+    assert (
+        t.as_string()
+        == """[
+    "foo", # bar
+]"""
+    )
+
+
 def test_array_add_line_multiline_comment_is_rejected() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="line breaks"):
