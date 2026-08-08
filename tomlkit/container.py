@@ -1123,7 +1123,9 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         Returns the merged ``AoT``, or ``None`` if this is not such a fragment.
         """
         internal = self._internal_container
-        if key is None or not isinstance(item, AoT) or key not in internal._map:
+        if key is None or not isinstance(item, (AoT, Table)):
+            return None
+        if key not in internal._map:
             return None
         idx = internal._map[key]
         if isinstance(idx, tuple):
@@ -1137,7 +1139,21 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         if not isinstance(existing, AoT):
             return None
 
-        merged = AoT([*existing.body, *item.body], parsed=True)
+        if isinstance(item, AoT):
+            elements = [*existing.body, *item.body]
+        else:
+            # The later part extends the array's last element instead of adding
+            # one: `[[y.a]]` followed by `[[y.a.c]]` reaches here with `a` as an
+            # implicit super table holding `c`. Copy the element before merging
+            # so the fragment the document renders from is left alone.
+            if not item.is_super_table() or not existing.body:
+                return None
+            last = copy.deepcopy(existing.body[-1])
+            for k, v in item.value.body:
+                last.value.append(k, copy.deepcopy(v))
+            elements = [*existing.body[:-1], last]
+
+        merged = AoT(elements, parsed=True)
         internal._body[idx] = (internal._body[idx][0], merged)
         dict.__setitem__(internal, key.key, merged.value)
         return merged

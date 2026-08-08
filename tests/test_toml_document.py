@@ -688,6 +688,52 @@ y = 2
     assert 'matcher = "patched"' in doc.as_string()
 
 
+def test_out_of_order_table_merges_aot_element_extension() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/577
+    # `[[y.a.c]]` extends the last element of the existing `y.a` array rather
+    # than adding one, so the second `a` fragment reaches the proxy as an
+    # implicit super table and not as another AoT.
+    content = """\
+[[y.a]]
+n = 1
+
+[b.d.x]
+
+[[y.a.c]]
+m = 2
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    assert doc.unwrap() == {
+        "y": {"a": [{"n": 1, "c": [{"m": 2}]}]},
+        "b": {"d": {"x": {}}},
+    }
+    assert doc["y"]["a"][0]["c"][0]["m"] == 2
+
+
+def test_out_of_order_table_extends_last_of_several_aot_elements() -> None:
+    content = """\
+[[y.a]]
+n = 1
+
+[[y.a]]
+n = 2
+
+[b.d.x]
+
+[[y.a.c]]
+m = 3
+"""
+    doc = parse(content)
+    assert doc.as_string() == content
+
+    assert doc.unwrap() == {
+        "y": {"a": [{"n": 1}, {"n": 2, "c": [{"m": 3}]}]},
+        "b": {"d": {"x": {}}},
+    }
+
+
 def test_out_of_order_table_merges_three_aot_fragments() -> None:
     # An AoT split across more than two out-of-order parts merges into a single
     # AoT: each later fragment is appended to the growing element list, so the
