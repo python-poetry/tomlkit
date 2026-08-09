@@ -1547,6 +1547,15 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             new_values.append(
                 Comment(Trivia(indent=indent, comment=f"# {comment}", trail=""))
             )
+
+        if (
+            self._value
+            and self._value[-1].is_whitespace()
+            and self._value[-1].indent is not None
+            and self._value[-1].indent.s == "\n"
+        ):
+            self._value.pop()
+
         list.extend(self, data_values)
         if len(self._value) > 0:
             last_item = self._value[-1]
@@ -1566,6 +1575,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
                 self._value.extend(self._group_values(new_values))
         else:
             self._value.extend(self._group_values(new_values))
+        if newline and (items or comment):
+            self._value.extend(self._group_values([Whitespace("\n")]))
         self._reindex()
 
     def clear(self) -> None:
