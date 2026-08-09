@@ -1707,3 +1707,30 @@ def test_non_empty_array_of_tables_is_not_hoisted() -> None:
     content = "[t]\nq = 2\n\n[[a]]\nx = 1\n"
 
     assert parse(content).as_string() == content
+
+
+@pytest.mark.parametrize(
+    ("content", "empty"),
+    [
+        # Nested directly under a table.
+        ("[t]\nq = 2\n\n[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # Nested under a table that also has a sibling sub-table after it.
+        ("[t]\n\n[[t.a]]\nx = 1\n\n[t.b]\ny = 3\n", lambda doc: doc["t"]["a"]),
+        # ... and before it, so the fallback has to move.
+        ("[t]\n\n[t.b]\ny = 3\n\n[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # Two levels down.
+        ("[t]\n\n[t.u]\n\n[[t.u.a]]\nx = 1\n", lambda doc: doc["t"]["u"]["a"]),
+        # Inside an element of another array of tables.
+        ("[[e]]\nn = 1\n\n[[e.a]]\nx = 1\n", lambda doc: doc["e"][0]["a"]),
+    ],
+)
+def test_emptied_nested_array_of_tables_round_trips(content, empty) -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # The inline fallback is a bare key/value pair emitted inside the scope its
+    # header named, so it must be written with the bare key. Carrying the
+    # header prefix over emitted `t.a = []` under `[t]`, which reads back as
+    # `t.t.a`.
+    doc = parse(content)
+    empty(doc).pop()
+
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
