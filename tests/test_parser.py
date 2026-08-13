@@ -8,6 +8,7 @@ from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.items import Float
 from tomlkit.items import Integer
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
@@ -235,3 +236,13 @@ def test_parser_rejects_overlong_decimal_integer() -> None:
     # the value just under the limit is still a normal integer
     value = Parser("a = " + "9" * 4300).parse()["a"]
     assert isinstance(value, Integer)
+
+
+def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
+    # Both "e" and "E" are valid exponent markers. A leading-zero mantissa was
+    # only exempted from the "no leading zeros" rule for lowercase "0e", so
+    # "0E2" and its signed forms were wrongly rejected as an invalid number.
+    for raw in ("0E2", "0E+2", "0E-2", "+0E2", "-0E2"):
+        value = Parser(f"a = {raw}").parse()["a"]
+        assert isinstance(value, Float)
+        assert value == float(raw)
