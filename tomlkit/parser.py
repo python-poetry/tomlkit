@@ -761,7 +761,7 @@ class Parser:
         return InlineTable(elems, Trivia())
 
     def _parse_number(self, raw: str, trivia: Trivia) -> Item | None:
-        # Reject non-ASCII digit characters (e.g. Arabic-Indic zero, ٠):
+        # Reject non-ASCII digit characters (e.g. Arabic-Indic zero, U+0660):
         # int()/float() accept any Unicode decimal digit, but TOML numbers
         # are ASCII-only.
         if not raw.isascii():
