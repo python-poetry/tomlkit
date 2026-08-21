@@ -56,6 +56,7 @@ CTRL_J = 0x0A  # Line feed
 CTRL_M = 0x0D  # Carriage return
 CTRL_CHAR_LIMIT = 0x1F
 CHR_DEL = 0x7F
+BOM = "\ufeff"
 
 # TOML character classes (formerly the `TOMLChar` constants), as frozensets for
 # O(1) membership tests; also the stop-sets for the Source.advance_while /
@@ -102,7 +103,14 @@ class Parser:
 
     def __init__(self, string: str | bytes) -> None:
         # Input to parse
-        self._src = Source(decode(string))
+        decoded = decode(string)
+        # A single leading BOM is allowed and ignored for parsing purposes, but
+        # it is re-attached to the first item's indent below so that dumping
+        # the parsed document reproduces the original text.
+        self._leading_bom = decoded[:1] == BOM
+        if self._leading_bom:
+            decoded = decoded[1:]
+        self._src = Source(decoded)
 
         self._aot_stack: list[Key] = []
         self._nesting_depth = 0
@@ -209,6 +217,13 @@ class Parser:
                 raise self.parse_error(ParseError, str(e)) from e
 
         body.parsing(False)
+
+        if self._leading_bom:
+            if body.body:
+                first_item = body.body[0][1]
+                first_item.trivia.indent = BOM + first_item.trivia.indent
+            else:
+                body.append(None, Whitespace(BOM))
 
         return body
 

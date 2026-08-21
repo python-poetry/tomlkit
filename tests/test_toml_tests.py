@@ -20,14 +20,6 @@ FILES_LIST = os.path.join(TESTS_ROOT, "files-toml-1.1.0")
 # Each reason cites the toml-test commit that introduced the case and its
 # upstream issue, so these can be found again once the underlying bug is fixed.
 KNOWN_FAILURES = {
-    "valid/utf8-bom-01": (
-        "leading UTF-8 BOM is not stripped before parsing "
-        "(toml-test 542746b, BurntSushi/toml-test#199)"
-    ),
-    "valid/utf8-bom-02": (
-        "leading UTF-8 BOM is not stripped before parsing "
-        "(toml-test 542746b, BurntSushi/toml-test#199)"
-    ),
 }
 
 
