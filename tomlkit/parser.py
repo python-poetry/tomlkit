@@ -783,6 +783,12 @@ class Parser:
         ):
             return None
 
+        # int()/float() silently strip leading/trailing whitespace-like chars
+        # (e.g. \x0b), which would otherwise let a stray control char right
+        # after a number token slip through unnoticed.
+        if any(c.isspace() for c in clean):
+            return None
+
         try:
             return Integer(int(sign + clean, base), trivia, sign + raw)
         except ValueError:

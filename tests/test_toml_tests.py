@@ -28,18 +28,6 @@ KNOWN_FAILURES = {
         "leading UTF-8 BOM is not stripped before parsing "
         "(toml-test 542746b, BurntSushi/toml-test#199)"
     ),
-    "invalid/control/linetab-number-01": (
-        "trailing \\x0b (vertical tab) after an integer is not rejected "
-        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
-    ),
-    "invalid/control/linetab-number-02": (
-        "trailing \\x0b (vertical tab) after a float is not rejected "
-        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
-    ),
-    "invalid/control/linetab-number-03": (
-        "trailing \\x0b (vertical tab) after a hex integer is not rejected "
-        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
-    ),
     "invalid/float/arabic-zero-01": (
         "Arabic-Indic digit zero (٠) is accepted as a fraction digit "
         "(toml-test d736b6f, BurntSushi/toml-test#196)"
