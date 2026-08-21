@@ -223,7 +223,11 @@ class Parser:
                 first_item = body.body[0][1]
                 first_item.trivia.indent = BOM + first_item.trivia.indent
             else:
-                body.append(None, Whitespace(BOM))
+                # fixed=True: an ordinary (non-fixed) Whitespace is treated as
+                # discardable filler by Container's insertion logic, so a plain
+                # Whitespace(BOM) here would let new top-level items get
+                # inserted before it, moving the BOM away from the start.
+                body.append(None, Whitespace(BOM, fixed=True))
 
         return body
 
