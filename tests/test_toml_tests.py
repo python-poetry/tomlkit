@@ -16,18 +16,6 @@ from tomlkit.exceptions import TOMLKitError
 TESTS_ROOT = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
 FILES_LIST = os.path.join(TESTS_ROOT, "files-toml-1.1.0")
 
-# Cases added upstream (toml-test) that tomlkit does not yet handle correctly.
-# Each reason cites the toml-test commit that introduced the case and its
-# upstream issue, so these can be found again once the underlying bug is fixed.
-KNOWN_FAILURES = {
-}
-
-
-def _param(case_id: str, value: Any) -> Any:
-    reason = KNOWN_FAILURES.get(case_id)
-    marks = [pytest.mark.xfail(reason=reason, strict=True)] if reason else []
-    return pytest.param(value, id=case_id, marks=marks)
-
 
 def to_bool(s: str) -> bool:
     assert s in ["true", "false"]
@@ -81,7 +69,7 @@ def _build_cases() -> tuple[list[Any], list[Any], list[Any]]:
         case_id = relpath.rsplit(".", 1)[0]
 
         if relpath.startswith("invalid/encoding/"):
-            invalid_encode_cases.append(_param(case_id, full_path))
+            invalid_encode_cases.append(pytest.param(full_path, id=case_id))
         elif relpath.startswith("valid/"):
             with open(full_path, encoding="utf-8", newline="") as f:
                 toml_content = f.read()
@@ -91,13 +79,17 @@ def _build_cases() -> tuple[list[Any], list[Any], list[Any]]:
                 json_content = f.read()
 
             valid_cases.append(
-                _param(case_id, {"toml": toml_content, "json": json_content})
+                pytest.param(
+                    {"toml": toml_content, "json": json_content}, id=case_id
+                )
             )
         elif relpath.startswith("invalid/"):
             with open(full_path, encoding="utf-8", newline="") as f:
                 toml_content = f.read()
 
-            invalid_decode_cases.append(_param(case_id, {"toml": toml_content}))
+            invalid_decode_cases.append(
+                pytest.param({"toml": toml_content}, id=case_id)
+            )
 
     return valid_cases, invalid_decode_cases, invalid_encode_cases
 
