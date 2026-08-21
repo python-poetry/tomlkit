@@ -16,6 +16,58 @@ from tomlkit.exceptions import TOMLKitError
 TESTS_ROOT = os.path.join(os.path.dirname(__file__), "toml-test", "tests")
 FILES_LIST = os.path.join(TESTS_ROOT, "files-toml-1.1.0")
 
+# Cases added upstream (toml-test) that tomlkit does not yet handle correctly.
+# Each reason cites the toml-test commit that introduced the case and its
+# upstream issue, so these can be found again once the underlying bug is fixed.
+KNOWN_FAILURES = {
+    "valid/utf8-bom-01": (
+        "leading UTF-8 BOM is not stripped before parsing "
+        "(toml-test 542746b, BurntSushi/toml-test#199)"
+    ),
+    "valid/utf8-bom-02": (
+        "leading UTF-8 BOM is not stripped before parsing "
+        "(toml-test 542746b, BurntSushi/toml-test#199)"
+    ),
+    "invalid/control/linetab-number-01": (
+        "trailing \\x0b (vertical tab) after an integer is not rejected "
+        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
+    ),
+    "invalid/control/linetab-number-02": (
+        "trailing \\x0b (vertical tab) after a float is not rejected "
+        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
+    ),
+    "invalid/control/linetab-number-03": (
+        "trailing \\x0b (vertical tab) after a hex integer is not rejected "
+        "(toml-test 4f76d84, BurntSushi/toml-test#195)"
+    ),
+    "invalid/float/arabic-zero-01": (
+        "Arabic-Indic digit zero (٠) is accepted as a fraction digit "
+        "(toml-test d736b6f, BurntSushi/toml-test#196)"
+    ),
+    "invalid/float/arabic-zero-03": (
+        "Arabic-Indic digit zero (٠) is accepted in an exponent "
+        "(toml-test d736b6f, BurntSushi/toml-test#196)"
+    ),
+    "invalid/float/arabic-zero-04": (
+        "Arabic-Indic digit zero (٠) is accepted as a signed float value "
+        "(toml-test d736b6f, BurntSushi/toml-test#196)"
+    ),
+    "invalid/integer/arabic-zero-01": (
+        "Arabic-Indic digit zero (٠) is accepted as a trailing integer digit "
+        "(toml-test d736b6f, BurntSushi/toml-test#196)"
+    ),
+    "invalid/integer/arabic-zero-02": (
+        "Arabic-Indic digit zero (٠) is accepted after an underscore digit "
+        "separator (toml-test d736b6f, BurntSushi/toml-test#196)"
+    ),
+}
+
+
+def _param(case_id: str, value: Any) -> Any:
+    reason = KNOWN_FAILURES.get(case_id)
+    marks = [pytest.mark.xfail(reason=reason, strict=True)] if reason else []
+    return pytest.param(value, id=case_id, marks=marks)
+
 
 def to_bool(s: str) -> bool:
     assert s in ["true", "false"]
@@ -56,20 +108,10 @@ def _load_case_list() -> list[str]:
         return [line.strip() for line in f if line.strip()]
 
 
-def _build_cases() -> tuple[
-    list[dict[str, str]],
-    list[str],
-    list[dict[str, str]],
-    list[str],
-    list[str],
-    list[str],
-]:
+def _build_cases() -> tuple[list[Any], list[Any], list[Any]]:
     valid_cases = []
-    valid_ids = []
     invalid_decode_cases = []
-    invalid_decode_ids = []
     invalid_encode_cases = []
-    invalid_encode_ids = []
 
     for relpath in _load_case_list():
         full_path = os.path.join(TESTS_ROOT, relpath)
@@ -79,8 +121,7 @@ def _build_cases() -> tuple[
         case_id = relpath.rsplit(".", 1)[0]
 
         if relpath.startswith("invalid/encoding/"):
-            invalid_encode_cases.append(full_path)
-            invalid_encode_ids.append(case_id)
+            invalid_encode_cases.append(_param(case_id, full_path))
         elif relpath.startswith("valid/"):
             with open(full_path, encoding="utf-8", newline="") as f:
                 toml_content = f.read()
@@ -89,36 +130,22 @@ def _build_cases() -> tuple[
             with open(json_path, encoding="utf-8") as f:
                 json_content = f.read()
 
-            valid_cases.append({"toml": toml_content, "json": json_content})
-            valid_ids.append(case_id)
+            valid_cases.append(
+                _param(case_id, {"toml": toml_content, "json": json_content})
+            )
         elif relpath.startswith("invalid/"):
             with open(full_path, encoding="utf-8", newline="") as f:
                 toml_content = f.read()
 
-            invalid_decode_cases.append({"toml": toml_content})
-            invalid_decode_ids.append(case_id)
+            invalid_decode_cases.append(_param(case_id, {"toml": toml_content}))
 
-    return (
-        valid_cases,
-        valid_ids,
-        invalid_decode_cases,
-        invalid_decode_ids,
-        invalid_encode_cases,
-        invalid_encode_ids,
-    )
+    return valid_cases, invalid_decode_cases, invalid_encode_cases
 
 
-(
-    VALID_CASES,
-    VALID_IDS,
-    INVALID_DECODE_CASES,
-    INVALID_DECODE_IDS,
-    INVALID_ENCODE_CASES,
-    INVALID_ENCODE_IDS,
-) = _build_cases()
+VALID_CASES, INVALID_DECODE_CASES, INVALID_ENCODE_CASES = _build_cases()
 
 
-@pytest.mark.parametrize("toml11_valid_case", VALID_CASES, ids=VALID_IDS)
+@pytest.mark.parametrize("toml11_valid_case", VALID_CASES)
 def test_valid_decode(toml11_valid_case: dict[str, str]) -> None:
     json_val = untag(json.loads(toml11_valid_case["json"]))
     toml_val = parse(toml11_valid_case["toml"])
@@ -127,17 +154,13 @@ def test_valid_decode(toml11_valid_case: dict[str, str]) -> None:
     assert toml_val.as_string() == toml11_valid_case["toml"]
 
 
-@pytest.mark.parametrize(
-    "toml11_invalid_decode_case", INVALID_DECODE_CASES, ids=INVALID_DECODE_IDS
-)
+@pytest.mark.parametrize("toml11_invalid_decode_case", INVALID_DECODE_CASES)
 def test_invalid_decode(toml11_invalid_decode_case: dict[str, str]) -> None:
     with pytest.raises(TOMLKitError):
         parse(toml11_invalid_decode_case["toml"])
 
 
-@pytest.mark.parametrize(
-    "toml11_invalid_encode_case", INVALID_ENCODE_CASES, ids=INVALID_ENCODE_IDS
-)
+@pytest.mark.parametrize("toml11_invalid_encode_case", INVALID_ENCODE_CASES)
 def test_invalid_encode(toml11_invalid_encode_case: str) -> None:
     with open(toml11_invalid_encode_case, encoding="utf-8") as f:
         with pytest.raises((TOMLKitError, UnicodeDecodeError)):
