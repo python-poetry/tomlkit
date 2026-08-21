@@ -28,26 +28,6 @@ KNOWN_FAILURES = {
         "leading UTF-8 BOM is not stripped before parsing "
         "(toml-test 542746b, BurntSushi/toml-test#199)"
     ),
-    "invalid/float/arabic-zero-01": (
-        "Arabic-Indic digit zero (٠) is accepted as a fraction digit "
-        "(toml-test d736b6f, BurntSushi/toml-test#196)"
-    ),
-    "invalid/float/arabic-zero-03": (
-        "Arabic-Indic digit zero (٠) is accepted in an exponent "
-        "(toml-test d736b6f, BurntSushi/toml-test#196)"
-    ),
-    "invalid/float/arabic-zero-04": (
-        "Arabic-Indic digit zero (٠) is accepted as a signed float value "
-        "(toml-test d736b6f, BurntSushi/toml-test#196)"
-    ),
-    "invalid/integer/arabic-zero-01": (
-        "Arabic-Indic digit zero (٠) is accepted as a trailing integer digit "
-        "(toml-test d736b6f, BurntSushi/toml-test#196)"
-    ),
-    "invalid/integer/arabic-zero-02": (
-        "Arabic-Indic digit zero (٠) is accepted after an underscore digit "
-        "separator (toml-test d736b6f, BurntSushi/toml-test#196)"
-    ),
 }
 
 
