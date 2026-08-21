@@ -79,9 +79,7 @@ def _build_cases() -> tuple[list[Any], list[Any], list[Any]]:
                 json_content = f.read()
 
             valid_cases.append(
-                pytest.param(
-                    {"toml": toml_content, "json": json_content}, id=case_id
-                )
+                pytest.param({"toml": toml_content, "json": json_content}, id=case_id)
             )
         elif relpath.startswith("invalid/"):
             with open(full_path, encoding="utf-8", newline="") as f:
