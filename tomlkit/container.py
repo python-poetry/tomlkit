@@ -188,6 +188,68 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     return True
         return False
 
+    def _body_in_valid_order(self) -> list[tuple[Key | None, Item]]:
+        """Return the body with inline-rendering entries before header-rendering
+        ones, which is the order valid TOML always has at any single level.
+
+        A ``[header]`` followed at the same level by a bare or dotted key that is
+        not inside it cannot come from parsing: the parser places such a key in
+        the header's scope. It only comes from mutation, and takes several
+        shapes: promoting one fragment of an out-of-order dotted-key table
+        (``a.b``/``a.c`` parsed as separate fragments of super table ``a``) to an
+        ``[a.b]`` header while the siblings still render inline; the nested
+        ``doc["a"]["b"]["c"] = ...`` over ``a.b.c``/``a.b.d``; or adding a table
+        to a super table (``a.b = 1`` then ``doc["a"]["new"] = {...}``) so ``a``
+        renders a trailing ``[a.new]`` header while a later top-level value like
+        ``z = 2`` follows it. In every case the header swallows the trailing
+        inline entries on the next parse (#556).
+
+        A single cheap pass detects whether any inline entry is trapped after a
+        header; if not, the body is returned unchanged, so a validly ordered
+        document renders byte-for-byte the same and pays only one scan. When a
+        violation is present, only the trapped inline entries move.
+        """
+
+        def renders_header(item: Item) -> bool:
+            if isinstance(item, AoT):
+                return True
+            if isinstance(item, Table):
+                return not item.is_super_table() or self._renders_table_header(item)
+            return False
+
+        # Only keyed entries can be swallowed by a preceding header. Comments,
+        # whitespace and deletion placeholders all carry a ``None`` key and are
+        # trivia that a header does not capture, so they never count as a
+        # violation and never move.
+        first_header: int | None = None
+        trapped_present = False
+        for i, (k, v) in enumerate(self._body):
+            if k is None:
+                continue
+            if renders_header(v):
+                if first_header is None:
+                    first_header = i
+            elif first_header is not None:
+                trapped_present = True
+                break
+        if not trapped_present:
+            return self._body
+
+        trapped: list[tuple[Key | None, Item]] = []
+        rest: list[tuple[int, Key | None, Item]] = []
+        for i, (k, v) in enumerate(self._body):
+            if k is not None and i > first_header and not renders_header(v):
+                trapped.append((k, v))
+            else:
+                rest.append((i, k, v))
+
+        ordered: list[tuple[Key | None, Item]] = []
+        for i, k, v in rest:
+            if i == first_header:
+                ordered.extend(trapped)
+            ordered.append((k, v))
+        return ordered
+
     def _validate_out_of_order_table(self, key: Key | None = None) -> None:
         if key is None:
             for k in list(self._out_of_order_keys):
@@ -633,7 +695,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
-        for k, v in self._body:
+        body = self._body_in_valid_order()
+        for k, v in body:
             if k is not None:
                 if isinstance(v, Table):
                     if (
@@ -707,7 +770,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         elif table.trivia.indent == "\n":
             cur += table.trivia.indent
 
-        for k, v in table.value.body:
+        for k, v in table.value._body_in_valid_order():
             if isinstance(v, Table):
                 if (
                     cur.strip(" ")
