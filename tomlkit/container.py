@@ -205,6 +205,19 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return rendered + header
 
     @staticmethod
+    def _append_inline(rendered: str, inline: str) -> str:
+        if not inline:
+            return rendered
+
+        if (
+            rendered.strip(" ")
+            and not rendered.rstrip(" ").endswith(("\n", "\r"))
+            and not inline.lstrip(" ").startswith(("\n", "\r"))
+        ):
+            rendered += "\n"
+        return rendered + inline
+
+    @staticmethod
     def _join_key(prefix: str | None, key: Key) -> str:
         rendered = key.as_string()
         return f"{prefix}.{rendered}" if prefix is not None else rendered
@@ -278,7 +291,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             else:
                 pure_inline += pending_trivia
 
-        return pure_inline + mixed_inline, headers
+        return self._append_inline(pure_inline, mixed_inline), headers
 
     def _render_item_parts(
         self,

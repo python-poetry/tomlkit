@@ -1389,6 +1389,16 @@ x = 1
     assert parse(doc.as_string()).unwrap() == doc.unwrap()
 
 
+def test_add_table_to_super_table_without_trailing_newline_keeps_separator() -> None:
+    doc = parse("a.b=1\nz=2")
+    doc["a"]["new"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert output == "z=2\na.b=1\n\n[a.new]\nx = 1\n"
+    assert parse(output).unwrap() == doc.unwrap()
+
+
 def test_promoted_children_of_multiple_super_tables_preserve_roundtrip() -> None:
     doc = parse("a.x=1\nq.x=2\nr=3\n")
     doc["a"]["new"] = {"v": 1}
