@@ -1666,3 +1666,44 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_appending_scalars_without_child_tables_keeps_trailing_spacing() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/540
+    doc = parse("[t]\n\n[next]\n")
+    table = doc["t"]
+
+    for i in range(100):
+        table[f"k{i}"] = i
+
+    assert doc.as_string().startswith("[t]\nk0 = 0\nk1 = 1\n")
+    assert "k99 = 99\n\n[next]\n" in doc.as_string()
+    assert doc.unwrap()["t"]["k99"] == 99
+
+
+@pytest.mark.parametrize(
+    ("child_header", "separator"), [("[t.a]", "\n\n"), ("[[t.a]]", "\n")]
+)
+def test_appending_scalars_before_child_table(
+    child_header: str, separator: str
+) -> None:
+    # A child table keeps scalar values in the parent table's body. Find that
+    # boundary without scanning either the scalar or table region in full.
+    doc = parse(f"[t]\n{child_header}\n")
+    table = doc["t"]
+
+    for i in range(100):
+        table[f"k{i}"] = i
+
+    assert doc.as_string().startswith("[t]\nk0 = 0\nk1 = 1\n")
+    assert f"k99 = 99{separator}{child_header}\n" in doc.as_string()
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_appending_scalar_before_whitespace_and_child_table() -> None:
+    doc = parse("[t]\na = 1\n\n[t.child]\nb = 2\n")
+    table = doc["t"]
+
+    table["c"] = 3
+
+    assert doc.as_string() == "[t]\na = 1\nc = 3\n\n[t.child]\nb = 2\n"
