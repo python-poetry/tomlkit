@@ -1389,6 +1389,51 @@ x = 1
     assert parse(doc.as_string()).unwrap() == doc.unwrap()
 
 
+def test_promoted_children_of_multiple_super_tables_preserve_roundtrip() -> None:
+    doc = parse("a.x=1\nq.x=2\nr=3\n")
+    doc["a"]["new"] = {"v": 1}
+    doc["q"]["new"] = {"v": 2}
+
+    output = doc.as_string()
+
+    assert output.index("r=3") < output.index("a.x=1")
+    assert output.index("a.x=1") < output.index("q.x=2")
+    assert output.index("q.x=2") < output.index("[a.new]")
+    assert output.index("[a.new]") < output.index("[q.new]")
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_inside_table_keeps_parent_prefix() -> None:
+    doc = parse("[outer]\np.b = 1\np.c = 2\n")
+    doc["outer"]["p"]["b"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert "[outer.p.b]" in output
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_inside_aot_keeps_parent_prefix_and_siblings() -> None:
+    doc = parse("[[p]]\na.b = 1\na.c = 2\nz = 3\n")
+    doc["p"][0]["a"]["b"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert "[p.a.b]" in output
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_moves_leading_comment_with_inline_sibling() -> None:
+    doc = parse("a.b = 1\n# Documentation for a.c\na.c = 2\n[z]\nq = 3\n")
+    doc["a"]["b"] = {"x": 9}
+
+    output = doc.as_string()
+
+    assert output.index("# Documentation for a.c") < output.index("a.c = 2")
+    assert output.index("a.c = 2") < output.index("[a.b]")
+    assert parse(output).unwrap() == doc.unwrap()
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)

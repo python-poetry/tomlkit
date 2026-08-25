@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fix a mutation that makes a table render a `[header]` while a bare or dotted key that is not inside it still follows at the same level, so the header swallows that key when the output is parsed again. This happened when assigning a table over a child of an out-of-order dotted-key table (`doc["a"]["b"] = {...}` over `a.b`/`a.c`/`a.d`), the nested form `doc["a"]["b"]["c"] = ...` at any depth, and adding a table to a super table (`a.b = 1` then `doc["a"]["new"] = {...}`, leaving a following `z = 2` after `[a.new]`). The document body is now rendered with inline entries before any header entry a mutation left after them, which is the order valid TOML always has at a single level; a validly ordered document is unchanged. ([#556](https://github.com/python-poetry/tomlkit/issues/556))
+- Fix mutations that make a table render a `[header]` while a bare or dotted key that is not inside it still follows at the same level, so the header swallows that key when the output is parsed again. This includes assigning a table over a child of an out-of-order dotted-key table (`doc["a"]["b"] = {...}` over `a.b`/`a.c`/`a.d`), doing so inside a regular table or array-of-tables element, promoting children in multiple super tables, and adding a table to a super table (`a.b = 1` then `doc["a"]["new"] = {...}`). Rendering now keeps relative inline keys before absolute child headers at every scope, preserves enclosing table and array-of-tables prefixes, and moves leading comment and whitespace trivia with the key it documents. ([#556](https://github.com/python-poetry/tomlkit/issues/556))
 
 ## [0.15.1] - 2026-07-17
 
