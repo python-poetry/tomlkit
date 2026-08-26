@@ -1343,6 +1343,17 @@ def test_remove_item_from_super_table() -> None:
     assert doc.as_string() == dedent(expected)
 
 
+def test_pop_leaf_of_dotted_key_keeps_super_table_in_output() -> None:
+    content = "x.y.z = 1\n"
+    doc = parse(content)
+    doc["x"]["y"].pop("z")
+    expected = """\
+[x.y]
+"""
+    assert doc.as_string() == dedent(expected)
+    assert parse(doc.as_string()) == doc
+
+
 def test_nested_table_update_display_name() -> None:
     content = """\
     [parent]
