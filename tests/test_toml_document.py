@@ -160,6 +160,27 @@ name = "bar"
     assert "tool" in d
 
 
+def test_unwrap_keeps_key_order_after_replacing_a_value() -> None:
+    # unwrap() reads _map, which re-inserts a replaced key and so moves it
+    # last; the order has to follow the body, like dumps() and keys() do.
+    doc = parse("a = 1\nb = 2\nc = 3\n")
+    doc["b"] = 9
+
+    assert list(doc.unwrap()) == ["a", "b", "c"]
+    assert list(doc.keys()) == ["a", "b", "c"]
+    assert tomlkit.dumps(doc) == "a = 1\nb = 9\nc = 3\n"
+
+
+def test_unwrap_follows_the_body_when_a_value_becomes_a_table() -> None:
+    # here moving the key is correct: a bare key promoted to [table] has to be
+    # emitted after the inline entries, and unwrap() should agree with dumps()
+    doc = parse("a = 1\nb = 2\n")
+    doc["a"] = {"x": 1}
+
+    assert tomlkit.dumps(doc) == 'b = 2\n\n[a]\nx = 1\n'
+    assert list(doc.unwrap()) == ["b", "a"]
+
+
 def test_toml_document_unwrap() -> None:
     content = """[tool.poetry]
 name = "foo"
