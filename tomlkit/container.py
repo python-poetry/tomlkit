@@ -67,9 +67,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         # rebuilds a SingleKey from the bare string on every key only to throw
         # it away. Out-of-order keys (a tuple index) still go through
         # OutOfOrderTableProxy so their validation (and fragment merge) runs
-        # exactly as before. _map iterates in the same insertion order as the
-        # old self.items().
-        for key, idx in self._map.items():
+        # exactly as before. _map is keyed for lookup, not ordered: replacing a
+        # value re-inserts its key and moves it last, so take the order from the
+        # body index, which is what dumps() and items() follow.
+        for key, idx in sorted(
+            self._map.items(),
+            key=lambda item: item[1][0] if isinstance(item[1], tuple) else item[1],
+        ):
             if isinstance(idx, tuple):
                 value: Any = OutOfOrderTableProxy(self, idx)
             else:
