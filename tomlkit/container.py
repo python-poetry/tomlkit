@@ -424,11 +424,23 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if k in current.value._map:
                 existing = current.value.item(k)
-                if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
+                # An out-of-order table is represented by an OutOfOrderTableProxy
+                # rather than a Table. It is still table-like, so treat it as a
+                # table both for the type-conflict check and when recursing into
+                # the subtree (see #571).
+                existing_is_table = isinstance(existing, (Table, AoT, OutOfOrderTableProxy))
+                if existing_is_table != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
                     raise TOMLKitError("Redefinition of an existing table")
-                if isinstance(existing, Table) and isinstance(v, Table):
+                if isinstance(existing, OutOfOrderTableProxy) and isinstance(v, Table):
+                    # The existing table is spread across several out-of-order
+                    # headers; a duplicate (if any) is nested deeper, so keep
+                    # checking against each concrete fragment rather than
+                    # rejecting outright (see #571).
+                    for fragment in existing._tables:
+                        self._validate_table_candidate(fragment, v)
+                elif isinstance(existing, Table) and isinstance(v, Table):
                     if not existing.is_super_table() and not v.is_super_table():
                         # Both sides are concrete `[table]` definitions of the
                         # same name; the table is declared twice.

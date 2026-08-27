@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fix a regression (since 0.15.1) where a valid out-of-order child table was rejected with `KeyAlreadyPresent` when its concrete parent was declared afterwards and another table separated a later sibling child. The existing entry is an `OutOfOrderTableProxy`, which was not recognised as table-like during table-candidate validation. ([#571](https://github.com/python-poetry/tomlkit/issues/571))
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed
