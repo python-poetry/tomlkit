@@ -428,7 +428,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 # rather than a Table. It is still table-like, so treat it as a
                 # table both for the type-conflict check and when recursing into
                 # the subtree (see #571).
-                existing_is_table = isinstance(existing, (Table, AoT, OutOfOrderTableProxy))
+                existing_is_table = isinstance(
+                    existing, (Table, AoT, OutOfOrderTableProxy)
+                )
                 if existing_is_table != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
