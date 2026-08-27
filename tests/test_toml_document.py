@@ -177,7 +177,7 @@ def test_unwrap_follows_the_body_when_a_value_becomes_a_table() -> None:
     doc = parse("a = 1\nb = 2\n")
     doc["a"] = {"x": 1}
 
-    assert tomlkit.dumps(doc) == 'b = 2\n\n[a]\nx = 1\n'
+    assert tomlkit.dumps(doc) == "b = 2\n\n[a]\nx = 1\n"
     assert list(doc.unwrap()) == ["b", "a"]
 
 
