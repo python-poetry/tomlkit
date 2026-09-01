@@ -290,12 +290,19 @@ def value(raw: str) -> _Item:
 def key_value(src: str) -> tuple[Key, _Item]:
     """Parse a key-value pair from a string.
 
+    Anything other than whitespace or a comment after the pair is an error,
+    as it is when the same text is given to :func:`parse`.
+
     :Example:
 
     >>> key_value("foo = 1")
     (Key('foo'), 1)
     """
-    return Parser(src)._parse_key_value()
+    parser = Parser(src)
+    k, v = parser._parse_key_value(parse_comment=True)
+    if not parser.end():
+        raise parser.parse_error(UnexpectedCharError, char=parser._current)
+    return k, v
 
 
 def ws(src: str) -> Whitespace:
