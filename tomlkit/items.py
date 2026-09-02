@@ -2117,7 +2117,15 @@ class InlineTable(AbstractTable):
                 # Insert the deferred separator right after the previous value,
                 # not after any trailing comment/whitespace -- otherwise the
                 # comma is swallowed by a trailing comment (see #512).
-                buf = f"{buf[:last_value_end]},{buf[last_value_end:]}"
+                # Match the conventional ", " spacing used by the explicit
+                # separators already in the table. Only add the space when the
+                # text that will follow the comma (the previous value's trailing
+                # trivia plus the new key's own indent) does not already start
+                # with one, so a padded table like ``{ a = 1 }`` -- which
+                # contributes the space itself -- does not end up double-spaced.
+                following = buf[last_value_end:] + v.trivia.indent
+                separator = "," if following.startswith(" ") else ", "
+                buf = f"{buf[:last_value_end]}{separator}{buf[last_value_end:]}"
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")

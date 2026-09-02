@@ -979,6 +979,17 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_appending_to_compact_inline_table_uses_spaced_separator() -> None:
+    # A compact inline table separates its existing entries with ", " (comma +
+    # space). A key appended after parsing must use the same spacing, instead of
+    # a bare "," that leaves the table inconsistently spaced ("y = 2,z = 3").
+    doc = parse("a = {x = 1, y = 2}\n")
+    doc["a"]["z"] = 3
+
+    assert doc.as_string() == "a = {x = 1, y = 2, z = 3}\n"
+    assert parse(doc.as_string()) == {"a": {"x": 1, "y": 2, "z": 3}}
+
+
 def test_append_key_after_inline_table_trailing_comment() -> None:
     doc = parse("tbl = {\n    p = { k = 1 },\n    q = { k = 2 }  # comment\n}\n")
     doc["tbl"]["added"] = 3
