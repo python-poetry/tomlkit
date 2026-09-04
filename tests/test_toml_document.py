@@ -643,6 +643,30 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_out_of_order_table_extended_after_intervening_header() -> None:
+    # Regression test for a real-world case: an out-of-order table (here
+    # tool.ruff.lint) gets extended with a further sibling after some
+    # unrelated header (tool.poetry.source) came in between. The existing
+    # entry shows up as an OutOfOrderTableProxy rather than a bare Table, and
+    # the concrete/super type check used to treat that as a type mismatch
+    # against the new Table candidate, rejecting a document tomllib accepts.
+    source = (
+        "[tool.ruff]\n"
+        "[tool.ruff.lint.a]\n"
+        "[tool.ruff.lint]\n"
+        "[[tool.poetry.source]]\n"
+        "[tool.ruff.lint.b]\n"
+    )
+    doc = parse(source)
+    assert doc.unwrap() == {
+        "tool": {
+            "ruff": {"lint": {"a": {}, "b": {}}},
+            "poetry": {"source": [{}]},
+        }
+    }
+    assert doc.as_string() == source
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.

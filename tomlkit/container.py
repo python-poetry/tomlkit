@@ -424,7 +424,14 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if k in current.value._map:
                 existing = current.value.item(k)
-                if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
+                # An out-of-order table already merged under this key shows up
+                # as an OutOfOrderTableProxy rather than a Table/AoT instance,
+                # even though it represents one or more concrete tables. Count
+                # it as table-like here too, or a later fragment of that same
+                # table gets rejected as a type mismatch against its own kind.
+                existing_is_table = isinstance(existing, (Table, AoT, OutOfOrderTableProxy))
+                candidate_is_table = isinstance(v, (Table, AoT, OutOfOrderTableProxy))
+                if existing_is_table != candidate_is_table:
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
                     raise TOMLKitError("Redefinition of an existing table")
