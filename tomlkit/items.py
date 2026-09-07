@@ -49,6 +49,29 @@ CUSTOM_ENCODERS: list[Encoder] = []
 AT = TypeVar("AT", bound="AbstractTable")
 
 
+def _check_datetime_offset(value: datetime) -> None:
+    """Refuse a UTC offset that TOML cannot write.
+
+    TOML offset date-times follow RFC 3339, whose offset is always ``HH:MM``.
+    Python allows offsets with seconds and microseconds (``zoneinfo`` yields
+    them for historical dates, e.g. Europe/Amsterdam before 1937 is
+    ``+00:19:32``), and ``isoformat()`` renders them, producing a document
+    that no TOML parser accepts. Raise instead of writing an invalid file.
+    """
+    offset = value.utcoffset()
+    if offset is not None and (offset.seconds % 60 or offset.microseconds):
+        raise ValueError(
+            f"TOML cannot represent a UTC offset of {offset}: "
+            "it must be a whole number of minutes"
+        )
+
+
+def _check_time_offset(value: time) -> None:
+    """Refuse a tz-aware time: TOML local times carry no offset at all."""
+    if value.utcoffset() is not None:
+        raise ValueError("TOML local times cannot have a UTC offset")
+
+
 @overload
 def item(value: bool, _parent: Item | None = ..., _sort_keys: bool = ...) -> Bool: ...  # type: ignore[overload-overlap]
 
@@ -1070,6 +1093,7 @@ class DateTime(Item, datetime):
     ) -> None:
         super().__init__(trivia or Trivia())
 
+        _check_datetime_offset(self)
         self._raw = raw or self.isoformat()
 
     def unwrap(self) -> datetime:
@@ -1291,6 +1315,7 @@ class Time(Item, time):
     ) -> None:
         super().__init__(trivia or Trivia())
 
+        _check_time_offset(self)
         self._raw = raw
 
     def unwrap(self) -> time:

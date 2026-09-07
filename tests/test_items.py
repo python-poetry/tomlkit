@@ -20,6 +20,7 @@ import pytest
 from tests.util import assert_is_ppo
 from tests.util import elementary_test
 from tomlkit import api
+from tomlkit import dumps
 from tomlkit import parse
 from tomlkit.container import OutOfOrderTableProxy
 from tomlkit.exceptions import NonExistentKey
@@ -724,6 +725,58 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     doc["dt"] += timedelta(days=1)
 
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
+
+
+def test_datetime_with_sub_minute_utc_offset_is_rejected() -> None:
+    # TOML offset date-times are RFC 3339: the offset is always HH:MM, so an
+    # offset with seconds (e.g. the LMT offsets zoneinfo yields for historical
+    # dates, Europe/Amsterdam before 1937 is +00:19:32) cannot be written.
+    # It used to be rendered verbatim, producing a document that no TOML
+    # parser, including tomlkit's own, would accept.
+    amsterdam_lmt = timezone(timedelta(minutes=19, seconds=32))
+    dt = datetime(1930, 1, 1, 12, 0, tzinfo=amsterdam_lmt)
+
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        item(dt)
+
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        dumps({"dt": dt})
+
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        item(datetime(2020, 1, 1, tzinfo=timezone(timedelta(microseconds=1))))
+
+    # The same offsets can be reached from a valid item through the datetime
+    # API, so those paths must refuse as well instead of rendering garbage.
+    i = item(datetime(2020, 1, 1, 12, 0, tzinfo=timezone.utc))
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        i.astimezone(amsterdam_lmt)
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        i.replace(tzinfo=amsterdam_lmt)
+
+    # Whole-minute offsets keep working exactly as before.
+    i = item(
+        datetime(2020, 1, 1, 12, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+    )
+    assert i.as_string() == "2020-01-01T12:00:00+05:30"
+    assert i.astimezone(timezone.utc).as_string() == "2020-01-01T06:30:00+00:00"
+
+
+def test_time_with_utc_offset_is_rejected() -> None:
+    # TOML local times carry no offset at all; a tz-aware time used to be
+    # rendered as e.g. `01:02:03+00:00`, which no TOML parser accepts.
+    t = time(1, 2, 3, tzinfo=timezone.utc)
+
+    with pytest.raises(ValueError, match="cannot have a UTC offset"):
+        item(t)
+
+    with pytest.raises(ValueError, match="cannot have a UTC offset"):
+        dumps({"t": t})
+
+    i = item(time(1, 2, 3))
+    with pytest.raises(ValueError, match="cannot have a UTC offset"):
+        i.replace(tzinfo=timezone.utc)
+
+    assert i.replace(hour=4).as_string() == "04:02:03"
 
 
 def test_dates_behave_like_dates() -> None:
