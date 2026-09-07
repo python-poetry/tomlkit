@@ -37,40 +37,69 @@ def _is_empty_aot(item: Item) -> bool:
     return isinstance(item, AoT) and not item.body
 
 
-def _hoist_empty_aots(
-    body: list[tuple[Key | None, Item]],
-) -> list[tuple[Key | None, Item]]:
-    """Order a table body so emptied arrays of tables render before any header.
+def _emits_header(key: Key, table: Table) -> bool:
+    """Whether rendering ``table`` under ``key`` emits a ``[header]`` line.
+
+    A super table normally renders as nothing but the path prefix of its
+    children, so it opens no scope of its own.
+    """
+    return (
+        not table.is_super_table()
+        or (
+            any(
+                not isinstance(v, (Table, AoT, Whitespace, Null))
+                for _, v in table.value.body
+            )
+            and not key.is_dotted()
+        )
+        or (
+            any(
+                k is not None and k.is_dotted()
+                for k, v in table.value.body
+                if isinstance(v, Table)
+            )
+            and not key.is_dotted()
+        )
+    )
+
+
+def _header_less_aots(
+    body: list[tuple[Key | None, Item]], prefix: str = ""
+) -> list[tuple[str, AoT]]:
+    """Every emptied array of tables reachable without crossing a header.
 
     An emptied array of tables has no ``[[key]]`` header left to render, so it
-    falls back to the inline ``key = []`` form. TOML reads a bare key/value pair
-    into whichever table the closest preceding header opened, so one left in
-    body order after a header would be read back as a key of *that* table
-    instead of of the table it belongs to.
+    falls back to the inline ``key = []`` form -- and TOML reads a bare
+    key/value pair into whichever table the closest preceding header opened.
+    So the fallbacks of a scope have to be written at the top of that scope,
+    with a key relative to it, and that includes the ones sitting inside super
+    tables, which emit no header to separate them.
+
+    Returns ``(dotted key, aot)`` pairs, keyed relative to the scope ``body``
+    belongs to.
     """
-    first_header = next(
-        (
-            i
-            for i, (_, v) in enumerate(body)
-            if isinstance(v, (Table, AoT)) and not _is_empty_aot(v)
-        ),
-        None,
+    found: list[tuple[str, AoT]] = []
+    for k, v in body:
+        if k is None:
+            continue
+        path = f"{prefix}.{k.as_string()}" if prefix else k.as_string()
+        if _is_empty_aot(v):
+            found.append((path, v))
+        elif isinstance(v, Table) and not _emits_header(k, v):
+            found.extend(_header_less_aots(v.value.body, path))
+    return found
+
+
+def _render_empty_aot(key: str, aot: AoT) -> str:
+    """Render an emptied array of tables as an inline empty array."""
+    return (
+        f"{aot.trivia.indent}"
+        f"{decode(key)}"
+        f" = []"
+        f"{aot.trivia.comment_ws}"
+        f"{decode(aot.trivia.comment)}"
+        f"{aot.trivia.trail or chr(10)}"
     )
-    if first_header is None:
-        return body
-
-    hoisted = [
-        (k, v) for k, v in body[first_header:] if k is not None and _is_empty_aot(v)
-    ]
-    if not hoisted:
-        return body
-
-    rest = [
-        (k, v)
-        for k, v in body[first_header:]
-        if not (k is not None and _is_empty_aot(v))
-    ]
-    return body[:first_header] + hoisted + rest
 
 
 class Container(_CustomDict):  # type: ignore[type-arg]
@@ -674,10 +703,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
-        for k, v in _hoist_empty_aots(self._body):
+        for path, aot in _header_less_aots(self._body):
+            s += _render_empty_aot(path, aot)
+        for k, v in self._body:
             if k is not None:
                 if _is_empty_aot(v):
-                    s += self._render_aot(k, v)
                     continue
                 if isinstance(v, Table):
                     if (
@@ -713,24 +743,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             if prefix is not None:
                 _key = prefix + "." + _key
 
-        if (
-            not table.is_super_table()
-            or (
-                any(
-                    not isinstance(v, (Table, AoT, Whitespace, Null))
-                    for _, v in table.value.body
-                )
-                and not key.is_dotted()
-            )
-            or (
-                any(
-                    k is not None and k.is_dotted()
-                    for k, v in table.value.body
-                    if isinstance(v, Table)
-                )
-                and not key.is_dotted()
-            )
-        ):
+        header_emitted = _emits_header(key, table)
+        if header_emitted:
             open_, close = "[", "]"
             if table.is_aot_element():
                 open_, close = "[[", "]]"
@@ -751,9 +765,14 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         elif table.trivia.indent == "\n":
             cur += table.trivia.indent
 
-        for k, v in _hoist_empty_aots(table.value.body):
+        if header_emitted:
+            # A super table opens no scope, so its fallbacks belong to -- and
+            # were already written by -- the nearest enclosing header instead.
+            for path, aot in _header_less_aots(table.value.body):
+                cur += _render_empty_aot(path, aot)
+        for k, v in table.value.body:
             if k is not None and _is_empty_aot(v):
-                cur += self._render_aot(k, v)
+                continue
             elif isinstance(v, Table):
                 if (
                     cur.strip(" ")
@@ -787,24 +806,6 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return cur
 
     def _render_aot(self, key: Key, aot: AoT, prefix: str | None = None) -> str:
-        if not aot.body:
-            # An array of tables with no elements has no ``[[key]]`` header to
-            # render, so fall back to the inline empty-array form. Rendering
-            # nothing would drop the key entirely.
-            #
-            # ``prefix`` is deliberately not applied: the fallback is a bare
-            # key/value pair emitted inside the scope the prefix names, so
-            # repeating the prefix would nest the key under itself.
-            trail = aot.trivia.trail or "\n"
-            return (
-                f"{aot.trivia.indent}"
-                f"{decode(key.as_string())}"
-                f" = []"
-                f"{aot.trivia.comment_ws}"
-                f"{decode(aot.trivia.comment)}"
-                f"{trail}"
-            )
-
         _key = key.as_string()
         if prefix is not None:
             _key = prefix + "." + _key
@@ -831,9 +832,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             f"{table.trivia.trail}"
         )
 
-        for k, v in _hoist_empty_aots(table.value.body):
+        for path, aot in _header_less_aots(table.value.body):
+            cur += _render_empty_aot(path, aot)
+        for k, v in table.value.body:
             if k is not None and _is_empty_aot(v):
-                cur += self._render_aot(k, v)
+                continue
             elif isinstance(v, Table):
                 assert k is not None
                 if v.is_super_table():
