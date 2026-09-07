@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fix `dumps()` and `item()` rendering a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` yields, such as `+00:19:32`) or a tz-aware `time` as invalid TOML that no parser, including tomlkit's own, accepts; both now raise `ValueError` instead. The same check covers `DateTime.astimezone()`/`replace()` and `Time.replace()`, which build a new item from the result.
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed
