@@ -1,8 +1,8 @@
 import json
 import os
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 import pytest
 

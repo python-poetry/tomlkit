@@ -3,7 +3,6 @@ from datetime import datetime as dt
 from datetime import time
 from datetime import timedelta as td
 from datetime import timezone as tz
-from typing import Union
 
 import pytest
 
@@ -35,12 +34,12 @@ from tomlkit._utils import parse_rfc3339
         ),
     ],
 )
-def test_parse_rfc3339_datetime(string: str, expected: Union[dt, date, time]) -> None:
+def test_parse_rfc3339_datetime(string: str, expected: dt | date | time) -> None:
     assert parse_rfc3339(string) == expected
 
 
 @pytest.mark.parametrize("string, expected", [("1979-05-27", date(1979, 5, 27))])
-def test_parse_rfc3339_date(string: str, expected: Union[dt, date, time]) -> None:
+def test_parse_rfc3339_date(string: str, expected: dt | date | time) -> None:
     assert parse_rfc3339(string) == expected
 
 
@@ -48,5 +47,5 @@ def test_parse_rfc3339_date(string: str, expected: Union[dt, date, time]) -> Non
     "string, expected",
     [("12:34:56", time(12, 34, 56)), ("12:34:56.123456", time(12, 34, 56, 123456))],
 )
-def test_parse_rfc3339_time(string: str, expected: Union[dt, date, time]) -> None:
+def test_parse_rfc3339_time(string: str, expected: dt | date | time) -> None:
     assert parse_rfc3339(string) == expected
