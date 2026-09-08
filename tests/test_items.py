@@ -357,6 +357,26 @@ def test_array_behaves_like_a_list() -> None:
     )
 
 
+def test_array_slice_deletion_keeps_render_in_sync() -> None:
+    # Regression: deleting a slice must keep as_string() consistent with the
+    # list contents. Slices with stop == 0 or negative bounds previously
+    # corrupted the rendered array (e.g. `del a[:0]` wiped every element).
+    a = item([1, 2, 3])
+    del a[:0]  # deletes nothing
+    assert a == [1, 2, 3]
+    assert a.as_string() == "[1, 2, 3]"
+
+    a = item([1, 2, 3])
+    del a[-1:]
+    assert a == [1, 2]
+    assert a.as_string() == "[1, 2]"
+
+    a = item([1, 2, 3])
+    del a[:-1]
+    assert a == [3]
+    assert a.as_string() == "[3]"
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
