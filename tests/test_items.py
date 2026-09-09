@@ -311,6 +311,36 @@ def test_key_automatically_sets_proper_string_type_if_not_bare() -> None:
     assert key.t == KeyType.Basic
 
 
+@pytest.mark.parametrize(
+    "index, replacement",
+    [
+        (slice(None), [4, 5, 6]),
+        (slice(1, 2), [4, 5]),
+        (slice(1, 1), [4]),
+        (slice(1, 3), []),
+        (slice(None, None, 2), [4, 5]),
+        (slice(None, None, -1), [4, 5, 6]),
+    ],
+)
+def test_array_slice_assignment_does_not_mutate(
+    index: slice, replacement: list[int]
+) -> None:
+    content = "a = [\n    1, # first\n    2,\n    3,\n]\n"
+    doc = parse(content)
+    a = doc["a"]
+
+    with pytest.raises(ValueError, match="slice assignment is not supported"):
+        a[index] = replacement
+
+    assert a == [1, 2, 3]
+    assert doc.as_string() == content
+
+    a[-1] = 4
+    a.append(5)
+    assert a == [1, 2, 4, 5]
+    assert parse(doc.as_string())["a"] == a
+
+
 def test_array_behaves_like_a_list() -> None:
     a = item([1, 2])
 
