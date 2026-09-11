@@ -1210,6 +1210,240 @@ c.d = 2
     assert parse(doc.as_string()) == {"c": {"d": 2}, "x": {}}
 
 
+def test_replace_out_of_order_dotted_child_with_table_keeps_following_siblings() -> (
+    None
+):
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # ``a.b``/``a.c``/``a.d`` parse as out-of-order fragments of super table
+    # ``a`` (so ``doc["a"]`` is an OutOfOrderTableProxy). Replacing a child with
+    # a real table promotes that fragment to a ``[a.b]`` header, which must move
+    # past the following inline siblings instead of swallowing them.
+    content = """a.b = 1
+a.c = 2
+a.d = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.c = 2
+a.d = 3
+
+[a.b]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"c": 2, "d": 3, "b": {"x": 9}}}
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_replace_out_of_order_dotted_child_keeps_following_other_group() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # The promoted header must also clear a following dotted key of a different
+    # top-level group, not only same-group siblings.
+    content = """a.b = 1
+a.c = 2
+q.e = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.c = 2
+q.e = 3
+
+[a.b]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"c": 2, "b": {"x": 9}}, "q": {"e": 3}}
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_replace_out_of_order_dotted_child_with_empty_table_keeps_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+"""
+    doc = parse(content)
+    doc["a"]["b"] = {}
+    assert (
+        doc.as_string()
+        == """a.c = 2
+
+[a.b]
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"c": 2, "b": {}}}
+
+
+def test_replace_out_of_order_dotted_child_with_aot_keeps_sibling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    content = """a.b = 1
+a.c = 2
+"""
+    doc = parse(content)
+    arr = tomlkit.aot()
+    tbl = tomlkit.table()
+    tbl["x"] = 9
+    arr.append(tbl)
+    doc["a"]["b"] = arr
+    assert (
+        doc.as_string()
+        == """a.c = 2
+
+[[a.b]]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"c": 2, "b": [{"x": 9}]}}
+
+
+def test_replace_last_out_of_order_dotted_child_does_not_move() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # With nothing rendering inline after it, the promoted header stays in place.
+    content = """a.b = 1
+a.c = 2
+"""
+    doc = parse(content)
+    doc["a"]["c"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.b = 1
+
+[a.c]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": 1, "c": {"x": 9}}}
+
+
+def test_replace_nested_out_of_order_dotted_child_keeps_siblings() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # The promotion can happen a level down: a.b.c / a.b.d / a.e parse as
+    # out-of-order fragments and doc["a"]["b"]["c"] = {...} promotes c to
+    # [a.b.c]. The captured siblings live in other top-level a fragments, so the
+    # fix has to normalise the document body, not just the container mutated.
+    content = """a.b.c = 1
+a.b.d = 2
+a.e = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"]["c"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.b.d = 2
+a.e = 3
+
+[a.b.c]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {"a": {"b": {"c": {"x": 9}, "d": 2}, "e": 3}}
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_replace_deeply_nested_out_of_order_dotted_child_keeps_siblings() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # Same at one more level of dotting, to confirm the fix is depth-agnostic.
+    content = """a.b.c.d = 1
+a.b.c.e = 2
+a.f = 3
+"""
+    doc = parse(content)
+    doc["a"]["b"]["c"]["d"] = {"x": 9}
+    assert (
+        doc.as_string()
+        == """a.b.c.e = 2
+a.f = 3
+
+[a.b.c.d]
+x = 9
+"""
+    )
+    assert parse(doc.as_string()) == {
+        "a": {"b": {"c": {"d": {"x": 9}, "e": 2}}, "f": 3}
+    }
+
+
+def test_add_table_to_super_table_keeps_following_top_level_value() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/556
+    # Adding a table to a super table makes it render a trailing [a.new] header
+    # even though it is not out of order; a following top-level value must move
+    # before that header instead of being swallowed by it.
+    content = """a.b = 1
+z = 2
+"""
+    doc = parse(content)
+    doc["a"]["new"] = {"x": 1}
+    assert (
+        doc.as_string()
+        == """z = 2
+a.b = 1
+
+[a.new]
+x = 1
+"""
+    )
+    assert parse(doc.as_string()) == {"z": 2, "a": {"b": 1, "new": {"x": 1}}}
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_add_table_to_super_table_without_trailing_newline_keeps_separator() -> None:
+    doc = parse("a.b=1\nz=2")
+    doc["a"]["new"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert output == "z=2\na.b=1\n\n[a.new]\nx = 1\n"
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_children_of_multiple_super_tables_preserve_roundtrip() -> None:
+    doc = parse("a.x=1\nq.x=2\nr=3\n")
+    doc["a"]["new"] = {"v": 1}
+    doc["q"]["new"] = {"v": 2}
+
+    output = doc.as_string()
+
+    assert output.index("r=3") < output.index("a.x=1")
+    assert output.index("a.x=1") < output.index("q.x=2")
+    assert output.index("q.x=2") < output.index("[a.new]")
+    assert output.index("[a.new]") < output.index("[q.new]")
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_inside_table_keeps_parent_prefix() -> None:
+    doc = parse("[outer]\np.b = 1\np.c = 2\n")
+    doc["outer"]["p"]["b"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert "[outer.p.b]" in output
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_inside_aot_keeps_parent_prefix_and_siblings() -> None:
+    doc = parse("[[p]]\na.b = 1\na.c = 2\nz = 3\n")
+    doc["p"][0]["a"]["b"] = {"x": 1}
+
+    output = doc.as_string()
+
+    assert "[p.a.b]" in output
+    assert parse(output).unwrap() == doc.unwrap()
+
+
+def test_promoted_child_moves_leading_comment_with_inline_sibling() -> None:
+    doc = parse("a.b = 1\n# Documentation for a.c\na.c = 2\n[z]\nq = 3\n")
+    doc["a"]["b"] = {"x": 9}
+
+    output = doc.as_string()
+
+    assert output.index("# Documentation for a.c") < output.index("a.c = 2")
+    assert output.index("a.c = 2") < output.index("[a.b]")
+    assert parse(output).unwrap() == doc.unwrap()
+
+
 def test_replace_with_comment() -> None:
     content = 'a = "1"'
     doc = parse(content)
