@@ -643,6 +643,17 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
+    # A deep header [a.b.c] makes a.b an implicit super-table; reopening [a] and
+    # extending a.b via a dotted key (b.z) only adds a key to that super-table,
+    # it is not a table redefinition.  stdlib tomllib accepts this, so it must
+    # parse and round-trip byte-for-byte rather than raise. (The concrete-table
+    # form `[a.b]` then `[a]` `b.z=1` stays rejected, covered above.)
+    doc = parse("[a.b.c]\n[a]\nb.z = 1\n")
+    assert doc.unwrap() == {"a": {"b": {"c": {}, "z": 1}}}
+    assert doc.as_string() == "[a.b.c]\n[a]\nb.z = 1\n"
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
