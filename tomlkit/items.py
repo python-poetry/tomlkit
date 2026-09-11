@@ -1584,10 +1584,10 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         return list.__getitem__(self, key)
 
     def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
-        it = item(value, _parent=self)
-        list.__setitem__(self, key, it)
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
+        it = item(value, _parent=self)
+        list.__setitem__(self, key, it)
         if key < 0:
             key += len(self)
         self._value[self._index_map[key]].value = it
