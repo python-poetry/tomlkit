@@ -1666,3 +1666,50 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_subtable_of_dotted_key_keeps_parent_header_path() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/557
+    # A dotted-key super table nested inside a real table (`[t]` -> `a.b = 1`)
+    # renders its leaf inline, but a sub-table added under it must keep the full
+    # header path (`[t.a.c]`), not escape to the document root as `[a.c]`.
+    doc = parse("[t]\na.b = 1\n")
+    doc["t"]["a"]["c"] = {}
+
+    expected = """\
+[t]
+a.b = 1
+
+[t.a.c]
+"""
+
+    assert doc.as_string() == expected
+    assert parse(doc.as_string()) == {"t": {"a": {"b": 1, "c": {}}}}
+    # Idempotent: re-rendering the parsed result must not drift.
+    assert parse(doc.as_string()).as_string() == expected
+
+    # Chained dotted parent keeps leaves relative while the sub-table is absolute.
+    doc = parse("[t]\na.b.x = 1\n")
+    doc["t"]["a"]["b"]["c"] = {}
+
+    assert doc.as_string() == "[t]\na.b.x = 1\n\n[t.a.b.c]\n"
+    assert parse(doc.as_string()) == {"t": {"a": {"b": {"x": 1, "c": {}}}}}
+
+
+def test_subtable_of_dotted_key_in_aot_keeps_parent_header_path() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/557
+    # The same rule applies inside an array-of-tables element: a sub-table added
+    # under a dotted key must render as `[servers.a.c]`, not leak to root `[a.c]`.
+    doc = parse("[[servers]]\na.b = 1\n")
+    doc["servers"][0]["a"]["c"] = {"x": 9}
+
+    expected = """\
+[[servers]]
+a.b = 1
+
+[servers.a.c]
+x = 9
+"""
+
+    assert doc.as_string() == expected
+    assert parse(doc.as_string()) == {"servers": [{"a": {"b": 1, "c": {"x": 9}}}]}
