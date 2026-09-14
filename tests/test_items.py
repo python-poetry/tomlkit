@@ -559,6 +559,17 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_with_comment_on_last_line_round_trips() -> None:
+    # A trailing comment on the last (and only) line of a non-multiline array
+    # used to swallow the closing bracket, since "#" comments run to the end
+    # of the physical line and nothing forced a newline before the "]".
+    t = api.array()
+    t.add_line("foo", comment="bar")
+    rendered = t.as_string()
+    assert rendered == '[\n    "foo", # bar\n]'
+    assert parse(f"a = {rendered}")["a"] == ["foo"]
+
+
 def test_array_add_line_multiline_comment_is_rejected() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="line breaks"):

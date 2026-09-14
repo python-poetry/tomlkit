@@ -1464,7 +1464,18 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         if not self._multiline or not self._value:
-            return f"[{''.join(v.as_string() for v in self._iter_items())}]"
+            s = "".join(v.as_string() for v in self._iter_items())
+            # A trailing "# ..." comment swallows anything that follows it on
+            # the same line, including the closing bracket. If the rendered
+            # content ends with a comment that isn't already followed by a
+            # newline, force one so the array still round-trips as valid TOML.
+            if (
+                self._value
+                and self._value[-1].comment is not None
+                and not s.endswith(("\n", "\r"))
+            ):
+                s += "\n" + self.trivia.indent
+            return f"[{s}]"
 
         s = "[\n"
         s += "".join(
