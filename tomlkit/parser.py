@@ -4,8 +4,8 @@ import datetime
 import re
 import string
 
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE

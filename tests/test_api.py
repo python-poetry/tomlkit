@@ -2,12 +2,12 @@ import io
 import json
 import os
 
+from collections.abc import Callable
 from datetime import date
 from datetime import datetime
 from datetime import time
 from types import MappingProxyType
 from typing import Any
-from typing import Callable
 
 import pytest
 
