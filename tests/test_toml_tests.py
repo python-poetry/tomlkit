@@ -1,6 +1,10 @@
 import json
 import os
+import re
 
+from datetime import date
+from datetime import datetime
+from datetime import time
 from typing import Any
 from typing import Callable
 
@@ -9,7 +13,6 @@ import pytest
 from tomlkit import load
 from tomlkit import parse
 from tomlkit._compat import decode
-from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import TOMLKitError
 
 
@@ -23,15 +26,21 @@ def to_bool(s: str) -> bool:
     return s == "true"
 
 
+def normalize_isoformat(value: str) -> str:
+    # Python 3.9/3.10 require three or six fractional digits and a numeric UTC offset.
+    value = re.sub(r"\.(\d+)", lambda m: "." + m[1][:6].ljust(6, "0"), value)
+    return value.replace("Z", "+00:00")
+
+
 stypes: dict[str, Callable[[str], Any]] = {
     "string": str,
     "bool": to_bool,
     "integer": int,
     "float": float,
-    "datetime": parse_rfc3339,
-    "datetime-local": parse_rfc3339,
-    "date-local": parse_rfc3339,
-    "time-local": parse_rfc3339,
+    "datetime": lambda s: datetime.fromisoformat(normalize_isoformat(s)),
+    "datetime-local": lambda s: datetime.fromisoformat(normalize_isoformat(s)),
+    "date-local": date.fromisoformat,
+    "time-local": lambda s: time.fromisoformat(normalize_isoformat(s)),
 }
 
 
