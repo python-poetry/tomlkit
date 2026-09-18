@@ -1657,9 +1657,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.__delitem__(self, key)
 
         if isinstance(key, slice):
-            indices_to_remove = list(
-                range(key.start or 0, key.stop or length, key.step or 1)
-            )
+            indices_to_remove = list(range(*key.indices(length)))
         else:
             indices_to_remove = [length + key if key < 0 else key]
         for i in sorted(indices_to_remove, reverse=True):
