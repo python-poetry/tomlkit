@@ -426,7 +426,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 existing = current.value.item(k)
                 if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
-                if k.is_dotted():
+                if k.is_dotted() and not (
+                    isinstance(existing, Table) and existing.is_super_table()
+                ):
                     raise TOMLKitError("Redefinition of an existing table")
                 if isinstance(existing, Table) and isinstance(v, Table):
                     if not existing.is_super_table() and not v.is_super_table():
