@@ -172,6 +172,7 @@ name = "foo"
     assert_is_ppo(unwrapped["tool"], dict)
     assert_is_ppo(next(iter(unwrapped["tool"])), str)
     assert_is_ppo(unwrapped["tool"]["poetry"]["name"], str)
+    assert unwrapped == {"tool": {"poetry": {"name": "foo"}}}
 
 
 def test_toml_document_with_dotted_keys(example: Callable[[str], str]) -> None:
