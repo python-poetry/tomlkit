@@ -559,6 +559,14 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_comment_does_not_comment_out_closing_bracket() -> None:
+    array = api.array()
+    array.add_line("foo", comment="bar")
+    rendered = array.as_string()
+    assert rendered == '[\n    "foo", # bar\n]'
+    parse(f"array = {rendered}")
+
+
 def test_array_add_line_multiline_comment_is_rejected() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="line breaks"):
