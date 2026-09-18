@@ -44,6 +44,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self._body: list[tuple[Key | None, Item]] = []
         self._parsed = parsed
         self._table_keys: list[Key] = []
+        self._has_tables: bool = False
+        self._first_table_idx: int | None = None
         # number of already-validated fragments and the temp container they
         # were merged into, per out-of-order key; lets parse-time validation
         # resume where the previous pass stopped instead of re-merging every
@@ -150,31 +152,59 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self.append(name, table)
         return
 
+    def _is_table_header(self, k: Key | None, v: Item) -> bool:
+        if k is None:
+            return False
+
+        if isinstance(v, (Table, AoT)) and not k.is_dotted():
+            return True
+
+        if isinstance(v, Table) and k.is_dotted() and self._renders_table_header(v):
+            # A dotted-key super table renders inline (`a.b = 1`) only as
+            # long as none of its children render a `[table]` header; once
+            # one does, anything appended after it would land inside that
+            # table's scope.
+            return True
+
+        return False
+
     def _get_last_index_before_table(self) -> int:
-        last_index = -1
-        for i, (k, v) in enumerate(self._body):
+        if not self._has_tables:
+            end = len(self._body)
+        else:
+            end = None
+            if self._first_table_idx is not None:
+                if self._first_table_idx < len(self._body):
+                    k, v = self._body[self._first_table_idx]
+                    if self._is_table_header(k, v):
+                        end = self._first_table_idx
+                    else:
+                        self._first_table_idx = None
+                else:
+                    self._first_table_idx = None
+
+            if end is None:
+                for i, (k, v) in enumerate(self._body):
+                    if self._is_table_header(k, v):
+                        self._first_table_idx = i
+                        end = i
+                        break
+
+                if end is None:
+                    self._has_tables = False
+                    end = len(self._body)
+
+        for i in range(end - 1, -1, -1):
+            _, v = self._body[i]
             if isinstance(v, Null):
-                continue  # Null elements are inserted after deletion
+                continue
 
             if isinstance(v, Whitespace) and not v.is_fixed():
                 continue
 
-            if isinstance(v, (Table, AoT)) and k is not None and not k.is_dotted():
-                break
+            return i + 1
 
-            if (
-                isinstance(v, Table)
-                and k is not None
-                and k.is_dotted()
-                and self._renders_table_header(v)
-            ):
-                # A dotted-key super table renders inline (`a.b = 1`) only as
-                # long as none of its children render a `[table]` header; once
-                # one does, anything appended after it would land inside that
-                # table's scope.
-                break
-            last_index = i
-        return last_index + 1
+        return 0
 
     def _renders_table_header(self, table: Table) -> bool:
         for k, v in table.value.body:
@@ -467,6 +497,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._map[key] = len(self._body)
 
         self._body.append((key, item))
+        if isinstance(item, (Table, AoT)):
+            self._has_tables = True
+            if self._first_table_idx is None and self._is_table_header(key, item):
+                self._first_table_idx = len(self._body) - 1
         if item.is_table() and key is not None:
             self._table_keys.append(key)
 
@@ -474,6 +508,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             dict.__setitem__(self, key.key, item.value)
 
     def _remove_at(self, idx: int) -> None:
+        if self._first_table_idx is not None and idx == self._first_table_idx:
+            self._first_table_idx = None
         key = self._body[idx][0]
         assert key is not None
         index = self._map.get(key)
@@ -503,6 +539,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             raise NonExistentKey(key)
 
         self._validation_cache.clear()
+        if self._first_table_idx is not None:
+            if isinstance(idx, tuple):
+                if self._first_table_idx in idx:
+                    self._first_table_idx = None
+            elif idx == self._first_table_idx:
+                self._first_table_idx = None
+
         if isinstance(idx, tuple):
             for i in idx:
                 self._body[i] = (None, Null())
@@ -554,6 +597,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         self._map[other_key] = idx + 1
         self._body.insert(idx + 1, (other_key, item))
+        if isinstance(item, (Table, AoT)):
+            self._has_tables = True
+            if self._is_table_header(other_key, item):
+                if self._first_table_idx is None or (idx + 1) < self._first_table_idx:
+                    self._first_table_idx = idx + 1
+        elif self._first_table_idx is not None and (idx + 1) <= self._first_table_idx:
+            self._first_table_idx += 1
 
         if key is not None:
             dict.__setitem__(self, other_key.key, item.value)
@@ -602,6 +652,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         else:
             self._map[key] = idx
         self._body.insert(idx, (key, item))
+        if isinstance(item, (Table, AoT)):
+            self._has_tables = True
+            if self._is_table_header(key, item):
+                if self._first_table_idx is None or idx < self._first_table_idx:
+                    self._first_table_idx = idx
+        elif self._first_table_idx is not None and idx <= self._first_table_idx:
+            self._first_table_idx += 1
 
         dict.__setitem__(self, key.key, item.value)
 
@@ -873,6 +930,15 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     ) -> None:
         value = _item(value)
         self._validation_cache.clear()
+        if self._first_table_idx is not None:
+            if isinstance(idx, tuple):
+                if self._first_table_idx in idx:
+                    self._first_table_idx = None
+            elif idx == self._first_table_idx:
+                self._first_table_idx = None
+
+        if isinstance(value, (Table, AoT)):
+            self._has_tables = True
 
         if isinstance(idx, tuple):
             for i in idx[1:]:
@@ -1009,6 +1075,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self._body = state[1]
         self._parsed = state[2]
         self._table_keys = state[3]
+        self._has_tables = any(isinstance(v, (Table, AoT)) for _, v in self._body)
+        self._first_table_idx = None
         self._out_of_order_keys = {
             k for k, v in self._map.items() if isinstance(v, tuple)
         }
@@ -1027,6 +1095,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._has_tables = self._has_tables
+        c._first_table_idx = self._first_table_idx
         c._out_of_order_keys |= self._out_of_order_keys
 
         return c

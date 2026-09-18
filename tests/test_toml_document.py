@@ -1666,3 +1666,37 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_key_insertion_scaling() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/540
+    # Inserting many keys into a table should not exhibit quadratic performance.
+    doc = parse("[packages]\n")
+    packages = doc["packages"]
+    for i in range(1000):
+        packages[f"key_{i}"] = i
+
+    assert len(packages) == 1000
+    assert packages["key_0"] == 0
+    assert packages["key_999"] == 999
+    reparsed = parse(doc.as_string())
+    assert len(reparsed["packages"]) == 1000
+    assert reparsed["packages"]["key_500"] == 500
+
+
+def test_key_insertion_before_existing_tables() -> None:
+    doc = parse("[tbl]\nx = 1\n")
+    for i in range(5):
+        doc[f"a_{i}"] = i
+
+    lines = doc.as_string().splitlines()
+    assert lines[:5] == [f"a_{i} = {i}" for i in range(5)]
+    assert "[tbl]" in lines
+    assert parse(doc.as_string()) == {
+        "a_0": 0,
+        "a_1": 1,
+        "a_2": 2,
+        "a_3": 3,
+        "a_4": 4,
+        "tbl": {"x": 1},
+    }
