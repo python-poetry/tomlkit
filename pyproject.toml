@@ -23,14 +23,16 @@ include = [
   { path = "CHANGELOG.md", format = "sdist" },
 ]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-pytest-cov = "^4.0.0"
-PyYAML = "^6.0"
-pre-commit = "^2.20.0"
-mypy = "1.19.1"
-Sphinx = "^4.3.2"
-furo = "^2022.9.29"
+[dependency-groups]
+dev = [
+    "pytest~=7.2",
+    "pytest-cov~=4.0",
+    "PyYAML~=6.0",
+    "pre-commit~=2.20",
+    "mypy==1.19.1",
+    "Sphinx>=4.3.2,<5.0.0",
+    "furo>=2022.9.29,<2023.0.0",
+]
 
 [tool.ruff.lint]
 extend-select = [
@@ -64,5 +66,5 @@ enable_error_code = [
 ]
 
 [build-system]
-requires = ["poetry-core>=2.0.0"]
+requires = ["poetry-core>=2.2.0"]
 build-backend = "poetry.core.masonry.api"
