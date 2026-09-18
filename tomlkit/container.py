@@ -151,30 +151,43 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return
 
     def _get_last_index_before_table(self) -> int:
-        last_index = -1
-        for i, (k, v) in enumerate(self._body):
-            if isinstance(v, Null):
-                continue  # Null elements are inserted after deletion
+        # Scalar values precede tables in the body, so find their boundary
+        # without scanning either region in full.
+        low = 0
+        high = len(self._body)
+        while low < high:
+            mid = (low + high) // 2
+            if self._is_table_region(mid):
+                high = mid
+            else:
+                low = mid + 1
+        return low
 
-            if isinstance(v, Whitespace) and not v.is_fixed():
-                continue
-
-            if isinstance(v, (Table, AoT)) and k is not None and not k.is_dotted():
-                break
-
-            if (
-                isinstance(v, Table)
-                and k is not None
-                and k.is_dotted()
-                and self._renders_table_header(v)
+    def _is_table_region(self, index: int) -> bool:
+        # Nulls and non-fixed whitespace do not define the boundary. Give them
+        # the classification of the next meaningful item so whitespace between
+        # scalars stays with the scalar region, while whitespace immediately
+        # before a table stays with the table region. Trailing ignored items are
+        # always after the last scalar and therefore belong to the table side.
+        while index < len(self._body):
+            key, value = self._body[index]
+            if not (
+                isinstance(value, Null)
+                or (isinstance(value, Whitespace) and not value.is_fixed())
             ):
-                # A dotted-key super table renders inline (`a.b = 1`) only as
-                # long as none of its children render a `[table]` header; once
-                # one does, anything appended after it would land inside that
-                # table's scope.
-                break
-            last_index = i
-        return last_index + 1
+                return (
+                    isinstance(value, (Table, AoT))
+                    and key is not None
+                    and (
+                        not key.is_dotted()
+                        or (
+                            isinstance(value, Table)
+                            and self._renders_table_header(value)
+                        )
+                    )
+                )
+            index += 1
+        return True
 
     def _renders_table_header(self, table: Table) -> bool:
         for k, v in table.value.body:
@@ -393,7 +406,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     or "\n" in after_item.trivia.indent
                 ):
                     after_item.trivia.indent = "\n" + after_item.trivia.indent
-                return self._insert_at(last_index, key, item)
+                return self._insert_at(
+                    last_index,
+                    key,
+                    item,
+                    update_table_indices_only=not is_table,
+                )
             else:
                 previous_item = self._body[-1][1]
                 if isinstance(previous_item, Table) and previous_item.is_super_table():
@@ -560,7 +578,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return self
 
-    def _insert_at(self, idx: int, key: Key | str, item: Any) -> Container:
+    def _insert_at(
+        self,
+        idx: int,
+        key: Key | str,
+        item: Any,
+        update_table_indices_only: bool = False,
+    ) -> Container:
         if idx > len(self._body) - 1:
             raise ValueError(f"Unable to insert at position {idx}")
 
@@ -579,8 +603,18 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             ):
                 previous_item.trivia.trail += "\n"
 
-        # Increment indices after the current index
-        for k, v in self._map.items():
+        # Values inserted at the scalar/table boundary only shift table keys;
+        # every scalar key is before ``idx`` already. Avoid visiting all prior
+        # scalar keys on every insertion, which made bulk insertion quadratic.
+        keys = (
+            dict.fromkeys(k for k, _ in self._body[idx:] if k is not None)
+            if update_table_indices_only
+            else self._map
+        )
+        for k in keys:
+            v = self._map.get(k)
+            if v is None:
+                continue
             if isinstance(v, tuple):
                 new_indices = []
                 for v_ in v:
