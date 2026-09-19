@@ -559,6 +559,19 @@ def test_array_add_line() -> None:
     )
 
 
+def test_array_add_line_closes_the_last_line() -> None:
+    t = api.array()
+    t.add_line("foo", comment="bar")
+
+    assert (
+        t.as_string()
+        == """[
+    \"foo\", # bar
+]"""
+    )
+    assert parse(f"array = {t.as_string()}").unwrap() == {"array": ["foo"]}
+
+
 def test_array_add_line_multiline_comment_is_rejected() -> None:
     t = api.array()
     with pytest.raises(ValueError, match="line breaks"):
