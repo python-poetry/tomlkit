@@ -643,6 +643,40 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_valid_nested_out_of_order_table_after_unrelated_table() -> None:
+    content = "[a]\n[a.b.c]\n[a.b]\n[[zz]]\n[a.b.d]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {"a": {"b": {"c": {}, "d": {}}}, "zz": [{}]}
+    assert doc.as_string() == content
+
+
+def test_valid_nested_out_of_order_table_with_multiple_fragments() -> None:
+    content = "[a]\n[a.b.c]\n[a.b]\nx=1\n[a.b.d.e]\n[[zz]]\n[a.b.f]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {
+        "a": {"b": {"c": {}, "x": 1, "d": {"e": {}}, "f": {}}},
+        "zz": [{}],
+    }
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        pytest.param("[a.b]", id="duplicate-concrete-parent"),
+        pytest.param("[a.b.c]", id="duplicate-child-in-first-fragment"),
+        pytest.param("[a.b.d.e]", id="duplicate-nested-child-in-later-fragment"),
+        pytest.param("[a.b.x]", id="scalar-redefined-as-table"),
+    ],
+)
+def test_nested_out_of_order_table_rejects_collisions(header: str) -> None:
+    prefix = "[a]\n[a.b.c]\n[a.b]\nx=1\n[a.b.d.e]\n[[zz]]\n"
+    # The existing fragments are valid; only the appended header collides.
+    assert parse(prefix).as_string() == prefix
+    with pytest.raises(ParseError):
+        parse(prefix + header + "\n")
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
