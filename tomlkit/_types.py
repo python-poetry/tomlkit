@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import TypeVar
 
+from typing_extensions import Self
+
 
 WT = TypeVar("WT", bound="WrapperType")
 
@@ -39,7 +41,7 @@ if TYPE_CHECKING:  # pragma: no cover
     P = ParamSpec("P")
 
     class WrapperType(Protocol):
-        def _new(self: WT, value: Any) -> WT: ...
+        def _new(self, value: Any) -> Self: ...
 
 else:
     from collections.abc import MutableMapping
