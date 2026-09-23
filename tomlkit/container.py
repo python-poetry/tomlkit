@@ -32,6 +32,27 @@ from tomlkit.items import item as _item
 _NOT_SET = object()
 
 
+class _AoTContinuation(Null):
+    """Body entry standing in for a later run of an array-of-tables header.
+
+    ``[[a]] ... [b] ... [[a]]`` is one array whose headers are written in two
+    runs. The elements live in a single :class:`AoT` so that ``doc["a"]`` is
+    that whole array; this marker records where a later run was written so it
+    renders back in place instead of being pulled up to the first run.
+    """
+
+    def __init__(self, key: Key, aot: AoT, tables: list[Table]) -> None:
+        super().__init__()
+        self.key = key
+        self.aot = aot
+        self.tables = tables
+
+    def _getstate(  # type: ignore[override]
+        self, protocol: int = 3
+    ) -> tuple[Key, AoT, list[Table]]:
+        return self.key, self.aot, self.tables
+
+
 class Container(_CustomDict):  # type: ignore[type-arg]
     """
     A container for items within a TOMLDocument.
@@ -53,6 +74,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         # out-of-order tables doesn't have to scan every key in the map;
         # stale entries are filtered by the per-key isinstance check
         self._out_of_order_keys: set[Key] = set()
+        # whether any array of tables in this body is written as several runs;
+        # false for almost every document, and rendering skips a pass when so
+        self._has_aot_continuation = False
 
     @property
     def body(self) -> list[tuple[Key | None, Item]]:
@@ -366,8 +390,19 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     # Tried to define an AoT after a table with the same name.
                     raise KeyAlreadyPresent(key)
 
+                start = len(current.body)
                 for table in item.body:
                     current.append(table)
+
+                if self._parsed and len(current.body) > start:
+                    self._has_aot_continuation = True
+                    # A second run of ``[[key]]`` headers, separated from the
+                    # first by an unrelated table. The elements all belong to
+                    # the one array, but the run has to render back where it
+                    # was written, so remember where it starts.
+                    self._body.append(
+                        (None, _AoTContinuation(key, current, current.body[start:]))
+                    )
 
                 return self
             else:
@@ -633,7 +668,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
+        ranges = self._aot_render_ranges() if self._has_aot_continuation else {}
         for k, v in self._body:
+            if isinstance(v, _AoTContinuation):
+                start, end = ranges[id(v)]
+                if start != end:
+                    s += self._render_aot(v.key, v.aot, body=v.aot.body[start:end])
+                continue
             if k is not None:
                 if isinstance(v, Table):
                     if (
@@ -650,13 +691,58 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_aot(k, v)
+                    aot_range = ranges.get(id(v))
+                    body = None if aot_range is None else v.body[slice(*aot_range)]
+                    s += self._render_aot(k, v, body=body)
                 else:
                     s += self._render_simple_item(k, v)
             else:
                 s += self._render_simple_item(k, v)
 
         return s
+
+    def _aot_render_ranges(self) -> dict[int, tuple[int, int]]:
+        """Map each split array-of-tables run to the elements it renders.
+
+        An array of tables interrupted by an unrelated table is stored as a
+        single ``AoT`` plus one ``_AoTContinuation`` marker per later run. The
+        keys of the returned mapping are the ``id()`` of the ``AoT`` (its first
+        run) and of each marker.  An empty mapping is the common case.
+        """
+        markers: dict[int, list[_AoTContinuation]] = {}
+
+        for _, v in self._body:
+            if isinstance(v, _AoTContinuation):
+                markers.setdefault(id(v.aot), []).append(v)
+
+        ranges: dict[int, tuple[int, int]] = {}
+        for conts in markers.values():
+            aot = conts[0].aot
+            position = {id(table): i for i, table in enumerate(aot.body)}
+            live: list[_AoTContinuation] = []
+            bounds: list[int] = [0]
+            for cont in conts:
+                # Elements can have been deleted since parsing, so the run
+                # starts at the first of its elements that is still there. If
+                # none is, the run renders nothing.
+                start = next(
+                    (
+                        position[id(table)]
+                        for table in cont.tables
+                        if id(table) in position
+                    ),
+                    None,
+                )
+                if start is not None and start >= bounds[-1]:
+                    live.append(cont)
+                    bounds.append(start)
+                else:
+                    ranges[id(cont)] = (0, 0)
+            bounds.append(len(aot.body))
+            ranges[id(aot)] = (0, bounds[1])
+            for n, cont in enumerate(live):
+                ranges[id(cont)] = (bounds[n + 1], bounds[n + 2])
+        return ranges
 
     def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
         cur = ""
@@ -740,14 +826,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return cur
 
-    def _render_aot(self, key: Key, aot: AoT, prefix: str | None = None) -> str:
+    def _render_aot(
+        self,
+        key: Key,
+        aot: AoT,
+        prefix: str | None = None,
+        body: list[Table] | None = None,
+    ) -> str:
         _key = key.as_string()
         if prefix is not None:
             _key = prefix + "." + _key
 
         cur = ""
         _key = decode(_key)
-        for table in aot.body:
+        for table in aot.body if body is None else body:
             cur += self._render_aot_table(table, prefix=_key)
 
         return cur
@@ -1012,6 +1104,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         self._out_of_order_keys = {
             k for k, v in self._map.items() if isinstance(v, tuple)
         }
+        self._has_aot_continuation = any(
+            isinstance(v, _AoTContinuation) for _, v in self._body
+        )
 
         for key, item in self._body:
             if key is not None:

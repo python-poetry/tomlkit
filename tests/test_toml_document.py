@@ -1583,20 +1583,7 @@ name = "Hammer"
 [[products]]
 name = "Nail"'''
     doc = parse(content)
-    assert (
-        doc.as_string()
-        == """\
-[[products]]
-name = "Hammer"
-
-[[products]]
-name = "Nail"
-[foo]
-
-[bar]
-
-"""
-    )
+    assert doc.as_string() == content
     assert doc == {
         "products": [
             {"name": "Hammer"},
@@ -1666,3 +1653,95 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_split_array_of_tables_keeps_document_order() -> None:
+    content = """\
+[[fruit]]
+name = "apple"
+
+[settings]
+color = true
+
+[[fruit]]
+name = "banana"
+
+[[fruit]]
+name = "cherry"
+"""
+    doc = parse(content)
+
+    assert doc.as_string() == content
+    assert [table["name"] for table in doc["fruit"]] == ["apple", "banana", "cherry"]
+    assert doc.unwrap() == {
+        "fruit": [{"name": "apple"}, {"name": "banana"}, {"name": "cherry"}],
+        "settings": {"color": True},
+    }
+
+
+def test_split_array_of_tables_appends_to_the_last_run() -> None:
+    content = """\
+[[fruit]]
+name = "apple"
+
+[settings]
+color = true
+
+[[fruit]]
+name = "banana"
+"""
+    doc = parse(content)
+    table = tomlkit.table()
+    table["name"] = "cherry"
+    doc["fruit"].append(table)
+
+    assert len(doc["fruit"]) == 3
+    assert doc.as_string().index("cherry") > doc.as_string().index("color")
+
+
+def test_split_array_of_tables_after_deleting_the_start_of_a_run() -> None:
+    content = """\
+[[fruit]]
+name = "apple"
+
+[settings]
+color = true
+
+[[fruit]]
+name = "banana"
+
+[[fruit]]
+name = "cherry"
+"""
+    doc = parse(content)
+    del doc["fruit"][1]
+
+    assert (
+        doc.as_string()
+        == """\
+[[fruit]]
+name = "apple"
+
+[settings]
+color = true
+
+[[fruit]]
+name = "cherry"
+"""
+    )
+
+
+def test_split_array_of_tables_survives_a_copy() -> None:
+    content = """\
+[[fruit]]
+name = "apple"
+
+[settings]
+color = true
+
+[[fruit]]
+name = "banana"
+"""
+    doc = parse(content)
+
+    assert copy.deepcopy(doc).as_string() == content
