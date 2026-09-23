@@ -480,6 +480,30 @@ def test_parse_rejects_collisions_across_out_of_order_fragments(
         parse(content)
 
 
+def test_parse_accepts_out_of_order_child_with_intervening_table() -> None:
+    """A valid out-of-order child table must not be rejected just because its
+    concrete parent is declared afterwards and another table separates a later
+    sibling child. Regression for #571 (broken in 0.15.1): the existing entry
+    is an OutOfOrderTableProxy, which was not recognised as table-like and
+    raised a spurious KeyAlreadyPresent."""
+    content = (
+        "[tool.ruff]\n"
+        "[tool.ruff.lint.a]\n"
+        "[tool.ruff.lint]\n"
+        "[[tool.poetry.source]]\n"
+        "[tool.ruff.lint.b]\n"
+    )
+    doc = parse(content)
+    assert doc.unwrap() == {
+        "tool": {
+            "ruff": {"lint": {"a": {}, "b": {}}},
+            "poetry": {"source": [{}]},
+        }
+    }
+    # Round-trip must be preserved exactly.
+    assert dumps(doc) == content
+
+
 def test_create_super_table_with_table() -> None:
     data = {"foo": {"bar": {"a": 1}}}
     assert dumps(data) == "[foo.bar]\na = 1\n"
