@@ -686,6 +686,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 )
                 and not key.is_dotted()
             )
+            # An emptied table materialized from a dotted key would render
+            # nothing at all and silently disappear from the output; emit its
+            # explicit header instead.
+            or (
+                key.is_dotted()
+                and all(isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
+            )
         ):
             open_, close = "[", "]"
             if table.is_aot_element():
