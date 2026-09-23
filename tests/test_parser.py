@@ -246,3 +246,14 @@ def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
         value = Parser(f"a = {raw}").parse()["a"]
         assert isinstance(value, Float)
         assert value == float(raw)
+
+
+def test_bom_only_document_keeps_bom_at_start_after_mutation() -> None:
+    # A document that is just a leading BOM has no body item to attach the
+    # BOM to, so it's stored as its own Whitespace entry. If that entry isn't
+    # marked fixed=True, Container's insertion logic treats it as discardable
+    # filler and puts newly added keys before it, moving the BOM off the
+    # front of the file.
+    doc = Parser("\ufeff").parse()
+    doc["a"] = 1
+    assert doc.as_string() == "\ufeffa = 1\n"
