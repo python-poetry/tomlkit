@@ -361,6 +361,44 @@ def test_inserting_after_deletion() -> None:
     assert expected == doc.as_string()
 
 
+def test_deleting_key_added_before_a_table_restores_the_document() -> None:
+    content = """[a]
+x = 1
+"""
+
+    doc = parse(content)
+    doc["foo"] = 10
+
+    assert (
+        doc.as_string()
+        == """foo = 10
+
+[a]
+x = 1
+"""
+    )
+
+    del doc["foo"]
+
+    assert doc.as_string() == content
+
+
+def test_adding_keys_before_a_table_separates_them_from_it_once() -> None:
+    doc = parse("[a]\nx = 1\n")
+    doc["foo"] = 10
+    doc["bar"] = 11
+
+    assert (
+        doc.as_string()
+        == """foo = 10
+bar = 11
+
+[a]
+x = 1
+"""
+    )
+
+
 def test_toml_document_with_dotted_keys_inside_table(
     example: Callable[[str], str],
 ) -> None:
