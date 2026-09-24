@@ -611,3 +611,61 @@ def test_parse_accepts_nesting_at_the_depth_limit() -> None:
     assert parse(array).as_string() == array
     dotted = ".".join(["a"] * depth) + " = 1"
     assert parse(dotted).as_string() == dotted
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "0",
+        "42",
+        "1_000",
+        "5_349_221",
+        "+1_000",
+        "-1_000",
+        "0xdead_beef",
+        "0xDEAD_BEEF",
+        "0o7_7",
+        "0b1_0",
+    ],
+)
+def test_integer_preserves_grouping_underscores(raw: str) -> None:
+    assert tomlkit.integer(raw).as_string() == raw
+    assert int(tomlkit.integer(raw)) == int(raw, 0)
+
+
+@pytest.mark.parametrize("raw", ["1_000", "0xdead_beef", "+1_000", "0o7_7"])
+def test_integer_emission_matches_parse(raw: str) -> None:
+    doc = tomlkit.document()
+    doc["n"] = tomlkit.integer(raw)
+    assert tomlkit.dumps(doc) == f"n = {raw}\n"
+    # the emission path agrees with the parse path on the same literal
+    assert tomlkit.integer(raw).as_string() == tomlkit.parse(f"n = {raw}\n")["n"].as_string()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "",
+        "abc",
+        "_100",
+        "100_",
+        "1__000",
+        "01_2",
+        "0x_1",
+        "0X1",  # the parser only accepts a lowercase prefix
+        "+0x1",  # hex/oct/bin take no sign
+        "-0o7",
+        " 1",
+        "1 ",
+        "1.0",
+        "1e3",
+    ],
+)
+def test_integer_rejects_invalid_strings(raw: str) -> None:
+    with pytest.raises(ValueError):
+        tomlkit.integer(raw)
+
+
+def test_integer_from_int_unchanged() -> None:
+    assert tomlkit.integer(1000).as_string() == "1000"
+    assert int(tomlkit.integer(1000)) == 1000
