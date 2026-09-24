@@ -639,7 +639,10 @@ def test_integer_emission_matches_parse(raw: str) -> None:
     doc["n"] = tomlkit.integer(raw)
     assert tomlkit.dumps(doc) == f"n = {raw}\n"
     # the emission path agrees with the parse path on the same literal
-    assert tomlkit.integer(raw).as_string() == tomlkit.parse(f"n = {raw}\n")["n"].as_string()
+    assert (
+        tomlkit.integer(raw).as_string()
+        == tomlkit.parse(f"n = {raw}\n")["n"].as_string()
+    )
 
 
 @pytest.mark.parametrize(
