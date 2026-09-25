@@ -167,7 +167,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
 
                 for k, _v in sorted(
                     v.items(),
-                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
+                    key=lambda i: (isinstance(i[1], dict), i[0]) if _sort_keys else 1,
                 ):
                     i = item(_v, _parent=table, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):

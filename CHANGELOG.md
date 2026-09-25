@@ -43,6 +43,7 @@
 - Preserve trailing whitespace when replacing a super table, including assigning it onto itself. ([#534](https://github.com/python-poetry/tomlkit/pull/534))
 - Fix `str()` and `repr()` of out-of-order table proxies to show their merged values. ([#536](https://github.com/python-poetry/tomlkit/pull/536))
 - Reject decimal integer literals that exceed Python's integer-string conversion limit instead of coercing them to infinity. ([#538](https://github.com/python-poetry/tomlkit/pull/538))
+- Fix `item()` silently reordering a dict's keys (dict-valued keys forced last) when converting a list of dicts into an inline table, even with the default `sort_keys=False`. A misplaced parenthesis in the sort key left the reordering active regardless of `sort_keys`; concrete `[table]`/array-of-tables entries were unaffected since `Container.append` already repositions scalars ahead of table headers on its own. ([#546](https://github.com/python-poetry/tomlkit/issues/546))
 
 ## [0.15.0] - 2026-05-10
 
