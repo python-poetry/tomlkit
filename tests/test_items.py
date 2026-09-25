@@ -654,6 +654,23 @@ bar = "baz"
     )
 
 
+def test_item_list_of_dicts_as_inline_table_keeps_key_order() -> None:
+    # A dict inside a list that also holds non-dict values is rendered as an
+    # InlineTable, not a [table]/AoT. Unlike a real table header, an inline
+    # table has no ordering constraint that would justify moving dict-valued
+    # keys to the end, so with the default sort_keys=False the original key
+    # order must survive even though "a"'s value is itself a dict.
+    a = item([1, {"a": {"x": 1}, "b": 2}])
+
+    assert a.as_string() == "[1, {a = {x = 1}, b = 2}]"
+
+    # sort_keys=True should still sort, dict-valued keys last, even though
+    # "a" comes first in the input.
+    sorted_a = item([1, {"a": {"x": 1}, "b": 2}], _sort_keys=True)
+
+    assert sorted_a.as_string() == "[1, {b = 2, a = {x = 1}}]"
+
+
 def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
