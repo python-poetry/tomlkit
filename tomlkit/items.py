@@ -2223,7 +2223,13 @@ class String(str, Item):
 
     def __add__(self, other: str) -> String:
         result = super().__add__(other)
-        original = self._original + getattr(other, "_original", other)
+        if isinstance(other, String):
+            original = self._original + other._original
+        else:
+            escaped = self._t.escaped_sequences
+            original = self._original + (
+                escape_string(other, escaped) if escaped else other
+            )
 
         return self._new(result, original)
 
