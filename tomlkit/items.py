@@ -206,7 +206,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.microsecond,
             value.tzinfo,
             Trivia(),
-            value.isoformat(),
+            _format_time(value),
             fold=value.fold,
         )
     else:
@@ -232,6 +232,18 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
                 return rv
 
     raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
+
+
+def _format_time(value: time) -> str:
+    # TOML local times carry no offset or timezone (the spec's examples
+    # are plain ``07:32:00``); keeping the offset in the rendered raw
+    # value would produce a literal this library's own parser rejects.
+    # Built from the fields (not ``isoformat``/``replace``) so it stays
+    # correct even when called on a ``Time`` from ``Time._new``.
+    s = f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+    if value.microsecond:
+        s += f".{value.microsecond:06d}".rstrip("0")
+    return s
 
 
 class StringType(Enum):
@@ -1320,7 +1332,7 @@ class Time(Item, time):
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
     def _new(self, result: time) -> Time:
-        raw = result.isoformat()
+        raw = _format_time(result)
 
         return Time(
             result.hour,
