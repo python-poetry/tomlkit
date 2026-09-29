@@ -1526,6 +1526,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             it = item(el, _parent=self)
             if isinstance(it, Comment) or (add_comma and isinstance(el, Whitespace)):
                 raise ValueError(f"item type {type(it)} is not allowed in add_line")
+            self._validate_child(it)
             if not isinstance(it, Whitespace):
                 if whitespace:
                     new_values.append(Whitespace(whitespace))
@@ -1583,10 +1584,21 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
     def __getitem__(self, key: int | slice) -> Any:  # type: ignore[override]
         return list.__getitem__(self, key)
 
+    def _validate_child(self, value: Any) -> None:
+        # A table or an array of tables renders as its own ``[header]`` block,
+        # so it cannot be rendered inside the brackets of an array. Accepting
+        # one would drop the header on rendering -- the element is still
+        # reported by ``unwrap()``, but the text is no longer valid TOML.
+        if isinstance(value, Table):
+            raise ValueError("Arrays cannot contain a table")
+        if isinstance(value, AoT):
+            raise ValueError("Arrays cannot contain an array of tables")
+
     def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
         it = item(value, _parent=self)
+        self._validate_child(it)
         list.__setitem__(self, key, it)
         if key < 0:
             key += len(self)
@@ -1594,6 +1606,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def insert(self, pos: int, value: Any) -> None:  # type: ignore[override]
         it = item(value, _parent=self)
+        self._validate_child(it)
         length = len(self)
         if not isinstance(it, (Comment, Whitespace)):
             list.insert(self, pos, it)
@@ -2051,6 +2064,8 @@ class InlineTable(AbstractTable):
     def _validate_child(self, _item: Item) -> None:
         if isinstance(_item, Table):
             raise ValueError("Inline tables cannot contain a table")
+        if isinstance(_item, AoT):
+            raise ValueError("Inline tables cannot contain an array of tables")
 
     def as_string(self) -> str:
         buf = "{"
