@@ -111,6 +111,59 @@ def item(value: ItemT, _parent: Item | None = ..., _sort_keys: bool = ...) -> It
 def item(value: object, _parent: Item | None = ..., _sort_keys: bool = ...) -> Item: ...
 
 
+def _sort_container_body(container: Container) -> None:
+    """Reorder *container*'s entries by key, in place, and recurse.
+
+    Each key keeps the comment and whitespace lines that precede it, and any
+    trailing lines after the last key stay at the end. Containers holding an
+    out-of-order table (a key spread over several body positions) are left in
+    place, since their entries cannot be linearly reordered, but their nested
+    tables are still sorted.
+    """
+    out_of_order = any(isinstance(idx, tuple) for idx in container._map.values())
+
+    if not out_of_order:
+        groups: list[tuple[tuple[bool, str], list[tuple[Key | None, Item]]]] = []
+        pending: list[tuple[Key | None, Item]] = []
+        for key, value in container._body:
+            if key is None:
+                pending.append((key, value))
+            else:
+                # Same order as the plain-dict branch of ``item``: a value that
+                # renders as its own table section sorts after the inline
+                # values, so a key never ends up under a preceding section
+                # header.
+                sort_key = (isinstance(value, dict), key.key)
+                groups.append((sort_key, [*pending, (key, value)]))
+                pending = []
+
+        groups.sort(key=lambda group: group[0])
+
+        new_body: list[tuple[Key | None, Item]] = []
+        for _, entries in groups:
+            new_body.extend(entries)
+        new_body.extend(pending)
+
+        container._body[:] = new_body
+        container._map = {}
+        for index, (key, _value) in enumerate(new_body):
+            if key is not None:
+                container._map[key] = index
+
+    for _key, value in container._body:
+        _sort_item_keys(value)
+
+
+def _sort_item_keys(value: Item) -> None:
+    """Sort the keys of *value* in place if it is a table-like item."""
+    if isinstance(value, (Table, InlineTable)):
+        _sort_container_body(value.value)
+    elif isinstance(value, AoT):
+        for table in value.body:
+            if isinstance(table, (Table, InlineTable)):
+                _sort_container_body(table.value)
+
+
 def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
     """Create a TOML item from a Python object.
 
@@ -128,6 +181,16 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
     from tomlkit.container import Container
 
     if isinstance(value, Item):
+        # An already-built item is returned as is, except that ``_sort_keys``
+        # must reach the keys of a parsed table too: without this, only the
+        # top-level container (which reaches the ``dict`` branch below) gets
+        # sorted, while nested tables, inline tables and arrays of tables keep
+        # their original order (#614). A sorted copy is returned so the caller's
+        # document is not mutated.
+        if _sort_keys and isinstance(value, (Table, InlineTable, AoT)):
+            sorted_value = copy.deepcopy(value)
+            _sort_item_keys(sorted_value)
+            return sorted_value
         return value
 
     if isinstance(value, bool):
