@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from typing import Protocol
 
     from tomlkit import container
+    from tomlkit.container import Container
     from tomlkit.container import OutOfOrderTableProxy
 
     class Encoder(Protocol):
