@@ -577,6 +577,40 @@ def test_array_add_line_invalid_value() -> None:
     assert len(t) == 0
 
 
+def test_table_and_aot_in_array_are_rejected() -> None:
+    # A table renders as its own ``[header]`` block, so accepting one in an
+    # array silently drops the header on rendering while ``unwrap()`` still
+    # reports the element: the array looks fine and the text is not valid TOML.
+    table = api.table()
+    table.append("a", 1)
+    aot = parse("[[a]]\nx = 1\n\n[[a]]\nx = 2\n")["a"]
+
+    t = api.array()
+    t.append(1)
+
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        t.append(table)
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        t.insert(0, table)
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        t[0] = table
+    with pytest.raises(ValueError, match="cannot contain a table"):
+        t.add_line(table)
+
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        t.append(aot)
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        t.insert(0, aot)
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        t[0] = aot
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        t.add_line(aot)
+
+    # None of the rejected conversions may have touched the array.
+    assert t.as_string() == "[1]"
+    assert t.unwrap() == [1]
+
+
 def test_dicts_are_converted_to_tables_and_keep_order() -> None:
     t = item(
         {
@@ -1004,6 +1038,22 @@ def test_append_table_to_inline_table_raises() -> None:
         inline_table.append("table", table)
     with pytest.raises(ValueError, match="cannot contain a table"):
         inline_table["table"] = table
+
+
+def test_append_aot_to_inline_table_raises() -> None:
+    # An array of tables renders as its own ``[[header]]`` blocks, so it needs
+    # the same rejection as a bare table: accepting it drops the headers on
+    # rendering while ``unwrap()`` still reports the tables.
+    aot = parse("[[a]]\nx = 1\n\n[[a]]\nx = 2\n")["a"]
+    inline_table = api.inline_table()
+
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        inline_table.append("aot", aot)
+    with pytest.raises(ValueError, match="cannot contain an array of tables"):
+        inline_table["aot"] = aot
+
+    assert inline_table.as_string() == "{}"
+    assert inline_table.unwrap() == {}
 
 
 def test_deleting_inline_table_element_does_not_leave_trailing_separator() -> None:
