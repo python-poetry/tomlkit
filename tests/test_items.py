@@ -86,6 +86,21 @@ def tz_utc() -> tzinfo:
         return UTC()
 
 
+@pytest.fixture()
+def tz_fold() -> tzinfo:
+    class FoldTimezone(tzinfo):
+        def utcoffset(self, dt: datetime | None) -> timedelta:
+            return timedelta(hours=-5 if dt is not None and dt.fold else -4)
+
+        def tzname(self, dt: datetime | None) -> str:
+            return "FoldTimezone"
+
+        def dst(self, dt: datetime | None) -> timedelta:
+            return timedelta(0)
+
+    return FoldTimezone()
+
+
 def test_item_base_has_no_unwrap() -> None:
     trivia = Trivia(indent="\t", comment_ws=" ", comment="For unit test")
     item = Item(trivia)
@@ -756,6 +771,28 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     doc["dt"] += timedelta(days=1)
 
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
+
+
+@pytest.mark.parametrize("fold", [0, 1])
+def test_datetime_subtraction_preserves_input_fold(tz_fold: tzinfo, fold: int) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
+    other = datetime(2018, 11, 4, 5 + fold, 30, tzinfo=timezone.utc)
+
+    assert item(value) - other == value - other == timedelta(0)
+
+
+@pytest.mark.parametrize("delta", [timedelta(0), timedelta(hours=1)])
+def test_datetime_subtraction_resets_result_fold(
+    tz_fold: tzinfo, delta: timedelta
+) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=1)
+    expected = value - delta
+    result = item(value) - delta
+
+    assert isinstance(result, DateTime)
+    assert result == expected
+    assert result.fold == expected.fold == 0
+    assert result.as_string() == expected.isoformat()
 
 
 def test_dates_behave_like_dates() -> None:
