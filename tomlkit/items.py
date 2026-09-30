@@ -1149,6 +1149,7 @@ class DateTime(Item, datetime):
                 self.second,
                 self.microsecond,
                 self.tzinfo,
+                fold=self.fold,
             ).__sub__(other)
         else:
             result = super().__sub__(other)  # type: ignore[operator]
