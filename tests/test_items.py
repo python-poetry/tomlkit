@@ -872,6 +872,34 @@ def test_string_add_preserve_escapes() -> None:
     assert i.as_string() == '"foo\\"bar baz"'
 
 
+def test_string_add_escapes_appended_content() -> None:
+    # Appending a character that must be escaped in a basic string used
+    # to be spliced into the raw value unescaped, producing a literal
+    # that no TOML parser (including this one) can read back.
+    i = item("foo")
+    i += '"'
+    assert i == 'foo"'
+    assert i.as_string() == '"foo\\""'
+    assert parse(f"k = {i.as_string()}")["k"] == 'foo"'
+
+    i = item("foo")
+    i += "\\"
+    assert i == "foo\\"
+    assert i.as_string() == '"foo\\\\"'
+    assert parse(f"k = {i.as_string()}")["k"] == "foo\\"
+
+    # Appending a String splices its raw (already escaped) form.
+    j = item("foo")
+    j += item('"')
+    assert j == 'foo"'
+    assert j.as_string() == '"foo\\""'
+
+    # Plain text without special characters is appended verbatim.
+    k = item("foo")
+    k += " bar"
+    assert k.as_string() == '"foo bar"'
+
+
 def test_tables_behave_like_dicts() -> None:
     t = item({"foo": "bar"})
 
