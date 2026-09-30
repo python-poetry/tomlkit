@@ -33,6 +33,8 @@ Sphinx = "^4.3.2"
 furo = "^2022.9.29"
 
 [tool.ruff.lint]
+# Pin the base rule set; ruff 0.16 expanded its default selection.
+select = ["E4", "E7", "E9", "F"]
 extend-select = [
   "I",    # isort
   "B",    # flake8-bugbear
