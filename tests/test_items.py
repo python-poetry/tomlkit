@@ -844,6 +844,23 @@ def test_datetimes_behave_like_datetimes_fold() -> None:
     assert k.fold == 1
 
 
+def test_time_with_tzinfo_renders_as_local_time() -> None:
+    # TOML local times have no offset/timezone; a tz-aware time must
+    # render without its offset, otherwise the output is not valid TOML
+    # and this library's own parser cannot read it back. The offset is
+    # not representable in the format, so a round-trip yields the local
+    # (naive) time.
+    tz = timezone(timedelta(hours=2))
+    i = item(time(7, 32, tzinfo=tz))
+    assert i.as_string() == "07:32:00"
+    assert parse(f"t = {i.as_string()}")["t"] == time(7, 32)
+
+    # replace() keeps the same rendering rule.
+    j = i.replace(hour=13)
+    assert j.as_string() == "13:32:00"
+    assert parse(f"t = {j.as_string()}")["t"] == time(13, 32)
+
+
 def test_strings_behave_like_strs() -> None:
     i = item("foo")
 
