@@ -22,8 +22,6 @@ from typing import Any
 from typing import TypeVar
 from typing import overload
 
-from typing_extensions import Self
-
 from tomlkit._compat import PY38
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
@@ -439,7 +437,7 @@ class SingleKey(Key):
     def __hash__(self) -> int:
         return hash(self.key)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Key):
             return isinstance(other, SingleKey) and self.key == other.key
 
@@ -1601,7 +1599,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             list.insert(self, pos, it)
         if pos < 0:
             pos += length
-            pos = max(pos, 0)
+            if pos < 0:
+                pos = 0
 
         idx = 0  # insert position of the self._value list
         default_indent = " "
@@ -1759,7 +1758,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     @overload
     def append(self: AT, key: Key | str, value: Any) -> AT: ...
 
-    def append(self, key: Key | str | None, value: Any) -> Self:
+    def append(self: AT, key: Key | str | None, value: Any) -> AT:
         raise NotImplementedError
 
     @overload
@@ -1769,8 +1768,8 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def add(self: AT, key: Key | str, value: Any = ...) -> AT: ...
 
     def add(
-        self, key: Key | str | Comment | Whitespace, value: Any | None = None
-    ) -> Self:
+        self: AT, key: Key | str | Comment | Whitespace, value: Any | None = None
+    ) -> AT:
         if value is None:
             if not isinstance(key, (Comment, Whitespace)):
                 msg = "Non comment/whitespace items must have an associated key"
@@ -1783,7 +1782,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
 
         return self.append(key, value)
 
-    def remove(self, key: Key | str) -> Self:
+    def remove(self: AT, key: Key | str) -> AT:
         self._value.remove(key)
 
         if isinstance(key, Key):
@@ -1804,7 +1803,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def __str__(self) -> str:
         return str(self.value)
 
-    def copy(self) -> Self:
+    def copy(self: AT) -> AT:
         return copy.copy(self)
 
     def __repr__(self) -> str:
