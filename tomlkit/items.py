@@ -194,6 +194,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.tzinfo,
             Trivia(),
             value.isoformat().replace("+00:00", "Z"),
+            fold=value.fold,
         )
     elif isinstance(value, date):
         return Date(value.year, value.month, value.day, Trivia(), value.isoformat())
@@ -206,6 +207,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.tzinfo,
             Trivia(),
             value.isoformat(),
+            fold=value.fold,
         )
     else:
         for encoder in CUSTOM_ENCODERS:
@@ -1040,6 +1042,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> DateTime:
         return datetime.__new__(
@@ -1052,6 +1055,7 @@ class DateTime(Item, datetime):
             second,
             microsecond,
             tzinfo=tzinfo,
+            fold=fold,
         )
 
     def __init__(
@@ -1066,6 +1070,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> None:
         super().__init__(trivia or Trivia())
@@ -1164,6 +1169,7 @@ class DateTime(Item, datetime):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(
@@ -1276,8 +1282,9 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> Time:
-        return time.__new__(cls, hour, minute, second, microsecond, tzinfo)
+        return time.__new__(cls, hour, minute, second, microsecond, tzinfo, fold=fold)
 
     def __init__(
         self,
@@ -1288,6 +1295,7 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> None:
         super().__init__(trivia or Trivia())
 
@@ -1322,6 +1330,7 @@ class Time(Item, time):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(

@@ -26,6 +26,7 @@ from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
 from tomlkit.items import Bool
 from tomlkit.items import Comment
+from tomlkit.items import DateTime
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Item
@@ -35,6 +36,7 @@ from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
+from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
@@ -800,6 +802,46 @@ def test_times_behave_like_times() -> None:
     i = i.replace(hour=13)
     assert i == time(13, 34, 56)
     assert i.as_string() == "13:34:56"
+
+
+def test_times_behave_like_times_fold() -> None:
+    # issue #619: the stdlib `fold` argument is missing from these types.
+    i = item(time(12, 34, 56, fold=1))
+
+    assert i.fold == 1
+    assert i.as_string() == "12:34:56"
+
+    i = i.replace(hour=13)
+    assert i == time(13, 34, 56)
+    assert i.fold == 1
+    assert i.as_string() == "13:34:56"
+
+    j = item(time(12, 34, 56)).replace(fold=1)
+    assert j.fold == 1
+
+    # exact call shape used by pure-python (PyPy) datetime implementations
+    # in `replace()`: type(self)(..., fold=fold)
+    k = Time(12, 34, 56, 0, None, fold=1)
+    assert k.fold == 1
+
+
+def test_datetimes_behave_like_datetimes_fold() -> None:
+    # issue #619: the stdlib `fold` argument is missing from these types.
+    i = item(datetime(2018, 7, 22, 12, 34, 56, fold=1))
+
+    assert i.fold == 1
+
+    i = i.replace(year=2019, fold=1)
+    assert i.fold == 1
+
+    i = i.replace(year=2020)
+    assert i.fold == 1
+
+    j = item(datetime(2018, 7, 22, 12, 34, 56)).replace(fold=1)
+    assert j.fold == 1
+
+    k = DateTime(2018, 7, 22, 12, 34, 56, 0, None, fold=1)
+    assert k.fold == 1
 
 
 def test_strings_behave_like_strs() -> None:
