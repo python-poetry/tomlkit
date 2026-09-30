@@ -2165,14 +2165,30 @@ class InlineTable(AbstractTable):
     def _render_dotted(self, key: Key, table: Table) -> list[str]:
         """Render a table materialized from a dotted key as a list of
         ``prefix.child = value`` strings, recursing into nested dotted
-        children."""
+        children. A child that is a real sub-table (its own key is not dotted)
+        is rendered as an inline table instead, since ``prefix.child = body``
+        is not a valid value."""
         prefix = f"{key.as_string()}.{key.sep}"
-        parts = []
+        parts: list[str] = []
         for k, v in table.value.body:
             if k is None:
                 continue
-            if isinstance(v, Table):
+            if isinstance(v, Table) and k.is_dotted():
+                # Only a *dotted* child keeps the ``prefix.child`` shape; a child
+                # whose own key is not dotted is a real sub-table, which has no
+                # ``prefix.child = value`` form and must be rendered inline.
                 parts.extend(f"{prefix}{sub}" for sub in self._render_dotted(k, v))
+            elif isinstance(v, Table):
+                # A real sub-table nested under a dotted key can only be
+                # expressed inside an inline table as an inline table; rendering
+                # it as ``prefix.child = <body>`` would emit invalid TOML such as
+                # ``a.e. = f = 3``. Sub-tables nest arbitrarily deep, so convert
+                # the whole subtree.
+                value = InlineTable(_as_inline_container(v), v.trivia, new=True)
+                parts.append(
+                    f"{prefix}{k.as_string()}{k.sep}{value.as_string()}"
+                    f"{v.trivia.comment_ws}{v.trivia.comment}"
+                )
             else:
                 trail = v.trivia.trail.replace("\n", "")
                 parts.append(
@@ -2370,6 +2386,23 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
 
     def _getstate(self, protocol: int = 3) -> tuple[list[Table], str | None, bool]:
         return self._body, self.name, self._parsed
+
+
+def _as_inline_container(table: Table) -> container.Container:
+    """Return a copy of ``table``'s container with every nested table converted
+    so that it renders as an inline table.
+
+    Used to render a sub-table of a dotted key inside an inline table, where
+    the only valid representation of a nested table is another inline table.
+    """
+    from tomlkit.container import Container
+
+    result = Container()
+    for k, v in table.value.body:
+        if k is not None and isinstance(v, Table):
+            v = InlineTable(_as_inline_container(v), v.trivia, new=True)
+        result.append(k, v)
+    return result
 
 
 class Null(Item):

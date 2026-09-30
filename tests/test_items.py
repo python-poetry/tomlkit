@@ -1121,6 +1121,27 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert parse(rendered).as_string() == rendered
 
 
+def test_adding_a_sub_table_to_a_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c = 1, d = 2}\n")
+    doc["a"]["b"]["e"] = {"f": 3}
+
+    # A sub-table of a dotted key can only be expressed inside an inline table
+    # as an inline table; rendering it as its own ``b.e. = f = 3`` pair is not
+    # valid TOML. The added value must survive the round-trip.
+    rendered = doc.as_string()
+    assert parse(rendered) == {"a": {"b": {"c": 1, "e": {"f": 3}}, "d": 2}}
+    assert parse(rendered).as_string() == rendered
+
+
+def test_adding_a_nested_sub_table_to_a_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {b.c = 1}\n")
+    doc["a"]["b"]["d"] = {"e": {"f": 3}}
+
+    rendered = doc.as_string()
+    assert parse(rendered) == {"a": {"b": {"c": 1, "d": {"e": {"f": 3}}}}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
     doc = parse(
         """\
