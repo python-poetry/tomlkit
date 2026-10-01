@@ -428,6 +428,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if k in current.value._map:
                 existing = current.value.item(k)
+                # An OutOfOrderTableProxy stands for one or more tables whose
+                # definitions are spread through the document; it is not a
+                # `Table` instance, so the isinstance comparison below would
+                # wrongly report a type conflict for a valid out-of-order
+                # document. Its contents are already validated by the proxy.
+                if isinstance(existing, OutOfOrderTableProxy):
+                    continue
                 if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
