@@ -664,6 +664,38 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_out_of_order_child_split_by_unrelated_table() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/571
+    # An out-of-order child, its concrete parent declared afterwards, and a
+    # later sibling child separated by an unrelated table. tomllib accepts
+    # this, and so did tomlkit 0.13.3/0.14.0/0.15.0.
+    source = """\
+[tool.ruff]
+[tool.ruff.lint.a]
+[tool.ruff.lint]
+[[tool.poetry.source]]
+[tool.ruff.lint.b]
+"""
+    doc = parse(source)
+    assert doc.unwrap() == {
+        "tool": {
+            "ruff": {
+                "lint": {"a": {}, "b": {}},
+            },
+            "poetry": {"source": [{}]},
+        },
+    }
+    assert doc.as_string() == source
+
+
+def test_out_of_order_child_split_at_depth() -> None:
+    # Same shape, deeper and without the array-of-tables in between.
+    source = "[a.b]\n[a.b.c.d]\n[a.b.c]\n[z]\n[a.b.c.e]\n"
+    doc = parse(source)
+    assert doc.unwrap() == {"a": {"b": {"c": {"d": {}, "e": {}}}}, "z": {}}
+    assert doc.as_string() == source
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
