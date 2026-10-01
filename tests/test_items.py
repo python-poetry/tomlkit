@@ -795,6 +795,20 @@ def test_datetime_subtraction_resets_result_fold(
     assert result.as_string() == expected.isoformat()
 
 
+def test_unwrap_keeps_fold(tz_fold: tzinfo) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped = item(value).unwrap()
+
+    assert unwrapped.fold == value.fold
+    assert unwrapped.timestamp() == value.timestamp()
+
+    clock = time(1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped_time = item(clock).unwrap()
+
+    assert unwrapped_time.fold == clock.fold
+    assert unwrapped_time.utcoffset() == clock.utcoffset()
+
+
 def test_dates_behave_like_dates() -> None:
     i = item(date(2018, 7, 22))
 
