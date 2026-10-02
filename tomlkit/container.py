@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
 from tomlkit._utils import merge_dicts
+from tomlkit.exceptions import InvalidStringError
 from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.exceptions import TOMLKitError
@@ -23,6 +24,8 @@ from tomlkit.items import Item
 from tomlkit.items import Key
 from tomlkit.items import Null
 from tomlkit.items import SingleKey
+from tomlkit.items import String
+from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
@@ -847,9 +850,26 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 OutOfOrderTableProxy(self, idx)
         return True
 
+    def _item_for_key(
+        self, key: Key | str, value: object, parent: Item | None = None
+    ) -> Item:
+        # Inspect plain strings before conversion, so an explicit String keeps
+        # the caller's chosen quoting style.
+        if isinstance(value, str) and not isinstance(value, String):
+            previous = self.get(key)
+            if isinstance(previous, String) and previous._t is StringType.SLL:
+                try:
+                    return String.from_raw(value, StringType.SLL)
+                except InvalidStringError:
+                    # Some values need the escaping provided by a basic string.
+                    pass
+        return _item(value, _parent=parent)
+
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
             old_key = next(filter(lambda k: k == key, self._map))
+            if isinstance(value, str) and not isinstance(value, String):
+                value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
             self.append(key, value)
