@@ -1451,6 +1451,19 @@ def test_no_extra_minus_sign() -> None:
     assert doc.as_string() == "a = -1.5"
 
 
+def test_no_extra_plus_sign_on_negative_zero() -> None:
+    doc = parse("a = -1.5")
+    doc["a"] *= 0
+    assert doc.as_string() == "a = -0.0"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +0.0"
+
+    # Integer true division also goes through Float._new.
+    doc = parse("a = +0")
+    doc["a"] /= -1
+    assert doc.as_string() == "a = -0.0"
+
+
 def test_serialize_table_with_dotted_key() -> None:
     child = api.table()
     child.add(api.key(("b", "c")), 1)
