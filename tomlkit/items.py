@@ -2335,7 +2335,12 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
         return self._body[key]
 
     def __setitem__(self, key: slice | int, value: Any) -> None:  # type: ignore[override]
-        self._body[key] = item(value, _parent=self)
+        if isinstance(key, slice):
+            value = [item(v, _parent=self) for v in value]
+        else:
+            value = item(value, _parent=self)
+        self._body[key] = value
+        list.__setitem__(self, key, value)
 
     def __delitem__(self, key: slice | int) -> None:  # type: ignore[override]
         del self._body[key]

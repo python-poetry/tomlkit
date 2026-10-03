@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import ctypes
+import json
 import math
 import pickle
 import sys
@@ -177,6 +178,75 @@ def test_aot_set_item() -> None:
     d[0] = ["c", "C"]
     assert isinstance(d[0], Array)
     assert d[0][1] == "C"
+
+
+@pytest.mark.parametrize(
+    ("index", "replacement", "expected"),
+    [
+        (slice(0, 1), [{"x": 4}, {"x": 5}], [4, 5, 2, 3]),
+        (slice(1, 1), [{"x": 4}], [1, 4, 2, 3]),
+        (slice(-1, None), [{"x": 4}], [1, 2, 4]),
+        (slice(None, None, 2), [{"x": 4}, {"x": 5}], [4, 2, 5]),
+        (slice(None, None, -2), [{"x": 4}, {"x": 5}], [5, 2, 4]),
+        (slice(1, 2), [], [1, 3]),
+        (slice(1, 1), [], [1, 2, 3]),
+    ],
+)
+def test_aot_slice_assignment_renders_tables(
+    index: slice, replacement: list[dict[str, int]], expected: list[int]
+) -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n")
+    a = doc["a"]
+    a[index] = replacement
+    expected_tables = [{"x": value} for value in expected]
+    assert a.unwrap() == expected_tables
+    assert a == expected_tables
+    assert json.loads(json.dumps(doc)) == {"a": expected_tables}
+    assert all(isinstance(table, Table) for table in a)
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_aot_slice_assignment_accepts_tables() -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n")
+    replacement = item({"x": 3})
+    doc["a"][:1] = [replacement]
+    assert doc["a"][0] is replacement
+    assert parse(doc.as_string()).unwrap() == {"a": [{"x": 3}, {"x": 2}]}
+
+
+def test_aot_slice_assignment_invalid_length_does_not_mutate() -> None:
+    source = "[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n"
+    doc = parse(source)
+    with pytest.raises(ValueError, match="extended slice"):
+        doc["a"][::2] = [{"x": 4}]
+    assert doc.as_string() == source
+    assert doc.unwrap() == {"a": [{"x": 1}, {"x": 2}, {"x": 3}]}
+
+
+def test_aot_slice_assignment_empty() -> None:
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"][:] = []
+    assert len(doc["a"]) == 0
+    assert doc["a"].unwrap() == []
+    assert doc["a"] == []
+    assert json.loads(json.dumps(doc)) == {"a": []}
+
+
+def test_aot_integer_assignment_updates_list_storage() -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n")
+    doc["a"][0] = {"x": 3}
+    assert doc["a"] == [{"x": 3}, {"x": 2}]
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_aot_delete_after_slice_insertion() -> None:
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"][1:1] = [{"x": 2}]
+    del doc["a"][1]
+    assert doc["a"] == [{"x": 1}]
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
 
 
 def test_time_unwrap() -> None:
