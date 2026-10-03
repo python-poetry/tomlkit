@@ -404,6 +404,13 @@ class Key(abc.ABC):
         return f"<Key {self.as_string()}>"
 
 
+_BARE_KEY_CHARS = frozenset(string.ascii_letters + string.digits + "-_")
+
+
+def _is_bare_key(k: str) -> bool:
+    return bool(k) and all(c in _BARE_KEY_CHARS for c in k)
+
+
 class SingleKey(Key):
     """A single key"""
 
@@ -418,12 +425,17 @@ class SingleKey(Key):
             raise TypeError("Keys must be strings")
 
         if t is None:
-            if not k or any(
-                c not in string.ascii_letters + string.digits + "-" + "_" for c in k
+            t = KeyType.Bare if _is_bare_key(k) else KeyType.Basic
+        elif original is None:
+            # Bare and literal keys are emitted verbatim, so reject keys
+            # that cannot be written that way instead of producing TOML
+            # that parses with a different structure.
+            if t == KeyType.Bare and not _is_bare_key(k):
+                raise ValueError(f"Invalid bare key: {k!r}")
+            if t == KeyType.Literal and any(
+                c in StringType.SLL.invalid_sequences for c in k
             ):
-                t = KeyType.Basic
-            else:
-                t = KeyType.Bare
+                raise ValueError(f"Invalid literal key: {k!r}")
 
         self.t = t
         if sep is None:
