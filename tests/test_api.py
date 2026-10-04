@@ -347,6 +347,29 @@ def test_item_mixed_aray() -> None:
     assert dumps({"x": {"y": example}}).strip() == "[x]\ny = " + expected
 
 
+def test_item_inline_table_preserves_key_order() -> None:
+    # Inline tables cannot capture following keys, so their key order must be
+    # preserved under the default sort_keys=False, even when a value is itself
+    # a dict/table (#546).
+    assert (
+        tomlkit.item([[{"a": {"x": 1}, "b": 2}]]).as_string().strip()
+        == "[[{a = {x = 1}, b = 2}]]"
+    )
+
+    # Arrays of tables still render dict-valued keys last to avoid them
+    # capturing the following keys.
+    assert (
+        tomlkit.item([{"a": {"x": 1}, "b": 2}]).as_string() == "b = 2\n\n[a]\nx = 1\n"
+    )
+
+    # Sorting is purely alphabetical when explicitly requested: inline tables
+    # have no capture concern, so dict-valued keys are not forced last.
+    assert (
+        tomlkit.item([{"b": 2, "a": {"x": 1}}, "s"], _sort_keys=True).as_string()
+        == '[{a = {x = 1}, b = 2}, "s"]'
+    )
+
+
 def test_build_super_table() -> None:
     doc = tomlkit.document()
     table = tomlkit.table(True)
