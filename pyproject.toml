@@ -14,7 +14,7 @@ requires-python = ">=3.9"
 [project.urls]
 Homepage = "https://github.com/python-poetry/tomlkit"
 Repository = "https://github.com/python-poetry/tomlkit"
-Changelog = "https://github.com/python-poetry/tomlkit/CHANGELOG.md"
+Changelog = "https://github.com/python-poetry/tomlkit/blob/changelog/CHANGELOG.md"
 
 [tool.poetry]
 include = [
