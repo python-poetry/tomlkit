@@ -192,6 +192,31 @@ def test_parsed_document_can_be_dumped_with_sorted_keys() -> None:
     assert dumps(doc, sort_keys=True) == 'aaa = "foo"\nzzz = 1\n'
 
 
+def test_dumps_with_sorted_keys_recurses_into_a_parsed_document() -> None:
+    # sort_keys used to sort only the top level of a parsed document, leaving
+    # nested tables, inline tables and arrays of tables in their original
+    # order (#614); the same option on a plain dict already sorted recursively.
+    doc = loads(
+        "[zeta]\nb = 2\na = 1\n\n"
+        "[alpha]\ninl = { z = 1, a = 2 }\n\n"
+        "[[items]]\nz = 1\na = 2\n"
+    )
+    original = dumps(doc)
+
+    assert dumps(doc, sort_keys=True) == (
+        "[[items]]\na = 2\nz = 1\n\n"
+        "[alpha]\ninl = { a = 2, z = 1 }\n\n"
+        "[zeta]\na = 1\nb = 2\n\n"
+    )
+    # A scalar keeps its place before a sub-table section it precedes, so the
+    # sorted output stays valid TOML rather than folding the key into the table.
+    nested = loads("[t]\nz = 1\n[t.sub]\nx = 1\n")
+    assert dumps(nested, sort_keys=True) == "[t]\nz = 1\n[t.sub]\nx = 1\n"
+
+    # Dumping with sorted keys must not mutate the document.
+    assert dumps(doc) == original
+
+
 def test_dumps_weird_object() -> None:
     with pytest.raises(TypeError):
         dumps(object())  # type: ignore[arg-type]
