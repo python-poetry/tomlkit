@@ -113,11 +113,11 @@ def test_item_base_has_no_unwrap() -> None:
 
 
 def test_integer_unwrap() -> None:
-    elementary_test(item(666), int)
+    elementary_test(item(666), int, 666)
 
 
 def test_float_unwrap() -> None:
-    elementary_test(item(2.78), float)
+    elementary_test(item(2.78), float, 2.78)
 
 
 @pytest.mark.skipif(
@@ -133,25 +133,25 @@ def test_float_is_not_a_sequence() -> None:
 
 
 def test_false_unwrap() -> None:
-    elementary_test(item(False), bool)
+    elementary_test(item(False), bool, False)
 
 
 def test_true_unwrap() -> None:
-    elementary_test(item(True), bool)
+    elementary_test(item(True), bool, True)
 
 
 def test_datetime_unwrap() -> None:
     dt = datetime.now(tz=timezone.utc)
-    elementary_test(item(dt), datetime)
+    elementary_test(item(dt), datetime, dt)
 
 
 def test_string_unwrap() -> None:
-    elementary_test(item("hello"), str)
+    elementary_test(item("hello"), str, "hello")
 
 
 def test_null_unwrap() -> None:
     n = Null()
-    elementary_test(n, type(None))
+    elementary_test(n, type(None), None)
 
 
 def test_aot_unwrap() -> None:
@@ -164,6 +164,7 @@ def test_aot_unwrap() -> None:
             vu = du[ku]
             assert_is_ppo(ku, str)
             assert_is_ppo(vu, str)
+    assert unwrapped == [{"a": "A"}, {"b": "B"}]
 
 
 def test_aot_set_item() -> None:
@@ -181,12 +182,12 @@ def test_aot_set_item() -> None:
 
 def test_time_unwrap() -> None:
     t = time(3, 8, 14)
-    elementary_test(item(t), time)
+    elementary_test(item(t), time, t)
 
 
 def test_date_unwrap() -> None:
     d = date.today()
-    elementary_test(item(d), date)
+    elementary_test(item(d), date, d)
 
 
 def test_array_unwrap() -> None:
@@ -200,6 +201,7 @@ def test_array_unwrap() -> None:
     assert_is_ppo(a_unwrapped[0], int)
     assert_is_ppo(a_unwrapped[1], float)
     assert_is_ppo(a_unwrapped[2], bool)
+    assert a_unwrapped == [666, 2.78, False]
 
 
 def test_abstract_table_unwrap() -> None:
@@ -214,6 +216,7 @@ def test_abstract_table_unwrap() -> None:
         vu = sub_table[ku]
         assert_is_ppo(ku, str)
         assert_is_ppo(vu, str)
+    assert table_unwrapped == {"table": {"foo": "bar"}, "baz": "borg"}
 
 
 def test_key_comparison() -> None:

@@ -52,6 +52,11 @@ def assert_is_ppo(v_unwrapped: object, unwrapped_type: type) -> None:
     assert isinstance(v_unwrapped, unwrapped_type)
 
 
-def elementary_test(v: Item, unwrapped_type: type) -> None:
+_DEFAULT = object()
+
+
+def elementary_test(v: Item, unwrapped_type: type, expected: object = _DEFAULT) -> None:
     v_unwrapped = v.unwrap()
     assert_is_ppo(v_unwrapped, unwrapped_type)
+    if expected is not _DEFAULT:
+        assert v_unwrapped == expected
