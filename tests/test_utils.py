@@ -33,6 +33,18 @@ from tomlkit._utils import parse_rfc3339
                 tzinfo=tz(td(seconds=-7 * 3600), "-07:00"),
             ),
         ),
+        (
+            "1979-05-27T07:32:00+05:30",
+            dt(
+                1979,
+                5,
+                27,
+                7,
+                32,
+                0,
+                tzinfo=tz(td(seconds=5 * 3600 + 30 * 60), "+05:30"),
+            ),
+        ),
     ],
 )
 def test_parse_rfc3339_datetime(string: str, expected: Union[dt, date, time]) -> None:
