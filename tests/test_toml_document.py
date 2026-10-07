@@ -1680,10 +1680,45 @@ a.b = 1
 """
 
     assert doc.as_string() == expected
-    assert parse(doc.as_string()) == {"z": 2, "a": {"b": 1, "c": {}}}
-
     # A purely inline dotted key still gets the scalar appended after it.
     doc = parse("a.b = 1\n")
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_out_of_order_table_header_after_dotted_keys() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/632
+    content = """\
+[a]
+b.c = 1
+b.d = 2
+
+[x]
+y = 1
+
+[a.b.e]
+f = 3
+"""
+    doc = parse(content)
+    assert doc.unwrap() == {
+        "a": {"b": {"c": 1, "d": 2, "e": {"f": 3}}},
+        "x": {"y": 1},
+    }
+    assert doc.as_string() == content
+
+
+def test_reject_out_of_order_concrete_table_redefinition() -> None:
+    # Redefining an explicit concrete table header after an intermediate table must still fail.
+    content = """\
+[a.b]
+c = 1
+
+[x]
+y = 1
+
+[a.b]
+d = 2
+"""
+    with pytest.raises(ParseError, match='Key "b" already exists'):
+        parse(content)

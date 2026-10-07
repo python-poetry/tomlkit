@@ -421,18 +421,29 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._validate_out_of_order_table(key)
         return self
 
-    def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
+    def _validate_table_candidate(
+        self, current: Table | OutOfOrderTableProxy, candidate: Table
+    ) -> None:
+        curr_container = (
+            current._internal_container
+            if isinstance(current, OutOfOrderTableProxy)
+            else current.value
+        )
         for k, v in candidate.value.body:
             if k is None:
                 continue
 
-            if k in current.value._map:
-                existing = current.value.item(k)
-                if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
+            if k in curr_container._map:
+                existing = curr_container.item(k)
+                if isinstance(
+                    existing, (Table, AoT, OutOfOrderTableProxy)
+                ) != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
                 if k.is_dotted():
                     raise TOMLKitError("Redefinition of an existing table")
-                if isinstance(existing, Table) and isinstance(v, Table):
+                if isinstance(existing, (Table, OutOfOrderTableProxy)) and isinstance(
+                    v, Table
+                ):
                     if not existing.is_super_table() and not v.is_super_table():
                         # Both sides are concrete `[table]` definitions of the
                         # same name; the table is declared twice.
@@ -446,13 +457,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 # Even when the candidate key itself is not dotted, an
                 # existing dotted key may already use it as a prefix —
                 # e.g.  [a] b.c=1 then [a.b] d=2  (b prefixes b.c).
-                for existing_key in current.value._map:
+                for existing_key in curr_container._map:
                     if existing_key.is_dotted() and next(iter(existing_key)) == k:
                         raise TOMLKitError("Redefinition of an existing table")
                 continue
 
             head = next(iter(k))
-            if head in current.value._map:
+            if head in curr_container._map:
                 raise TOMLKitError("Redefinition of an existing table")
 
     def _raw_append(self, key: Key | None, item: Item) -> None:
@@ -1259,6 +1270,11 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         if key not in self:
             self[key] = default
         return self[key]
+
+    def is_super_table(self) -> bool:
+        if not self._tables:
+            return False
+        return all(t.is_super_table() for t in self._tables)
 
 
 def ends_with_whitespace(it: Any) -> bool:
