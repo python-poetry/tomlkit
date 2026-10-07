@@ -1,7 +1,10 @@
+import math
 import sys
 
 import pytest
 
+from tomlkit import dumps
+from tomlkit import parse
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
 from tomlkit.exceptions import InvalidNumberError
@@ -246,3 +249,59 @@ def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
         value = Parser(f"a = {raw}").parse()["a"]
         assert isinstance(value, Float)
         assert value == float(raw)
+
+
+@pytest.mark.parametrize("sign", ["", "+", "-"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Inf",
+        "iNf",
+        "inF",
+        "INf",
+        "InF",
+        "iNF",
+        "INF",
+        "Nan",
+        "nAn",
+        "naN",
+        "NAn",
+        "NaN",
+        "nAN",
+        "NAN",
+    ],
+)
+def test_parser_rejects_non_lowercase_special_floats(raw: str, sign: str) -> None:
+    with pytest.raises(ParseError):
+        parse(f"v = {sign}{raw}")
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("inf", math.inf),
+        ("+inf", math.inf),
+        ("-inf", -math.inf),
+        ("nan", math.nan),
+        ("+nan", math.nan),
+        ("-nan", math.nan),
+        ("0E2", 0.0),
+        ("+0E+2", 0.0),
+        ("-0E-2", -0.0),
+        ("1_2.3_4E+2", 1234.0),
+        ("0xDe_Ad", 0xDEAD),
+        ("0o7_5", 0o75),
+        ("0b1_0", 0b10),
+        ("1_000", 1000),
+    ],
+)
+def test_parser_preserves_valid_numeric_literals(raw: str, expected: float) -> None:
+    content = f"v = {raw}  # number\n"
+    document = parse(content)
+    value = document["v"]
+    assert isinstance(value, (Integer, Float))
+    if math.isnan(expected):
+        assert math.isnan(value)
+    else:
+        assert value == expected
+    assert dumps(document) == content
