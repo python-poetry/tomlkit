@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed
