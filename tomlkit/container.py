@@ -1227,7 +1227,11 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
 
     def _remove_table(self, table: Table) -> None:
         """Remove table from the parent container"""
-        self._tables.remove(table)
+        pos = next(i for i, t in enumerate(self._tables) if t is table)
+        del self._tables[pos]
+        # Later tables shift down by one; keep the key -> table index map valid.
+        for indices in self._tables_map.values():
+            indices[:] = [i - 1 if i > pos else i for i in indices if i != pos]
         for idx, body_item in enumerate(self._container._body):
             if body_item[1] is table:
                 self._container._remove_at(idx)
@@ -1238,7 +1242,7 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         if _key not in self._tables_map:
             raise NonExistentKey(key)
 
-        for i in reversed(self._tables_map[_key]):
+        for i in reversed(list(self._tables_map[_key])):
             table = self._tables[i]
             del table[key]
             if not table and len(self._tables) > 1:

@@ -1592,6 +1592,36 @@ d = 4
     )
 
 
+def test_delete_keys_through_the_same_out_of_order_table() -> None:
+    content = """\
+[tool.a]
+x = 1
+[project]
+name = "p"
+[tool.b]
+y = 2
+[other]
+[tool.c]
+z = 3
+"""
+    doc = parse(content)
+    tool = doc["tool"]
+    del tool["a"]
+    del tool["b"]
+    assert (
+        doc.as_string()
+        == """\
+[project]
+name = "p"
+[other]
+[tool.c]
+z = 3
+"""
+    )
+    tool["c"] = {"w": 4}
+    assert doc["tool"] == {"c": {"w": 4}}
+
+
 def test_parse_aot_without_ending_newline() -> None:
     content = '''\
 [[products]]
