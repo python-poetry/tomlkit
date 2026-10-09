@@ -725,6 +725,34 @@ def test_integers_behave_like_ints() -> None:
     assert doc.as_string() == "int = +35"
 
 
+@pytest.mark.parametrize("base, exponent", [(2, -1), (2, -3), (-2, -3), (2, 3), (0, 0)])
+@pytest.mark.parametrize("wrapped_base", [True, False])
+def test_integer_power_preserves_result_type(
+    base: int, exponent: int, wrapped_base: bool
+) -> None:
+    # 2026-10-09: Negative integer powers produce floating-point TOML values.
+    result = item(base) ** exponent if wrapped_base else base ** item(exponent)
+    expected = base**exponent
+
+    assert result == expected
+    assert isinstance(result, type(item(expected)))
+    assert result.unwrap() == expected
+    assert parse("value = " + result.as_string())["value"] == expected
+
+
+def test_integer_power_allows_reflected_float_operation() -> None:
+    # 2026-10-09: Let Python dispatch fractional exponents to the float operand.
+    exponent: Any = 0.5
+    assert item(4) ** exponent == 2.0
+    assert exponent ** item(2) == 0.25
+
+
+def test_integer_modular_power_still_returns_integer() -> None:
+    # 2026-10-09: Keep the integer result of modular exponentiation.
+    assert pow(item(2), -1, 5) == 3
+    assert isinstance(pow(item(2), -1, 5), Integer)
+
+
 def test_floats_behave_like_floats() -> None:
     i = item(34.12)
 

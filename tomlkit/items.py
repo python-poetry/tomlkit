@@ -727,10 +727,15 @@ class Integer(Item, _CustomInt):
     def __pos__(self) -> Integer:
         return self._new(int.__pos__(self))
 
-    def __pow__(self, other: int, mod: int | None = None) -> Integer:  # type: ignore[override]
+    def __pow__(self, other: int, mod: int | None = None) -> Integer | Float:  # type: ignore[override]
         result = (
             int.__pow__(self, other) if mod is None else int.__pow__(self, other, mod)
         )
+        # 2026-10-09: Preserve float results and reflected numeric dispatch.
+        if result is NotImplemented:
+            return result  # type: ignore[return-value]
+        if isinstance(result, float):
+            return Float._new(self, result)  # type: ignore[arg-type]
         return self._new(result)
 
     def __radd__(self, other: object) -> Integer:
@@ -778,10 +783,15 @@ class Integer(Item, _CustomInt):
     def __round__(self, ndigits: int = 0) -> Integer:  # type: ignore[override]
         return self._new(int.__round__(self, ndigits))
 
-    def __rpow__(self, other: int, mod: int | None = None) -> Integer:  # type: ignore[misc]
+    def __rpow__(self, other: int, mod: int | None = None) -> Integer | Float:  # type: ignore[misc]
         result = (
             int.__rpow__(self, other) if mod is None else int.__rpow__(self, other, mod)
         )
+        # 2026-10-09: Preserve float results and reflected numeric dispatch.
+        if result is NotImplemented:
+            return result  # type: ignore[no-any-return]
+        if isinstance(result, float):
+            return Float._new(self, result)  # type: ignore[arg-type]
         return self._new(result)
 
     def __rrshift__(self, other: object) -> Integer:
