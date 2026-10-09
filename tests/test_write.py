@@ -1,7 +1,12 @@
+import sys
+
 from typing import Any
+
+import pytest
 
 from tomlkit import dumps
 from tomlkit import loads
+from tomlkit import string
 
 
 def test_write_backslash() -> None:
@@ -13,6 +18,31 @@ def test_write_backslash() -> None:
     assert expected == dumps(d)
     result: Any = loads(dumps(d))["foo"]
     assert result == "\\e\u25e6\r"
+
+
+def test_write_escape_char_as_unicode_escape() -> None:
+    # ``\e`` is TOML 1.1 only, so ESC must be written as ``\u001b``.
+    d = {"a\x1bk": "a\x1bb", "m": string("x\x1by\n", multiline=True)}
+    expected = '"a\\u001bk" = "a\\u001bb"\nm = """x\\u001by\n"""\n'
+
+    assert expected == dumps(d)
+    assert loads(dumps(d)) == d
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="tomllib requires 3.11+")
+def test_write_escape_char_readable_by_tomllib() -> None:
+    import tomllib
+
+    d = {"a\x1bk": "a\x1bb", "m": string("x\x1by\n", multiline=True)}
+
+    assert tomllib.loads(dumps(d)) == d
+
+
+def test_parse_escape_char_shorthand() -> None:
+    doc = loads('a = "\\e"\nb = """\\e"""\n')
+
+    assert doc["a"] == "\x1b"
+    assert doc["b"] == "\x1b"
 
 
 def test_escape_special_characters_in_key() -> None:
