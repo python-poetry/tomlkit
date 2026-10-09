@@ -36,7 +36,16 @@ release = __version__
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
 ]
+
+# Resolve references to the standard library and other projects, so that
+# annotations such as collections.abc.Mapping or datetime.datetime link to
+# their documentation instead of producing "reference target not found"
+# warnings under `sphinx-build -n`.
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
