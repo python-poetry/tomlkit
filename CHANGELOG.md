@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Changed
+
+- Speed up repeated scalar insertion by binary-searching the scalar/table boundary and updating only mapped keys in the shifted suffix. ([#540](https://github.com/python-poetry/tomlkit/issues/540))
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed
