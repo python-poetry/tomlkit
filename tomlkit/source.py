@@ -230,11 +230,16 @@ class Source(str):
         return exception(line, col, *args, **kwargs)
 
     def _to_linecol(self) -> tuple[int, int]:
+        # `keepends` keeps each line's own terminator inside its length: a "\r\n"
+        # break occupies two characters, and assuming a single one made the
+        # running offset fall one behind per CRLF line, so an error later in the
+        # document was reported on the wrong line and column.
+        lines = self.splitlines(keepends=True)
         cur = 0
-        for i, line in enumerate(self.splitlines()):
-            if cur + len(line) + 1 > self.idx:
+        for i, line in enumerate(lines):
+            if cur + len(line) > self.idx:
                 return (i + 1, self.idx - cur)
 
-            cur += len(line) + 1
+            cur += len(line)
 
-        return len(self.splitlines()), 0
+        return len(lines), 0
