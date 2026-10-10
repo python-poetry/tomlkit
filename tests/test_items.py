@@ -358,6 +358,75 @@ def test_array_slice_assignment_does_not_mutate(
     assert parse(doc.as_string())["a"] == a
 
 
+@pytest.mark.parametrize("count", [-2, 0, 1, 2, 3])
+@pytest.mark.parametrize(
+    "content", ["a = [1, 2]\n", "a = [\n    1, # first\n    2,\n]\n"]
+)
+def test_array_in_place_repetition_round_trips(count: int, content: str) -> None:
+    doc = parse(content)
+    a = doc["a"]
+    original = a
+    expected = [1, 2] * count
+
+    a *= count
+
+    assert a is original
+    assert a.unwrap() == expected
+    assert parse(doc.as_string())["a"].unwrap() == expected
+    a.append(3)
+    assert parse(doc.as_string())["a"].unwrap() == [*expected, 3]
+
+
+@pytest.mark.parametrize("count", [1, 2, 3])
+def test_aot_in_place_repetition_round_trips(count: int) -> None:
+    doc = parse("[[a]]\nx = 1\n\n[[a]]\nx = 2\n")
+    a = doc["a"]
+    original = a
+    expected = [{"x": 1}, {"x": 2}] * count
+
+    a *= count
+
+    assert a is original
+    assert a.unwrap() == expected
+    assert parse(doc.as_string())["a"].unwrap() == expected
+
+
+@pytest.mark.parametrize("count", [-2, 0])
+def test_aot_nonpositive_in_place_repetition_clears_values(count: int) -> None:
+    doc = parse("[[a]]\nx = 1\n")
+    a = doc["a"]
+
+    a *= count
+
+    assert len(a) == 0
+    assert a.unwrap() == []
+    a.append({"x": 2})
+    assert parse(doc.as_string())["a"].unwrap() == [{"x": 2}]
+
+
+def test_array_in_place_repetition_accepts_index_protocol() -> None:
+    class Twice:
+        def __index__(self) -> int:
+            return 2
+
+    doc = parse("a = [1, 2]\n")
+    doc["a"] *= Twice()
+    assert doc["a"].unwrap() == [1, 2, 1, 2]
+    assert parse(doc.as_string())["a"].unwrap() == [1, 2, 1, 2]
+
+
+@pytest.mark.parametrize("count", [1.5, "2", None])
+def test_array_in_place_repetition_rejects_non_index_without_mutation(
+    count: Any,
+) -> None:
+    content = "a = [1, 2]\n"
+    doc = parse(content)
+    with pytest.raises(TypeError):
+        doc["a"] *= count
+    assert doc["a"].unwrap() == [1, 2]
+    assert doc.as_string() == content
+
+
 def test_array_behaves_like_a_list() -> None:
     a = item([1, 2])
 

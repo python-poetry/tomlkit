@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from operator import index
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import TypeVar
@@ -57,6 +58,14 @@ else:
 
         def __iadd__(self, other):
             self.extend(other)
+            return self
+
+        def __imul__(self, other):
+            count = index(other)
+            if count <= 0:
+                self.clear()
+            else:
+                self.extend(list(self) * (count - 1))
             return self
 
     class _CustomDict(MutableMapping, dict):
