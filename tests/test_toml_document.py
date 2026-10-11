@@ -682,6 +682,39 @@ def test_valid_nested_out_of_order_table_with_multiple_fragments() -> None:
 
 
 @pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(
+            "[a.b.c]\n[a.b]\n[a]\n[a.b.d]\n[a.b]\n",
+            id="duplicate-concrete-table-across-fragments",
+        ),
+        pytest.param(
+            "[a]\n[a.b.c]\n[a.b]\n[q]\n[a.b.d]\n[a.b]\n",
+            id="duplicate-concrete-table-in-earlier-fragment",
+        ),
+        pytest.param(
+            "[a]\n[q]\n[a.b.c.e]\n[a.b]\n[a]\n[a.b.d]\n",
+            id="duplicate-concrete-parent-in-earlier-fragment",
+        ),
+        pytest.param(
+            "[a]\nb.y=1\n[a.b.c]\n[q]\n[a.b]\n",
+            id="dotted-key-table-redefined-by-header",
+        ),
+    ],
+)
+def test_out_of_order_table_rejects_redefinition(content: str) -> None:
+    with pytest.raises(TOMLKitError):
+        parse(content)
+
+
+def test_valid_out_of_order_sub_table_of_dotted_key_table() -> None:
+    content = "[a]\nb.y=1\n[a.b.c]\n[q]\n[a.b.d]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {"a": {"b": {"y": 1, "c": {}, "d": {}}}, "q": {}}
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
     "header",
     [
         pytest.param("[a.b]", id="duplicate-concrete-parent"),

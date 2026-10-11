@@ -305,6 +305,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                     return self
                 elif current.is_super_table():
+                    self._validate_earlier_fragments(key, current_idx, item)
                     if item.is_super_table():
                         # We need to merge both super tables
                         if (
@@ -364,6 +365,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     # — _raw_append below will create an out-of-order entry and
                     # preserve table ordering in the document.
                     assert isinstance(current, Table)
+                    self._validate_earlier_fragments(key, current_idx, item)
                     self._validate_table_candidate(current, item)
             elif isinstance(item, AoT):
                 if not isinstance(current, AoT):
@@ -421,6 +423,27 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._validate_out_of_order_table(key)
         return self
 
+    def _validate_earlier_fragments(
+        self, key: Key, idx: int | tuple[int, ...], candidate: Table
+    ) -> None:
+        # `append` compares the candidate with the last fragment of an
+        # out-of-order table only; it must not collide with the earlier ones
+        # either, e.g. [a.b.c] [a.b] [a] [a.b.d] [a.b] declares [a.b] twice.
+        if not isinstance(idx, tuple):
+            return
+        for i in idx[:-1]:
+            k, fragment = self._body[i]
+            if not isinstance(fragment, Table):
+                continue
+            if key.is_dotted() and k is not None and k.is_dotted():
+                # Merging two tables created by dotted keys is legal.
+                continue
+            if not candidate.is_super_table() and (
+                not fragment.is_super_table() or (k is not None and k.is_dotted())
+            ):
+                raise KeyAlreadyPresent(k)
+            self._validate_table_candidate(fragment, candidate)
+
     def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
         for k, v in candidate.value.body:
             if k is None:
@@ -430,12 +453,21 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 index = current.value._map[k]
                 indices = index if isinstance(index, tuple) else (index,)
                 for i in indices:
-                    existing = current.value._body[i][1]
+                    existing_key, existing = current.value._body[i]
                     if isinstance(existing, (Table, AoT)) != isinstance(
                         v, (Table, AoT)
                     ):
                         raise KeyAlreadyPresent(k)
                     if k.is_dotted():
+                        raise TOMLKitError("Redefinition of an existing table")
+                    if (
+                        existing_key is not None
+                        and existing_key.is_dotted()
+                        and isinstance(v, Table)
+                        and not v.is_super_table()
+                    ):
+                        # A table created by dotted keys (stored as a super
+                        # table) cannot be redefined by a `[table]` header.
                         raise TOMLKitError("Redefinition of an existing table")
                     if isinstance(existing, Table) and isinstance(v, Table):
                         if not existing.is_super_table() and not v.is_super_table():
