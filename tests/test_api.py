@@ -254,6 +254,12 @@ def test_time() -> None:
         tomlkit.time("1979-05-13")
 
 
+@pytest.mark.parametrize("raw", ["1979-05-13T12:34:56", "1979-05-13T12:34:56Z"])
+def test_date_rejects_datetime(raw: str) -> None:
+    with pytest.raises(ValueError, match=r"date\(\) only accepts date strings"):
+        tomlkit.date(raw)
+
+
 def test_datetime() -> None:
     dt = tomlkit.datetime("1979-05-13T12:34:56")
 

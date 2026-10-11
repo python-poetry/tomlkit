@@ -182,7 +182,7 @@ def string(
 def date(raw: str) -> Date:
     """Create a TOML date."""
     value = parse_rfc3339(raw)
-    if not isinstance(value, _datetime.date):
+    if not isinstance(value, _datetime.date) or isinstance(value, _datetime.datetime):
         raise ValueError("date() only accepts date strings.")
 
     return item(value)
