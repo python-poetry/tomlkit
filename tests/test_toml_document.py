@@ -697,6 +697,10 @@ def test_valid_nested_out_of_order_table_with_multiple_fragments() -> None:
             id="duplicate-concrete-parent-in-earlier-fragment",
         ),
         pytest.param(
+            "a.x=1\n[a.b.c]\n[a.b.d]\n[q]\n[a.b.d]\n",
+            id="duplicate-table-merged-into-validated-fragment",
+        ),
+        pytest.param(
             "[a]\nb.y=1\n[a.b.c]\n[q]\n[a.b]\n",
             id="dotted-key-table-redefined-by-header",
         ),

@@ -305,7 +305,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                     return self
                 elif current.is_super_table():
-                    self._validate_earlier_fragments(key, current_idx, item)
+                    self._validate_earlier_fragments(current_idx, item)
                     if item.is_super_table():
                         # We need to merge both super tables
                         if (
@@ -339,6 +339,24 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         # Mutating in place is O(1) per merge. The defensive copy
                         # that protected the out-of-order validation pass has been
                         # moved into OutOfOrderTableProxy (its only consumer).
+                        cached = self._validation_cache.get(key)
+                        if (
+                            cached is not None
+                            and isinstance(current_idx, tuple)
+                            and cached[0] == len(current_idx)
+                        ):
+                            # `current` is already merged into the cached
+                            # validation container of this out-of-order key;
+                            # merge the new part there too, or later fragments
+                            # would be validated against a stale copy.
+                            temp = cached[1]
+                            try:
+                                for k, v in item.value.body:
+                                    temp.append(k, copy.deepcopy(v), validate=True)
+                                temp._validate_out_of_order_table()
+                            except Exception:
+                                self._validation_cache.pop(key, None)
+                                raise
                         for k, v in item.value.body:
                             current.append(k, v)
 
@@ -365,7 +383,6 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     # — _raw_append below will create an out-of-order entry and
                     # preserve table ordering in the document.
                     assert isinstance(current, Table)
-                    self._validate_earlier_fragments(key, current_idx, item)
                     self._validate_table_candidate(current, item)
             elif isinstance(item, AoT):
                 if not isinstance(current, AoT):
@@ -424,25 +441,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return self
 
     def _validate_earlier_fragments(
-        self, key: Key, idx: int | tuple[int, ...], candidate: Table
+        self, idx: int | tuple[int, ...], candidate: Table
     ) -> None:
-        # `append` compares the candidate with the last fragment of an
-        # out-of-order table only; it must not collide with the earlier ones
-        # either, e.g. [a.b.c] [a.b] [a] [a.b.d] [a.b] declares [a.b] twice.
-        if not isinstance(idx, tuple):
+        # `append` compares a concrete `[table]` with the last fragment of an
+        # out-of-order table only; it must not redefine an earlier concrete or
+        # dotted-key fragment either, e.g. [a] [q] [a.b.c] [a] declares [a]
+        # twice. Nested collisions are caught by the incremental validation.
+        if candidate.is_super_table() or not isinstance(idx, tuple):
             return
         for i in idx[:-1]:
             k, fragment = self._body[i]
-            if not isinstance(fragment, Table):
-                continue
-            if key.is_dotted() and k is not None and k.is_dotted():
-                # Merging two tables created by dotted keys is legal.
-                continue
-            if not candidate.is_super_table() and (
+            if isinstance(fragment, Table) and (
                 not fragment.is_super_table() or (k is not None and k.is_dotted())
             ):
                 raise KeyAlreadyPresent(k)
-            self._validate_table_candidate(fragment, candidate)
 
     def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
         for k, v in candidate.value.body:
