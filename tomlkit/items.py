@@ -194,6 +194,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.tzinfo,
             Trivia(),
             value.isoformat().replace("+00:00", "Z"),
+            fold=value.fold,
         )
     elif isinstance(value, date):
         return Date(value.year, value.month, value.day, Trivia(), value.isoformat())
@@ -205,7 +206,8 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.microsecond,
             value.tzinfo,
             Trivia(),
-            value.isoformat(),
+            _format_time(value),
+            fold=value.fold,
         )
     else:
         for encoder in CUSTOM_ENCODERS:
@@ -230,6 +232,18 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
                 return rv
 
     raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
+
+
+def _format_time(value: time) -> str:
+    # TOML local times carry no offset or timezone (the spec's examples
+    # are plain ``07:32:00``); keeping the offset in the rendered raw
+    # value would produce a literal this library's own parser rejects.
+    # Built from the fields (not ``isoformat``/``replace``) so it stays
+    # correct even when called on a ``Time`` from ``Time._new``.
+    s = f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+    if value.microsecond:
+        s += f".{value.microsecond:06d}".rstrip("0")
+    return s
 
 
 class StringType(Enum):
@@ -1040,6 +1054,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> DateTime:
         return datetime.__new__(
@@ -1052,6 +1067,7 @@ class DateTime(Item, datetime):
             second,
             microsecond,
             tzinfo=tzinfo,
+            fold=fold,
         )
 
     def __init__(
@@ -1066,6 +1082,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> None:
         super().__init__(trivia or Trivia())
@@ -1132,6 +1149,7 @@ class DateTime(Item, datetime):
                 self.second,
                 self.microsecond,
                 self.tzinfo,
+                fold=self.fold,
             ).__sub__(other)
         else:
             result = super().__sub__(other)  # type: ignore[operator]
@@ -1164,6 +1182,7 @@ class DateTime(Item, datetime):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(
@@ -1276,8 +1295,9 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> Time:
-        return time.__new__(cls, hour, minute, second, microsecond, tzinfo)
+        return time.__new__(cls, hour, minute, second, microsecond, tzinfo, fold=fold)
 
     def __init__(
         self,
@@ -1288,6 +1308,7 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> None:
         super().__init__(trivia or Trivia())
 
@@ -1312,7 +1333,7 @@ class Time(Item, time):
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
     def _new(self, result: time) -> Time:
-        raw = result.isoformat()
+        raw = _format_time(result)
 
         return Time(
             result.hour,
@@ -1322,6 +1343,7 @@ class Time(Item, time):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(
@@ -1584,10 +1606,10 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         return list.__getitem__(self, key)
 
     def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
-        it = item(value, _parent=self)
-        list.__setitem__(self, key, it)
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
+        it = item(value, _parent=self)
+        list.__setitem__(self, key, it)
         if key < 0:
             key += len(self)
         self._value[self._index_map[key]].value = it
@@ -2223,7 +2245,13 @@ class String(str, Item):
 
     def __add__(self, other: str) -> String:
         result = super().__add__(other)
-        original = self._original + getattr(other, "_original", other)
+        if isinstance(other, String):
+            original = self._original + other._original
+        else:
+            escaped = self._t.escaped_sequences
+            original = self._original + (
+                escape_string(other, escaped) if escaped else other
+            )
 
         return self._new(result, original)
 

@@ -67,6 +67,30 @@ TOML Kit provides an intuitive API to modify TOML documents::
     >>> doc.pop("table2")
     # del doc["table2] is also possible
 
+Boolean comments
+~~~~~~~~~~~~~~~~
+
+Dictionary access returns a Python ``bool`` for boolean values, so comparisons
+such as ``doc["enabled"] is True`` work. To access the underlying TOML item and
+its formatting information (``trivia``), use ``item(key)`` on the document or
+table. Read the comment with ``trivia.comment`` and update it with ``comment()``::
+
+    >>> doc = parse("enabled = true # Root\n[database]\nenabled = false # Database\n")
+    >>> doc["enabled"] is True
+    True
+    >>> doc["database"]["enabled"] is False
+    True
+    >>> doc.item("enabled").trivia.comment
+    '# Root'
+    >>> enabled = doc["database"].item("enabled")
+    >>> enabled.trivia.comment
+    '# Database'
+    >>> _ = enabled.comment("Updated database comment")
+    >>> print(dumps(doc), end="")
+    enabled = true # Root
+    [database]
+    enabled = false # Updated database comment
+
 Writing
 -------
 
