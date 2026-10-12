@@ -320,6 +320,50 @@ def test_key_value() -> None:
     assert isinstance(i, Integer)
 
 
+@pytest.mark.parametrize(
+    "src",
+    ["foo = 12", "foo = 12\n", "  foo = 12", "foo = 12   ", "foo = 12  # comment\n"],
+)
+def test_key_value_allows_trailing_whitespace_and_comment(src: str) -> None:
+    k, i = tomlkit.key_value(src)
+
+    assert k.key == "foo"
+    assert i == 12
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "foo = 12 junk",
+        "foo = 12 = 13",
+        "foo = 12]]]",
+    ],
+)
+def test_key_value_raises_on_trailing_chars(src: str) -> None:
+    # parse() rejects each of these; key_value() must agree.
+    with pytest.raises(UnexpectedCharError):
+        parse(src)
+
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value(src)
+
+
+def test_key_value_raises_on_a_second_pair() -> None:
+    # Two pairs are a valid document, but key_value() parses a single pair,
+    # so the second one is trailing input rather than a silently dropped value.
+    assert dict(parse("foo = 12\nbar = 13")) == {"foo": 12, "bar": 13}
+
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value("foo = 12\nbar = 13")
+
+
+def test_key_value_raises_on_invalid_example(
+    invalid_example: Callable[[str], str],
+) -> None:
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value(invalid_example("key_value_with_trailing_chars"))
+
+
 def test_string() -> None:
     s = tomlkit.string('foo "')
 
