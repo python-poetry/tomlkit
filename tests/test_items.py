@@ -803,6 +803,27 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
 
 
+@pytest.mark.parametrize(
+    "literal", ["2024-02-28", "2024-02-28T10:00:00", "2024-02-28T10:00:00Z"]
+)
+@pytest.mark.parametrize("delta", [timedelta(days=1), timedelta(days=-1)])
+def test_reflected_temporal_addition_preserves_serialization(
+    literal: str, delta: timedelta
+) -> None:
+    doc = parse(f"when = {literal} # birthday\n")
+    value = doc["when"]
+    expected = value + delta
+
+    result = delta + value
+
+    assert type(result) is type(value)
+    assert result.unwrap() == expected.unwrap()
+    assert result.as_string() == expected.as_string()
+    assert result.trivia == expected.trivia
+    doc["when"] = result
+    assert parse(doc.as_string())["when"] == expected
+
+
 @pytest.mark.parametrize("fold", [0, 1])
 def test_datetime_subtraction_preserves_input_fold(tz_fold: tzinfo, fold: int) -> None:
     value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
