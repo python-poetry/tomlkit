@@ -161,14 +161,23 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             a = Array([], Trivia())
             table_constructor = InlineTable
 
+        if table_constructor is Table:
+            # AoT tables render as ``[[table]]`` headers, so dict-valued keys
+            # must come last to avoid them capturing the following keys.
+            def _sort_key(i: tuple[Any, Any]) -> Any:
+                return (isinstance(i[1], dict), i[0] if _sort_keys else 1)
+        else:
+            # Inline tables cannot capture, so there is no need to put
+            # dict-valued keys last: preserve insertion order, or sort purely
+            # by key when explicitly requested. See #546.
+            def _sort_key(i: tuple[Any, Any]) -> Any:
+                return i[0] if _sort_keys else 1
+
         for v in value:
             if isinstance(v, dict):
                 table = table_constructor(Container(), Trivia(), True)
 
-                for k, _v in sorted(
-                    v.items(),
-                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
-                ):
+                for k, _v in sorted(v.items(), key=_sort_key):
                     i = item(_v, _parent=table, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
@@ -246,6 +255,12 @@ def _format_time(value: time) -> str:
     return s
 
 
+# A carriage return that is not the CR of a CRLF line ending. Inside a multiline
+# string only a raw line feed or a CRLF pair is a valid line ending; a lone CR is
+# a control character that a basic string must escape.
+_BARE_CR = re.compile(r"\r(?!\n)")
+
+
 class StringType(Enum):
     # Single Line Basic
     SLB = '"'
@@ -281,12 +296,13 @@ class StringType(Enum):
     def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
         forbidden_in_literal = CONTROL_CHARS - {"\t"}
-        allowed_in_multiline = {"\n", "\r"}
+        # CR stays forbidden in multiline: the value is checked with CRLF
+        # pairs collapsed, so any remaining CR is a lone control character
         return {
             StringType.SLB: (),
             StringType.MLB: (),
             StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
+            StringType.MLL: (forbidden_in_literal | {"'''"}) - {"\n"},
         }[self]
 
     @property
@@ -876,7 +892,8 @@ class Float(Item, _CustomFloat):
     def _new(self, result: float) -> Float:
         raw = str(result)
 
-        if self._sign and result >= 0:
+        # -0.0 >= 0 is True, but str(-0.0) already carries its sign.
+        if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
         return Float(result, self._trivia, raw)
@@ -1102,7 +1119,9 @@ class DateTime(Item, datetime):
             _,
             _,
         ) = self._getstate()
-        return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
+        return datetime(
+            year, month, day, hour, minute, second, microsecond, tzinfo, fold=self.fold
+        )
 
     @property
     def discriminant(self) -> int:
@@ -1322,7 +1341,7 @@ class Time(Item, time):
 
     def unwrap(self) -> time:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
-        return time(hour, minute, second, microsecond, tzinfo)
+        return time(hour, minute, second, microsecond, tzinfo, fold=self.fold)
 
     @property
     def discriminant(self) -> int:
@@ -1498,7 +1517,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         if not self._multiline or not self._value:
-            return f"[{''.join(v.as_string() for v in self._iter_items())}]"
+            rendered = list(self._iter_items())
+            inner = "".join(v.as_string() for v in rendered)
+            if rendered and isinstance(rendered[-1], Comment):
+                # A trailing comment (e.g. from add_line(comment=...)) carries
+                # no newline, so keep the closing bracket off the comment line
+                # to produce parseable output (GH #580).
+                inner += "\n" + self.trivia.indent
+            return f"[{inner}]"
 
         s = "[\n"
         s += "".join(
@@ -1691,9 +1717,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.__delitem__(self, key)
 
         if isinstance(key, slice):
-            indices_to_remove = list(
-                range(key.start or 0, key.stop or length, key.step or 1)
-            )
+            indices_to_remove = list(range(*key.indices(length)))
         else:
             indices_to_remove = [length + key if key < 0 else key]
         for i in sorted(indices_to_remove, reverse=True):
@@ -2288,11 +2312,16 @@ class String(str, Item):
         value = decode(value)
 
         invalid = type_.invalid_sequences
-        if any(c in value for c in invalid):
+        # collapse CRLF line endings so only a lone CR trips the CR check
+        checked = value.replace("\r\n", "\n")
+        if any(c in checked for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
 
         escaped = type_.escaped_sequences
         string_value = escape_string(value, escaped) if escape and escaped else value
+
+        if type_ is StringType.MLB and escape:
+            string_value = _BARE_CR.sub(r"\\r", string_value)
 
         if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
             # A newline immediately following the opening delimiter of a
