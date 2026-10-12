@@ -1187,7 +1187,7 @@ class DateTime(Item, datetime):
 
     def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
         cls, args = super().__reduce_ex__(protocol)
-        if protocol >= 4:
+        if protocol >= 4 and self.fold:
             args += (self.fold,)
         return cls, args
 
@@ -1354,7 +1354,7 @@ class Time(Item, time):
 
     def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
         cls, args = super().__reduce_ex__(protocol)
-        if protocol >= 4:
+        if protocol >= 4 and self.fold:
             args += (self.fold,)
         return cls, args
 
