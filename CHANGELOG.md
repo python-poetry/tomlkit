@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Preserve the `fold` of datetime and time items during copying and pickle protocols 4 and later, matching the standard-library types.
+
 - Fix appending a key to a parsed inline table that uses `", "` separators emitting a bare `","` for the new entry, leaving the table inconsistently spaced (e.g. `{x = 1, y = 2,z = 3}`). ([#595](https://github.com/python-poetry/tomlkit/pull/595))
 
 ## [0.15.1] - 2026-07-17

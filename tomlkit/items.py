@@ -1185,6 +1185,12 @@ class DateTime(Item, datetime):
             fold=result.fold,
         )
 
+    def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
+        cls, args = super().__reduce_ex__(protocol)
+        if protocol >= 4:
+            args += (self.fold,)
+        return cls, args
+
     def _getstate(
         self, protocol: int = 3
     ) -> tuple[int, int, int, int, int, int, int, tzinfo | None, Trivia, str]:
@@ -1345,6 +1351,12 @@ class Time(Item, time):
             raw,
             fold=result.fold,
         )
+
+    def __reduce_ex__(self, protocol: int) -> tuple[type, tuple[object, ...]]:  # type: ignore[override]
+        cls, args = super().__reduce_ex__(protocol)
+        if protocol >= 4:
+            args += (self.fold,)
+        return cls, args
 
     def _getstate(
         self, protocol: int = 3
