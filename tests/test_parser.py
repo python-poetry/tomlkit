@@ -1,13 +1,17 @@
+import math
 import sys
 
 import pytest
 
+from tomlkit import dumps
+from tomlkit import parse
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
 from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.items import Float
 from tomlkit.items import Integer
 from tomlkit.items import StringType
 from tomlkit.parser import Parser
@@ -38,6 +42,29 @@ def test_parser_should_raise_an_error_for_empty_tables() -> None:
 
     assert e.value.line == 3
     assert e.value.col == 1
+
+
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n"])
+def test_parser_reports_the_same_position_regardless_of_line_ending(
+    line_ending: str,
+) -> None:
+    content = line_ending.join(["a = 1", "b = 2", "c = @", "d = 4"]) + line_ending
+
+    with pytest.raises(UnexpectedCharError) as e:
+        Parser(content).parse()
+
+    assert e.value.line == 3
+    assert e.value.col == 4
+
+
+def test_parser_reports_the_right_position_for_mixed_line_endings() -> None:
+    content = "a = 1\r\nb = 2\nc = @\r\n"
+
+    with pytest.raises(UnexpectedCharError) as e:
+        Parser(content).parse()
+
+    assert e.value.line == 3
+    assert e.value.col == 4
 
 
 def test_parser_should_raise_an_error_if_equal_not_found() -> None:
@@ -235,3 +262,69 @@ def test_parser_rejects_overlong_decimal_integer() -> None:
     # the value just under the limit is still a normal integer
     value = Parser("a = " + "9" * 4300).parse()["a"]
     assert isinstance(value, Integer)
+
+
+def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
+    # Both "e" and "E" are valid exponent markers. A leading-zero mantissa was
+    # only exempted from the "no leading zeros" rule for lowercase "0e", so
+    # "0E2" and its signed forms were wrongly rejected as an invalid number.
+    for raw in ("0E2", "0E+2", "0E-2", "+0E2", "-0E2"):
+        value = Parser(f"a = {raw}").parse()["a"]
+        assert isinstance(value, Float)
+        assert value == float(raw)
+
+
+@pytest.mark.parametrize("sign", ["", "+", "-"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Inf",
+        "iNf",
+        "inF",
+        "INf",
+        "InF",
+        "iNF",
+        "INF",
+        "Nan",
+        "nAn",
+        "naN",
+        "NAn",
+        "NaN",
+        "nAN",
+        "NAN",
+    ],
+)
+def test_parser_rejects_non_lowercase_special_floats(raw: str, sign: str) -> None:
+    with pytest.raises(ParseError):
+        parse(f"v = {sign}{raw}")
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("inf", math.inf),
+        ("+inf", math.inf),
+        ("-inf", -math.inf),
+        ("nan", math.nan),
+        ("+nan", math.nan),
+        ("-nan", math.nan),
+        ("0E2", 0.0),
+        ("+0E+2", 0.0),
+        ("-0E-2", -0.0),
+        ("1_2.3_4E+2", 1234.0),
+        ("0xDe_Ad", 0xDEAD),
+        ("0o7_5", 0o75),
+        ("0b1_0", 0b10),
+        ("1_000", 1000),
+    ],
+)
+def test_parser_preserves_valid_numeric_literals(raw: str, expected: float) -> None:
+    content = f"v = {raw}  # number\n"
+    document = parse(content)
+    value = document["v"]
+    assert isinstance(value, (Integer, Float))
+    if math.isnan(expected):
+        assert math.isnan(value)
+    else:
+        assert value == expected
+    assert dumps(document) == content

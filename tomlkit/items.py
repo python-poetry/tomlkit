@@ -161,14 +161,23 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             a = Array([], Trivia())
             table_constructor = InlineTable
 
+        if table_constructor is Table:
+            # AoT tables render as ``[[table]]`` headers, so dict-valued keys
+            # must come last to avoid them capturing the following keys.
+            def _sort_key(i: tuple[Any, Any]) -> Any:
+                return (isinstance(i[1], dict), i[0] if _sort_keys else 1)
+        else:
+            # Inline tables cannot capture, so there is no need to put
+            # dict-valued keys last: preserve insertion order, or sort purely
+            # by key when explicitly requested. See #546.
+            def _sort_key(i: tuple[Any, Any]) -> Any:
+                return i[0] if _sort_keys else 1
+
         for v in value:
             if isinstance(v, dict):
                 table = table_constructor(Container(), Trivia(), True)
 
-                for k, _v in sorted(
-                    v.items(),
-                    key=lambda i: (isinstance(i[1], dict), i[0] if _sort_keys else 1),
-                ):
+                for k, _v in sorted(v.items(), key=_sort_key):
                     i = item(_v, _parent=table, _sort_keys=_sort_keys)
                     if isinstance(table, InlineTable):
                         i.trivia.trail = ""
@@ -194,6 +203,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.tzinfo,
             Trivia(),
             value.isoformat().replace("+00:00", "Z"),
+            fold=value.fold,
         )
     elif isinstance(value, date):
         return Date(value.year, value.month, value.day, Trivia(), value.isoformat())
@@ -205,7 +215,8 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.microsecond,
             value.tzinfo,
             Trivia(),
-            value.isoformat(),
+            _format_time(value),
+            fold=value.fold,
         )
     else:
         for encoder in CUSTOM_ENCODERS:
@@ -230,6 +241,24 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
                 return rv
 
     raise ConvertError(f"Unable to convert an object of {type(value)} to a TOML item")
+
+
+def _format_time(value: time) -> str:
+    # TOML local times carry no offset or timezone (the spec's examples
+    # are plain ``07:32:00``); keeping the offset in the rendered raw
+    # value would produce a literal this library's own parser rejects.
+    # Built from the fields (not ``isoformat``/``replace``) so it stays
+    # correct even when called on a ``Time`` from ``Time._new``.
+    s = f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+    if value.microsecond:
+        s += f".{value.microsecond:06d}".rstrip("0")
+    return s
+
+
+# A carriage return that is not the CR of a CRLF line ending. Inside a multiline
+# string only a raw line feed or a CRLF pair is a valid line ending; a lone CR is
+# a control character that a basic string must escape.
+_BARE_CR = re.compile(r"\r(?!\n)")
 
 
 class StringType(Enum):
@@ -267,12 +296,13 @@ class StringType(Enum):
     def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
         forbidden_in_literal = CONTROL_CHARS - {"\t"}
-        allowed_in_multiline = {"\n", "\r"}
+        # CR stays forbidden in multiline: the value is checked with CRLF
+        # pairs collapsed, so any remaining CR is a lone control character
         return {
             StringType.SLB: (),
             StringType.MLB: (),
             StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: (forbidden_in_literal | {"'''"}) - allowed_in_multiline,
+            StringType.MLL: (forbidden_in_literal | {"'''"}) - {"\n"},
         }[self]
 
     @property
@@ -862,7 +892,8 @@ class Float(Item, _CustomFloat):
     def _new(self, result: float) -> Float:
         raw = str(result)
 
-        if self._sign and result >= 0:
+        # -0.0 >= 0 is True, but str(-0.0) already carries its sign.
+        if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
         return Float(result, self._trivia, raw)
@@ -1040,6 +1071,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> DateTime:
         return datetime.__new__(
@@ -1052,6 +1084,7 @@ class DateTime(Item, datetime):
             second,
             microsecond,
             tzinfo=tzinfo,
+            fold=fold,
         )
 
     def __init__(
@@ -1066,6 +1099,7 @@ class DateTime(Item, datetime):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str | None = None,
+        fold: int = 0,
         **kwargs: object,
     ) -> None:
         super().__init__(trivia or Trivia())
@@ -1085,7 +1119,9 @@ class DateTime(Item, datetime):
             _,
             _,
         ) = self._getstate()
-        return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
+        return datetime(
+            year, month, day, hour, minute, second, microsecond, tzinfo, fold=self.fold
+        )
 
     @property
     def discriminant(self) -> int:
@@ -1132,6 +1168,7 @@ class DateTime(Item, datetime):
                 self.second,
                 self.microsecond,
                 self.tzinfo,
+                fold=self.fold,
             ).__sub__(other)
         else:
             result = super().__sub__(other)  # type: ignore[operator]
@@ -1164,6 +1201,7 @@ class DateTime(Item, datetime):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(
@@ -1276,8 +1314,9 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> Time:
-        return time.__new__(cls, hour, minute, second, microsecond, tzinfo)
+        return time.__new__(cls, hour, minute, second, microsecond, tzinfo, fold=fold)
 
     def __init__(
         self,
@@ -1288,6 +1327,7 @@ class Time(Item, time):
         tzinfo: tzinfo | None,
         trivia: Trivia | None = None,
         raw: str = "",
+        fold: int = 0,
     ) -> None:
         super().__init__(trivia or Trivia())
 
@@ -1295,7 +1335,7 @@ class Time(Item, time):
 
     def unwrap(self) -> time:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
-        return time(hour, minute, second, microsecond, tzinfo)
+        return time(hour, minute, second, microsecond, tzinfo, fold=self.fold)
 
     @property
     def discriminant(self) -> int:
@@ -1312,7 +1352,7 @@ class Time(Item, time):
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
     def _new(self, result: time) -> Time:
-        raw = result.isoformat()
+        raw = _format_time(result)
 
         return Time(
             result.hour,
@@ -1322,6 +1362,7 @@ class Time(Item, time):
             result.tzinfo,
             self._trivia,
             raw,
+            fold=result.fold,
         )
 
     def _getstate(
@@ -1464,7 +1505,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         if not self._multiline or not self._value:
-            return f"[{''.join(v.as_string() for v in self._iter_items())}]"
+            rendered = list(self._iter_items())
+            inner = "".join(v.as_string() for v in rendered)
+            if rendered and isinstance(rendered[-1], Comment):
+                # A trailing comment (e.g. from add_line(comment=...)) carries
+                # no newline, so keep the closing bracket off the comment line
+                # to produce parseable output (GH #580).
+                inner += "\n" + self.trivia.indent
+            return f"[{inner}]"
 
         s = "[\n"
         s += "".join(
@@ -1584,10 +1632,10 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         return list.__getitem__(self, key)
 
     def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
-        it = item(value, _parent=self)
-        list.__setitem__(self, key, it)
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
+        it = item(value, _parent=self)
+        list.__setitem__(self, key, it)
         if key < 0:
             key += len(self)
         self._value[self._index_map[key]].value = it
@@ -1657,9 +1705,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.__delitem__(self, key)
 
         if isinstance(key, slice):
-            indices_to_remove = list(
-                range(key.start or 0, key.stop or length, key.step or 1)
-            )
+            indices_to_remove = list(range(*key.indices(length)))
         else:
             indices_to_remove = [length + key if key < 0 else key]
         for i in sorted(indices_to_remove, reverse=True):
@@ -2117,7 +2163,15 @@ class InlineTable(AbstractTable):
                 # Insert the deferred separator right after the previous value,
                 # not after any trailing comment/whitespace -- otherwise the
                 # comma is swallowed by a trailing comment (see #512).
-                buf = f"{buf[:last_value_end]},{buf[last_value_end:]}"
+                # Match the conventional ", " spacing used by the explicit
+                # separators already in the table. Only add the space when the
+                # text that will follow the comma (the previous value's trailing
+                # trivia plus the new key's own indent) does not already start
+                # with one, so a padded table like ``{ a = 1 }`` -- which
+                # contributes the space itself -- does not end up double-spaced.
+                following = buf[last_value_end:] + v.trivia.indent
+                separator = "," if following.startswith(" ") else ", "
+                buf = f"{buf[:last_value_end]}{separator}{buf[last_value_end:]}"
                 needs_separator = False
 
             v_trivia_trail = v.trivia.trail.replace("\n", "")
@@ -2223,7 +2277,13 @@ class String(str, Item):
 
     def __add__(self, other: str) -> String:
         result = super().__add__(other)
-        original = self._original + getattr(other, "_original", other)
+        if isinstance(other, String):
+            original = self._original + other._original
+        else:
+            escaped = self._t.escaped_sequences
+            original = self._original + (
+                escape_string(other, escaped) if escaped else other
+            )
 
         return self._new(result, original)
 
@@ -2240,11 +2300,16 @@ class String(str, Item):
         value = decode(value)
 
         invalid = type_.invalid_sequences
-        if any(c in value for c in invalid):
+        # collapse CRLF line endings so only a lone CR trips the CR check
+        checked = value.replace("\r\n", "\n")
+        if any(c in checked for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
 
         escaped = type_.escaped_sequences
         string_value = escape_string(value, escaped) if escape and escaped else value
+
+        if type_ is StringType.MLB and escape:
+            string_value = _BARE_CR.sub(r"\\r", string_value)
 
         if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
             # A newline immediately following the opening delimiter of a

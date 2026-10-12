@@ -749,7 +749,10 @@ class Parser:
             raw = raw[1:]
 
         if len(raw) > 1 and (
-            (raw.startswith("0") and not raw.startswith(("0.", "0o", "0x", "0b", "0e")))
+            (
+                raw.startswith("0")
+                and not raw.startswith(("0.", "0o", "0x", "0b", "0e", "0E"))
+            )
             or (sign and raw.startswith("."))
         ):
             return None
@@ -773,6 +776,10 @@ class Parser:
         clean = re.sub(f"(?i)(?<={digits})_(?={digits})", "", raw).lower()
 
         if "_" in clean:
+            return None
+
+        # Special float values must be lowercase in the original token.
+        if clean in ("inf", "nan") and raw != clean:
             return None
 
         if clean.endswith(".") or (
