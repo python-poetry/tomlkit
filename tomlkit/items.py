@@ -1103,7 +1103,9 @@ class DateTime(Item, datetime):
             _,
             _,
         ) = self._getstate()
-        return datetime(year, month, day, hour, minute, second, microsecond, tzinfo)
+        return datetime(
+            year, month, day, hour, minute, second, microsecond, tzinfo, fold=self.fold
+        )
 
     @property
     def discriminant(self) -> int:
@@ -1317,7 +1319,7 @@ class Time(Item, time):
 
     def unwrap(self) -> time:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
-        return time(hour, minute, second, microsecond, tzinfo)
+        return time(hour, minute, second, microsecond, tzinfo, fold=self.fold)
 
     @property
     def discriminant(self) -> int:
