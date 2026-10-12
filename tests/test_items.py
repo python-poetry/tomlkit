@@ -404,6 +404,72 @@ def test_array_behaves_like_a_list() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "content, count",
+    [
+        ("a = [1, 2]\n", -1),
+        ("a = [1, 2]\n", 0),
+        ("a = [1, 2]\n", 2),
+        ("a = [\n    0x1, # first\n    2,\n]\n", 2),
+        ("a = [\n    0x1, # first\n    2,\n]\n", 1),
+        ("a = [\n    # empty\n]\n", 2),
+    ],
+)
+def test_array_inplace_repeat(content: str, count: int) -> None:
+    doc = parse(content)
+    a = doc["a"]
+    assert isinstance(a, Array)
+    original = a
+    initial = list(a)
+    expected = initial * count
+
+    a *= count
+
+    assert a is original
+    assert doc["a"] is a
+    assert a == expected
+    assert parse(doc.as_string())["a"] == expected
+    if count == 1 or not initial:
+        assert doc.as_string() == content
+    if count > 1 and "# first" in content:
+        assert doc.as_string().count("# first") == 1
+        assert doc.as_string().count("0x1") == count
+
+    a.append(9)
+    a[0] = 8
+    assert parse(doc.as_string())["a"] == a
+
+
+@pytest.mark.parametrize("mutate", [False, True])
+def test_array_inplace_repeat_index(mutate: bool) -> None:
+    a = item([1, 2])
+    assert isinstance(a, Array)
+
+    class Count:
+        def __index__(self) -> int:
+            if mutate:
+                a.append(3)
+            return 2
+
+    a *= Count()
+    expected = [1, 2, 3] * 2 if mutate else [1, 2] * 2
+    assert a == expected
+    assert parse("a = " + a.as_string())["a"] == expected
+
+
+@pytest.mark.parametrize(
+    "count, error", [(1.5, TypeError), (sys.maxsize + 1, OverflowError)]
+)
+def test_array_inplace_repeat_error(count: Any, error: type[Exception]) -> None:
+    content = "a = [1, 2]\n"
+    doc = parse(content)
+    a = doc["a"]
+    with pytest.raises(error):
+        a *= count
+    assert a == [1, 2]
+    assert doc.as_string() == content
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
