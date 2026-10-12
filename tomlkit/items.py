@@ -4,6 +4,7 @@ import abc
 import copy
 import dataclasses
 import inspect
+import operator
 import re
 import string
 
@@ -19,6 +20,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import SupportsIndex
 from typing import TypeVar
 from typing import overload
 
@@ -1595,6 +1597,15 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.clear(self)
         self._index_map.clear()
         self._value.clear()
+
+    def __imul__(self, count: SupportsIndex) -> Array:
+        count = operator.index(count)
+        values = list(self) * count
+        if not values and self:
+            self.clear()
+        else:
+            self.extend(values[len(self) :])
+        return self
 
     def __len__(self) -> int:
         return list.__len__(self)

@@ -21,6 +21,8 @@
 
 ### Fixed
 
+- Keep array values and serialized TOML synchronized after in-place repetition.
+
 - Fix `string()` dropping a leading newline of a multiline string on round-trip: a value beginning with a newline is now rendered with an extra leading newline (the one the parser trims after the opening delimiter) so it survives re-parsing.
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
