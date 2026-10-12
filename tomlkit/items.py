@@ -876,7 +876,8 @@ class Float(Item, _CustomFloat):
     def _new(self, result: float) -> Float:
         raw = str(result)
 
-        if self._sign and result >= 0:
+        # -0.0 >= 0 is True, but str(-0.0) already carries its sign.
+        if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
         return Float(result, self._trivia, raw)
