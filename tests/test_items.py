@@ -998,6 +998,37 @@ def test_string_add_escapes_appended_content() -> None:
     assert k.as_string() == '"foo bar"'
 
 
+@pytest.mark.parametrize(
+    "left_style", [(False, False), (False, True), (True, False), (True, True)]
+)
+@pytest.mark.parametrize(
+    "right_style", [(False, False), (False, True), (True, False), (True, True)]
+)
+def test_string_add_quote_styles_roundtrip(
+    left_style: tuple[bool, bool], right_style: tuple[bool, bool]
+) -> None:
+    left = api.string("prefix/", literal=left_style[0], multiline=left_style[1])
+    right = api.string(r"C:\temp", literal=right_style[0], multiline=right_style[1])
+    combined = left + right
+    expected = str(left) + str(right)
+
+    assert str(combined) == expected
+    assert combined.type is left.type
+    assert parse(api.dumps({"value": combined}))["value"] == expected
+
+
+def test_string_add_literal_decodes_basic_escape() -> None:
+    left = api.string("prefix/", literal=True)
+    right = parse(r'value = "\u0041"')["value"]
+    combined = left + right
+    assert parse(api.dumps({"value": combined}))["value"] == "prefix/A"
+
+
+def test_string_add_multiline_preserves_carriage_return() -> None:
+    combined = api.string("prefix/", multiline=True) + api.string("\r")
+    assert parse(api.dumps({"value": combined}))["value"] == "prefix/\r"
+
+
 def test_tables_behave_like_dicts() -> None:
     t = item({"foo": "bar"})
 
