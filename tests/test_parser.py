@@ -41,6 +41,29 @@ def test_parser_should_raise_an_error_for_empty_tables() -> None:
     assert e.value.col == 1
 
 
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n"])
+def test_parser_reports_the_same_position_regardless_of_line_ending(
+    line_ending: str,
+) -> None:
+    content = line_ending.join(["a = 1", "b = 2", "c = @", "d = 4"]) + line_ending
+
+    with pytest.raises(UnexpectedCharError) as e:
+        Parser(content).parse()
+
+    assert e.value.line == 3
+    assert e.value.col == 4
+
+
+def test_parser_reports_the_right_position_for_mixed_line_endings() -> None:
+    content = "a = 1\r\nb = 2\nc = @\r\n"
+
+    with pytest.raises(UnexpectedCharError) as e:
+        Parser(content).parse()
+
+    assert e.value.line == 3
+    assert e.value.col == 4
+
+
 def test_parser_should_raise_an_error_if_equal_not_found() -> None:
     content = """[foo]
 a {c = 1, d = 2}
