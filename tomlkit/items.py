@@ -2277,7 +2277,9 @@ class String(str, Item):
 
     def __add__(self, other: str) -> String:
         result = super().__add__(other)
-        if isinstance(other, String) and other._t is self._t:
+        if self._t.is_literal():
+            original = String.from_raw(result, self._t)._original
+        elif isinstance(other, String) and other._t is self._t:
             original = self._original + other._original
         else:
             escaped = self._t.escaped_sequences
