@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
+- Fix appending a key to a parsed inline table that uses `", "` separators emitting a bare `","` for the new entry, leaving the table inconsistently spaced (e.g. `{x = 1, y = 2,z = 3}`). ([#595](https://github.com/python-poetry/tomlkit/pull/595))
 - Fix mutations that make a table render a `[header]` while a bare or dotted key that is not inside it still follows at the same level, so the header swallows that key when the output is parsed again. This includes assigning a table over a child of an out-of-order dotted-key table (`doc["a"]["b"] = {...}` over `a.b`/`a.c`/`a.d`), doing so inside a regular table or array-of-tables element, promoting children in multiple super tables, and adding a table to a super table (`a.b = 1` then `doc["a"]["new"] = {...}`). Rendering now keeps relative inline keys before absolute child headers at every scope, preserves enclosing table and array-of-tables prefixes, and moves leading comment and whitespace trivia with the key it documents. ([#556](https://github.com/python-poetry/tomlkit/issues/556))
 
 ## [0.15.1] - 2026-07-17
@@ -32,6 +34,7 @@
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
 - Fix `ParseError` when a sub-table extends the last element of an array of tables after an unrelated table. ([#261](https://github.com/python-poetry/tomlkit/issues/261))
 - Fix unparseable serialization when adding a key to a dotted-key table inside an inline table. ([#500](https://github.com/python-poetry/tomlkit/pull/500))
+- Fix `item()` reordering the keys of an inline table (dict-valued keys were forced last) under the default `sort_keys=False`. ([#546](https://github.com/python-poetry/tomlkit/issues/546))
 - Fix a table replaced by a plain value being serialized inside the preceding table's body when other tables follow; the value now moves before the first table like other root-level values. ([#504](https://github.com/python-poetry/tomlkit/issues/504))
 - Fix assigning a table over a dotted key (e.g. `doc["a"] = {...}` where `a` came from `a.b = ...`): the dotted prefix was duplicated onto the new `[a]` header, and the header then swallowed any sibling that follows it on round-trip. The replacement now renders as a plain table and, when needed, moves before the inline entries (values and dotted keys) it would otherwise capture. ([#513](https://github.com/python-poetry/tomlkit/issues/513), [#524](https://github.com/python-poetry/tomlkit/issues/524))
 - Restore `dumps()` rendering mapping-like wrappers around a parsed document (e.g. `dotty_dict`'s `Dotty`) through their delegated `as_string`, preserving the original table order and layout instead of re-encoding through a plain dict — a 0.15.0 regression. ([#482](https://github.com/python-poetry/tomlkit/issues/482))

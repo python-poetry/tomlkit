@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime as _datetime
+import re
 
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -114,8 +115,33 @@ def document() -> TOMLDocument:
 
 
 # Items
+_INTEGER_RE = re.compile(
+    r"(?:"
+    r"0x[0-9a-fA-F](?:_?[0-9a-fA-F])*"  # hex: lowercase prefix only, no sign
+    r"|0o[0-7](?:_?[0-7])*"  # octal: lowercase prefix only, no sign
+    r"|0b[01](?:_?[01])*"  # binary: lowercase prefix only, no sign
+    r"|[+-]?(?:0|[1-9](?:_?[0-9])*)"  # decimal: optional sign, no leading zeros
+    r")"
+)
+"""Valid TOML v1.0.0 integer literals (https://toml.io/en/v1.0.0#integer).
+
+Underscores may only appear between digits; hex/octal/binary use a
+lowercase prefix and take no sign, mirroring ``Parser._parse_number``.
+"""
+
+
 def integer(raw: str | int) -> Integer:
-    """Create an integer item from a number or string."""
+    """Create an integer item from a number or string.
+
+    When ``raw`` is a string it must be a valid TOML v1.0.0 integer
+    literal; the original text is then preserved verbatim so grouping
+    underscores (e.g. ``"1_000"``) survive ``dumps()``. Anything else
+    raises ``ValueError``.
+    """
+    if isinstance(raw, str):
+        if not _INTEGER_RE.fullmatch(raw):
+            raise ValueError(f"Invalid TOML integer: {raw!r}")
+        return Integer(int(raw, 0), Trivia(), raw)
     return item(int(raw))
 
 
@@ -290,12 +316,19 @@ def value(raw: str) -> _Item:
 def key_value(src: str) -> tuple[Key, _Item]:
     """Parse a key-value pair from a string.
 
+    Anything other than whitespace or a comment after the pair is an error,
+    as it is when the same text is given to :func:`parse`.
+
     :Example:
 
     >>> key_value("foo = 1")
     (Key('foo'), 1)
     """
-    return Parser(src)._parse_key_value()
+    parser = Parser(src)
+    k, v = parser._parse_key_value(parse_comment=True)
+    if not parser.end():
+        raise parser.parse_error(UnexpectedCharError, char=parser._current)
+    return k, v
 
 
 def ws(src: str) -> Whitespace:

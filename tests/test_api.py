@@ -320,6 +320,50 @@ def test_key_value() -> None:
     assert isinstance(i, Integer)
 
 
+@pytest.mark.parametrize(
+    "src",
+    ["foo = 12", "foo = 12\n", "  foo = 12", "foo = 12   ", "foo = 12  # comment\n"],
+)
+def test_key_value_allows_trailing_whitespace_and_comment(src: str) -> None:
+    k, i = tomlkit.key_value(src)
+
+    assert k.key == "foo"
+    assert i == 12
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "foo = 12 junk",
+        "foo = 12 = 13",
+        "foo = 12]]]",
+    ],
+)
+def test_key_value_raises_on_trailing_chars(src: str) -> None:
+    # parse() rejects each of these; key_value() must agree.
+    with pytest.raises(UnexpectedCharError):
+        parse(src)
+
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value(src)
+
+
+def test_key_value_raises_on_a_second_pair() -> None:
+    # Two pairs are a valid document, but key_value() parses a single pair,
+    # so the second one is trailing input rather than a silently dropped value.
+    assert dict(parse("foo = 12\nbar = 13")) == {"foo": 12, "bar": 13}
+
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value("foo = 12\nbar = 13")
+
+
+def test_key_value_raises_on_invalid_example(
+    invalid_example: Callable[[str], str],
+) -> None:
+    with pytest.raises(UnexpectedCharError):
+        tomlkit.key_value(invalid_example("key_value_with_trailing_chars"))
+
+
 def test_string() -> None:
     s = tomlkit.string('foo "')
 
@@ -345,6 +389,29 @@ def test_item_mixed_aray() -> None:
     t = tomlkit.item(example)
     assert t.as_string().strip() == expected
     assert dumps({"x": {"y": example}}).strip() == "[x]\ny = " + expected
+
+
+def test_item_inline_table_preserves_key_order() -> None:
+    # Inline tables cannot capture following keys, so their key order must be
+    # preserved under the default sort_keys=False, even when a value is itself
+    # a dict/table (#546).
+    assert (
+        tomlkit.item([[{"a": {"x": 1}, "b": 2}]]).as_string().strip()
+        == "[[{a = {x = 1}, b = 2}]]"
+    )
+
+    # Arrays of tables still render dict-valued keys last to avoid them
+    # capturing the following keys.
+    assert (
+        tomlkit.item([{"a": {"x": 1}, "b": 2}]).as_string() == "b = 2\n\n[a]\nx = 1\n"
+    )
+
+    # Sorting is purely alphabetical when explicitly requested: inline tables
+    # have no capture concern, so dict-valued keys are not forced last.
+    assert (
+        tomlkit.item([{"b": 2, "a": {"x": 1}}, "s"], _sort_keys=True).as_string()
+        == '[{a = {x = 1}, b = 2}, "s"]'
+    )
 
 
 def test_build_super_table() -> None:
@@ -511,6 +578,10 @@ def test_create_super_table_with_aot() -> None:
         ({"multiline": True}, 'My""String', '"""My""String"""'),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
         ({"multiline": True}, 'My""""String', '"""My""\\""String"""'),
+        # a lone CR is a control char and is escaped, but a CRLF line ending is
+        # left intact
+        ({"multiline": True}, "My\rString", '"""My\\rString"""'),
+        ({"multiline": True}, "My\r\nString", '"""My\r\nString"""'),
         (
             {"multiline": True},
             '"""My"""Str"""ing"""',
@@ -572,6 +643,9 @@ def test_create_multiline_string_with_leading_newline_round_trips(
         ({"literal": True}, "My\x0cString"),
         ({"literal": True}, "My\x7fString"),
         ({"multiline": True, "literal": True}, "My'''String"),
+        # a lone CR cannot be represented in a multiline literal string
+        ({"multiline": True, "literal": True}, "My\rString"),
+        ({"multiline": True, "literal": True}, "My\r\nMy\rString"),
     ],
 )
 def test_create_string_with_invalid_characters(
@@ -611,3 +685,64 @@ def test_parse_accepts_nesting_at_the_depth_limit() -> None:
     assert parse(array).as_string() == array
     dotted = ".".join(["a"] * depth) + " = 1"
     assert parse(dotted).as_string() == dotted
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "0",
+        "42",
+        "1_000",
+        "5_349_221",
+        "+1_000",
+        "-1_000",
+        "0xdead_beef",
+        "0xDEAD_BEEF",
+        "0o7_7",
+        "0b1_0",
+    ],
+)
+def test_integer_preserves_grouping_underscores(raw: str) -> None:
+    assert tomlkit.integer(raw).as_string() == raw
+    assert int(tomlkit.integer(raw)) == int(raw, 0)
+
+
+@pytest.mark.parametrize("raw", ["1_000", "0xdead_beef", "+1_000", "0o7_7"])
+def test_integer_emission_matches_parse(raw: str) -> None:
+    doc = tomlkit.document()
+    doc["n"] = tomlkit.integer(raw)
+    assert tomlkit.dumps(doc) == f"n = {raw}\n"
+    # the emission path agrees with the parse path on the same literal
+    assert (
+        tomlkit.integer(raw).as_string()
+        == tomlkit.parse(f"n = {raw}\n")["n"].as_string()
+    )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "",
+        "abc",
+        "_100",
+        "100_",
+        "1__000",
+        "01_2",
+        "0x_1",
+        "0X1",  # the parser only accepts a lowercase prefix
+        "+0x1",  # hex/oct/bin take no sign
+        "-0o7",
+        " 1",
+        "1 ",
+        "1.0",
+        "1e3",
+    ],
+)
+def test_integer_rejects_invalid_strings(raw: str) -> None:
+    with pytest.raises(ValueError):
+        tomlkit.integer(raw)
+
+
+def test_integer_from_int_unchanged() -> None:
+    assert tomlkit.integer(1000).as_string() == "1000"
+    assert int(tomlkit.integer(1000)) == 1000

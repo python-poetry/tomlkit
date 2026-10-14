@@ -32,6 +32,49 @@ from tomlkit.items import item as _item
 _NOT_SET = object()
 
 
+def _is_empty_aot(item: Item) -> bool:
+    """Whether ``item`` is an array of tables with no elements left."""
+    return isinstance(item, AoT) and not item.body
+
+
+def _emits_header(key: Key, table: Table) -> bool:
+    """Whether rendering ``table`` under ``key`` emits a ``[header]`` line.
+
+    A super table normally renders as nothing but the path prefix of its
+    children, so it opens no scope of its own.
+    """
+    return (
+        not table.is_super_table()
+        or (
+            any(
+                not isinstance(v, (Table, AoT, Whitespace, Null))
+                for _, v in table.value.body
+            )
+            and not key.is_dotted()
+        )
+        or (
+            any(
+                k is not None and k.is_dotted()
+                for k, v in table.value.body
+                if isinstance(v, Table)
+            )
+            and not key.is_dotted()
+        )
+    )
+
+
+def _render_empty_aot(key: str, aot: AoT) -> str:
+    """Render an emptied array of tables as an inline empty array."""
+    return (
+        f"{aot.trivia.indent}"
+        f"{decode(key)}"
+        f" = []"
+        f"{aot.trivia.comment_ws}"
+        f"{decode(aot.trivia.comment)}"
+        f"{aot.trivia.trail or chr(10)}"
+    )
+
+
 class Container(_CustomDict):  # type: ignore[type-arg]
     """
     A container for items within a TOMLDocument.
@@ -67,9 +110,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         # rebuilds a SingleKey from the bare string on every key only to throw
         # it away. Out-of-order keys (a tuple index) still go through
         # OutOfOrderTableProxy so their validation (and fragment merge) runs
-        # exactly as before. _map iterates in the same insertion order as the
-        # old self.items().
-        for key, idx in self._map.items():
+        # exactly as before. _map is keyed for lookup, not ordered: replacing a
+        # value re-inserts its key and moves it last, so take the order from the
+        # body index, which is what dumps() and items() follow.
+        for key, idx in sorted(
+            self._map.items(),
+            key=lambda item: item[1][0] if isinstance(item[1], tuple) else item[1],
+        ):
             if isinstance(idx, tuple):
                 value: Any = OutOfOrderTableProxy(self, idx)
             else:
@@ -222,26 +269,6 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         rendered = key.as_string()
         return f"{prefix}.{rendered}" if prefix is not None else rendered
 
-    def _table_emits_own_header(self, key: Key, table: Table) -> bool:
-        return (
-            not table.is_super_table()
-            or (
-                any(
-                    not isinstance(v, (Table, AoT, Whitespace, Null))
-                    for _, v in table.value.body
-                )
-                and not key.is_dotted()
-            )
-            or (
-                any(
-                    k is not None and k.is_dotted()
-                    for k, v in table.value.body
-                    if isinstance(v, Table)
-                )
-                and not key.is_dotted()
-            )
-        )
-
     def _render_body_parts(
         self,
         *,
@@ -308,6 +335,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 header_prefix=header_prefix,
                 inline_prefix=inline_prefix,
             )
+        if _is_empty_aot(item):
+            # An emptied array of tables has no `[[header]]` left, so it renders
+            # as an inline `key = []` relative to the active scope and joins the
+            # inline partition ahead of every child header.
+            assert isinstance(item, AoT)
+            return _render_empty_aot(self._join_key(inline_prefix, key), item), ""
         if isinstance(item, AoT):
             return "", self._render_aot(key, item, prefix=header_prefix)
         return self._render_simple_item(key, item, prefix=inline_prefix), ""
@@ -325,7 +358,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         else:
             full_key = self._join_key(header_prefix, key)
 
-        if not self._table_emits_own_header(key, table):
+        if not _emits_header(key, table):
             relative_key = self._join_key(inline_prefix, key)
             inline, headers = table.value._render_body_parts(
                 header_prefix=full_key,
@@ -600,7 +633,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 existing = current.value.item(k)
                 if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
                     raise KeyAlreadyPresent(k)
-                if k.is_dotted():
+                if k.is_dotted() and not (
+                    isinstance(existing, Table) and existing.is_super_table()
+                ):
                     raise TOMLKitError("Redefinition of an existing table")
                 if isinstance(existing, Table) and isinstance(v, Table):
                     if not existing.is_super_table() and not v.is_super_table():
@@ -1345,7 +1380,7 @@ def _equal_with_nan(left: Any, right: Any) -> bool:
     if isinstance(left, list) and isinstance(right, list):
         if len(left) != len(right):
             return False
-        return all(_equal_with_nan(l, r) for l, r in zip(left, right))  # noqa: B905, E741
+        return all(_equal_with_nan(l, r) for l, r in zip(left, right))  # noqa: E741
 
     if isinstance(left, float) and isinstance(right, float):
         if math.isnan(left) and math.isnan(right):
