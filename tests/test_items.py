@@ -1681,5 +1681,5 @@ def test_out_of_order_table_proxy_membership() -> None:
     # a non-str/non-Key argument is rejected like the other mapping types
     with pytest.raises(TypeError):
         _ = 123 in table
-    # monitoring must not resolve values or mutate the document
+    # membership must not resolve values or mutate the document
     assert doc.as_string() == content
