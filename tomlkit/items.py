@@ -1696,6 +1696,10 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         if indent is None and (idx > 0 or "\n" in default_indent):
             # apply default indent if it isn't the first item or the array is multiline.
             indent = Whitespace(default_indent)
+        if idx == 0 and pos < length and self._value[0].indent is None:
+            # The current first item is no longer first, so separate it from
+            # the new item's comma like any other following item.
+            self._value[0].indent = Whitespace(default_indent)
         new_item = _ArrayItemGroup(value=it, indent=indent, comma=comma)
         self._value.insert(idx, new_item)
         self._reindex()
