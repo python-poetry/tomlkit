@@ -1321,6 +1321,18 @@ value = false
     assert {"value": False} == content["foo"]
 
 
+def test_booleans_compare_equal_to_each_other() -> None:
+    assert item(True) == item(True)
+    assert item(False) == item(False)
+    assert item(True) != item(False)
+    assert item(True) in [item(True)]
+
+    a = parse("a = [true, false]")["a"]
+    b = parse("a = [true, false]")["a"]
+    assert isinstance(a[0], Bool)
+    assert a == b
+
+
 def test_table_copy() -> None:
     table = item({"foo": "bar"})
     table_copy = table.copy()
@@ -1669,5 +1681,5 @@ def test_out_of_order_table_proxy_membership() -> None:
     # a non-str/non-Key argument is rejected like the other mapping types
     with pytest.raises(TypeError):
         _ = 123 in table
-    # membership must not resolve values or mutate the document
+    # monitoring must not resolve values or mutate the document
     assert doc.as_string() == content
