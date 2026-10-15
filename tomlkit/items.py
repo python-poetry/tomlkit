@@ -1959,7 +1959,9 @@ class Table(AbstractTable):
 
         indent = m.group(1)
 
-        if not isinstance(_item, Whitespace):
+        # A table split out of order is looked up as an OutOfOrderTableProxy,
+        # which has no trivia; its parts keep their own indentation.
+        if isinstance(_item, Item) and not isinstance(_item, Whitespace):
             m = re.match("(?s)^([^ ]*)(.*)$", _item.trivia.indent)
             if not m:
                 _item.trivia.indent = indent
