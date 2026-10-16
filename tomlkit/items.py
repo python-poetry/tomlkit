@@ -112,18 +112,37 @@ def item(value: ItemT, _parent: Item | None = ..., _sort_keys: bool = ...) -> It
 def item(value: object, _parent: Item | None = ..., _sort_keys: bool = ...) -> Item: ...
 
 
-def _sort_container_body(container: Container) -> None:
+def _sort_container_body(container: Container, inline: bool = False) -> None:
     """Reorder *container*'s entries by key, in place, and recurse.
 
-    Each key keeps the comment and whitespace lines that precede it, and any
-    trailing lines after the last key stay at the end. Containers holding an
-    out-of-order table (a key spread over several body positions) are left in
-    place, since their entries cannot be linearly reordered, but their nested
-    tables are still sorted.
+    For a regular table each key keeps the comment and whitespace lines that
+    precede it, and any trailing lines after the last key stay at the end. For
+    an INLINE table the separators between entries (a ``,`` and the spaces
+    around it) are positional whitespace rather than trivia owned by the
+    following key, so only the real ``(key, value)`` entries are permuted
+    among their slots while every separator stays put -- otherwise the entry
+    moved to the front would drag a leading separator space with it, sorting
+    ``{z=2, a=1}`` to ``{ a=1, z=2}``. Containers holding an out-of-order
+    table (a key spread over several body positions) are left in place, since
+    their entries cannot be linearly reordered, but their nested tables are
+    still sorted.
     """
     out_of_order = any(isinstance(idx, tuple) for idx in container._map.values())
 
-    if not out_of_order:
+    if not out_of_order and inline:
+        # Permute only the keyed entries; leave every separator in place.
+        real_positions = [
+            i for i, (key, _v) in enumerate(container._body) if key is not None
+        ]
+        real_entries = [container._body[i] for i in real_positions]
+        real_entries.sort(key=lambda kv: (isinstance(kv[1], dict), kv[0].key))
+        for position, entry in zip(real_positions, real_entries):
+            container._body[position] = entry
+        container._map = {}
+        for index, (key, _value) in enumerate(container._body):
+            if key is not None:
+                container._map[key] = index
+    elif not out_of_order:
         groups: list[tuple[tuple[bool, str], list[tuple[Key | None, Item]]]] = []
         pending: list[tuple[Key | None, Item]] = []
         for key, value in container._body:
@@ -157,12 +176,24 @@ def _sort_container_body(container: Container) -> None:
 
 def _sort_item_keys(value: Item) -> None:
     """Sort the keys of *value* in place if it is a table-like item."""
-    if isinstance(value, (Table, InlineTable)):
+    if isinstance(value, InlineTable):
+        _sort_container_body(value.value, inline=True)
+    elif isinstance(value, Table):
         _sort_container_body(value.value)
     elif isinstance(value, AoT):
         for table in value.body:
-            if isinstance(table, (Table, InlineTable)):
+            if isinstance(table, InlineTable):
+                _sort_container_body(table.value, inline=True)
+            elif isinstance(table, Table):
                 _sort_container_body(table.value)
+    elif isinstance(value, Array):
+        # Recurse into array ELEMENTS: an inline table (or a nested array
+        # of them) can sit inside an ordinary array, and its keys must sort
+        # too. The array's own element ORDER is left untouched -- a list is
+        # ordered data, not a key set, so only the keys within each
+        # table-like element are reordered.
+        for element in value:
+            _sort_item_keys(element)
 
 
 def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> Item:
@@ -185,10 +216,13 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
         # An already-built item is returned as is, except that ``_sort_keys``
         # must reach the keys of a parsed table too: without this, only the
         # top-level container (which reaches the ``dict`` branch below) gets
-        # sorted, while nested tables, inline tables and arrays of tables keep
-        # their original order (#614). A sorted copy is returned so the caller's
-        # document is not mutated.
-        if _sort_keys and isinstance(value, (Table, InlineTable, AoT)):
+        # sorted, while nested tables, inline tables, arrays of tables and
+        # inline tables inside an ordinary array keep their original order
+        # (#614). A sorted copy is returned so the caller's document is not
+        # mutated. ``Array`` is included so an inline table sitting inside a
+        # top-level array is reached too; ``_sort_item_keys`` recurses into
+        # array elements while leaving their order untouched.
+        if _sort_keys and isinstance(value, (Table, InlineTable, AoT, Array)):
             sorted_value = copy.deepcopy(value)
             _sort_item_keys(sorted_value)
             return sorted_value

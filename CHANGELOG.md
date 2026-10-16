@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- `dumps(..., sort_keys=True)` now sorts the keys of a parsed document recursively, matching the behavior on a plain `dict`; previously only the top-level keys were sorted while nested tables, inline tables and arrays of tables kept their original order. ([#614](https://github.com/python-poetry/tomlkit/issues/614))
+- `dumps(..., sort_keys=True)` now sorts the keys of a parsed document recursively, matching the behavior on a plain `dict`; previously only the top-level keys were sorted while nested tables, inline tables, arrays of tables and inline tables inside an array kept their original order. ([#614](https://github.com/python-poetry/tomlkit/issues/614))
 
 ## [0.15.2] - 2026-10-16
 

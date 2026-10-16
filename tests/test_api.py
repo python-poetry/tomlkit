@@ -217,6 +217,38 @@ def test_dumps_with_sorted_keys_recurses_into_a_parsed_document() -> None:
     assert dumps(doc) == original
 
 
+def test_dumps_with_sorted_keys_sorts_inline_tables_inside_arrays() -> None:
+    # sort_keys must reach inline tables nested inside an ordinary array, not
+    # just tables, inline tables and arrays of tables, while keeping the
+    # array's element ORDER (a list is ordered data, not a key set). And
+    # reordering a tight inline table's keys must not leave a stray separator
+    # space on the new first key (#617 review).
+    doc = loads(
+        """\
+arr = [{z = 2, a = 1}, {y = 3, b = 4}]
+mix = [1, {n = 1, m = 2}, "s"]
+"""
+    )
+    original = dumps(doc)
+
+    assert dumps(doc, sort_keys=True) == (
+        """\
+arr = [{a = 1, z = 2}, {b = 4, y = 3}]
+mix = [1, {m = 2, n = 1}, "s"]
+"""
+    )
+    # A tight inline table keeps its compact spacing after sorting -- the
+    # reordered first key must not gain a leading separator space.
+    assert dumps(loads("""\
+t = {z=2, a=1}
+"""), sort_keys=True) == """\
+t = {a=1, z=2}
+"""
+
+    # Sorting must not mutate the document.
+    assert dumps(doc) == original
+
+
 def test_dumps_weird_object() -> None:
     with pytest.raises(TypeError):
         dumps(object())  # type: ignore[arg-type]
