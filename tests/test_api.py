@@ -632,6 +632,29 @@ def test_create_multiline_string_with_leading_newline_round_trips(
     assert str(reparsed) == example
 
 
+def test_create_multiline_literal_string_with_leading_newline_no_escape() -> None:
+    """A multiline literal string created with ``escape=False`` whose value
+    starts with a newline must render verbatim, without a doubled newline
+    (#655). PR #551 re-added the trimmed leading newline unconditionally, which
+    made it impossible to dump such a value as written.
+    """
+    value = tomlkit.string(
+        "\n  aligned\n  strings\n",
+        multiline=True,
+        literal=True,
+        escape=False,
+    )
+    assert tomlkit.dumps(value) == "'''\n  aligned\n  strings\n'''"
+    assert str(value) == "\n  aligned\n  strings\n"
+
+
+def test_create_multiline_basic_string_with_leading_newline_no_escape() -> None:
+    """Same as above for a multiline basic string built with ``escape=False``."""
+    value = tomlkit.string("\nfoo\n", multiline=True, escape=False)
+    assert tomlkit.dumps(value) == '"""\nfoo\n"""'
+    assert str(value) == "\nfoo\n"
+
+
 @pytest.mark.parametrize(
     "kwargs, example",
     [
