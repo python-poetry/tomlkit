@@ -63,33 +63,6 @@ def _emits_header(key: Key, table: Table) -> bool:
     )
 
 
-def _header_less_aots(
-    body: list[tuple[Key | None, Item]], prefix: str = ""
-) -> list[tuple[str, AoT]]:
-    """Every emptied array of tables reachable without crossing a header.
-
-    An emptied array of tables has no ``[[key]]`` header left to render, so it
-    falls back to the inline ``key = []`` form -- and TOML reads a bare
-    key/value pair into whichever table the closest preceding header opened.
-    So the fallbacks of a scope have to be written at the top of that scope,
-    with a key relative to it, and that includes the ones sitting inside super
-    tables, which emit no header to separate them.
-
-    Returns ``(dotted key, aot)`` pairs, keyed relative to the scope ``body``
-    belongs to.
-    """
-    found: list[tuple[str, AoT]] = []
-    for k, v in body:
-        if k is None:
-            continue
-        path = f"{prefix}.{k.as_string()}" if prefix else k.as_string()
-        if _is_empty_aot(v):
-            found.append((path, v))
-        elif isinstance(v, Table) and not _emits_header(k, v):
-            found.extend(_header_less_aots(v.value.body, path))
-    return found
-
-
 def _render_empty_aot(key: str, aot: AoT) -> str:
     """Render an emptied array of tables as an inline empty array."""
     return (
@@ -261,6 +234,166 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 else:
                     return True
         return False
+
+    @staticmethod
+    def _append_header(rendered: str, header: str) -> str:
+        if not header:
+            return rendered
+
+        # Match the separator rule previously repeated in each rendering loop.
+        # A header's own trivia can already contain the required newline.
+        before_header = header.partition("[")[0]
+        if (
+            rendered.strip(" ")
+            and not rendered.strip(" ").endswith("\n")
+            and "\n" not in before_header
+        ):
+            rendered += "\n"
+        return rendered + header
+
+    @staticmethod
+    def _append_inline(rendered: str, inline: str) -> str:
+        if not inline:
+            return rendered
+
+        if (
+            rendered.strip(" ")
+            and not rendered.rstrip(" ").endswith(("\n", "\r"))
+            and not inline.lstrip(" ").startswith(("\n", "\r"))
+        ):
+            rendered += "\n"
+        return rendered + inline
+
+    @staticmethod
+    def _join_key(prefix: str | None, key: Key) -> str:
+        rendered = key.as_string()
+        return f"{prefix}.{rendered}" if prefix is not None else rendered
+
+    def _render_body_parts(
+        self,
+        *,
+        header_prefix: str | None = None,
+        inline_prefix: str | None = None,
+    ) -> tuple[str, str]:
+        """Render a container as stable inline and header partitions.
+
+        TOML keys at one scope must precede child table headers. A mutated super
+        table can contribute to both partitions, so ordering whole body entries
+        is insufficient when two such tables are interleaved. Leading comments
+        and whitespace travel with the keyed entry they describe.
+        """
+
+        pure_inline = ""
+        mixed_inline = ""
+        headers = ""
+        pending_trivia = ""
+
+        for key, item in self._body:
+            if key is None:
+                pending_trivia += self._render_simple_item(key, item)
+                continue
+
+            item_inline, item_headers = self._render_item_parts(
+                key,
+                item,
+                header_prefix=header_prefix,
+                inline_prefix=inline_prefix,
+            )
+            if item_inline and item_headers:
+                mixed_inline += pending_trivia + item_inline
+                pending_trivia = ""
+            elif item_inline:
+                pure_inline += pending_trivia + item_inline
+                pending_trivia = ""
+            elif item_headers:
+                item_headers = pending_trivia + item_headers
+                pending_trivia = ""
+
+            if item_headers:
+                headers = self._append_header(headers, item_headers)
+
+        if pending_trivia:
+            if headers:
+                headers += pending_trivia
+            else:
+                pure_inline += pending_trivia
+
+        return self._append_inline(pure_inline, mixed_inline), headers
+
+    def _render_item_parts(
+        self,
+        key: Key,
+        item: Item,
+        *,
+        header_prefix: str | None,
+        inline_prefix: str | None,
+    ) -> tuple[str, str]:
+        if isinstance(item, Table):
+            return self._render_table_parts(
+                key,
+                item,
+                header_prefix=header_prefix,
+                inline_prefix=inline_prefix,
+            )
+        if _is_empty_aot(item):
+            # An emptied array of tables has no `[[header]]` left, so it renders
+            # as an inline `key = []` relative to the active scope and joins the
+            # inline partition ahead of every child header.
+            assert isinstance(item, AoT)
+            return _render_empty_aot(self._join_key(inline_prefix, key), item), ""
+        if isinstance(item, AoT):
+            return "", self._render_aot(key, item, prefix=header_prefix)
+        return self._render_simple_item(key, item, prefix=inline_prefix), ""
+
+    def _render_table_parts(
+        self,
+        key: Key,
+        table: Table,
+        *,
+        header_prefix: str | None,
+        inline_prefix: str | None,
+    ) -> tuple[str, str]:
+        if table.display_name is not None:
+            full_key = table.display_name
+        else:
+            full_key = self._join_key(header_prefix, key)
+
+        if not _emits_header(key, table):
+            relative_key = self._join_key(inline_prefix, key)
+            inline, headers = table.value._render_body_parts(
+                header_prefix=full_key,
+                inline_prefix=relative_key,
+            )
+            if table.trivia.indent == "\n":
+                if inline:
+                    inline = table.trivia.indent + inline
+                else:
+                    headers = table.trivia.indent + headers
+            return inline, headers
+
+        open_, close = "[", "]"
+        if table.is_aot_element():
+            open_, close = "[[", "]]"
+
+        newline_in_table_trivia = (
+            "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else ""
+        )
+        header = (
+            f"{table.trivia.indent}"
+            f"{open_}"
+            f"{decode(full_key)}"
+            f"{close}"
+            f"{table.trivia.comment_ws}"
+            f"{decode(table.trivia.comment)}"
+            f"{table.trivia.trail}"
+            f"{newline_in_table_trivia}"
+        )
+        body_inline, body_headers = table.value._render_body_parts(
+            header_prefix=full_key,
+            inline_prefix=None,
+        )
+        body = self._append_header(body_inline, body_headers)
+        return "", header + body
 
     def _validate_out_of_order_table(self, key: Key | None = None) -> None:
         if key is None:
@@ -708,108 +841,17 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         """Render as TOML string."""
-        s = ""
-        for path, aot in _header_less_aots(self._body):
-            s += _render_empty_aot(path, aot)
-        for k, v in self._body:
-            if k is not None:
-                if _is_empty_aot(v):
-                    continue
-                if isinstance(v, Table):
-                    if (
-                        s.strip(" ")
-                        and not s.strip(" ").endswith("\n")
-                        and "\n" not in v.trivia.indent
-                    ):
-                        s += "\n"
-                    s += self._render_table(k, v)
-                elif isinstance(v, AoT):
-                    if (
-                        s.strip(" ")
-                        and not s.strip(" ").endswith("\n")
-                        and "\n" not in v.trivia.indent
-                    ):
-                        s += "\n"
-                    s += self._render_aot(k, v)
-                else:
-                    s += self._render_simple_item(k, v)
-            else:
-                s += self._render_simple_item(k, v)
-
-        return s
+        inline, headers = self._render_body_parts()
+        return self._append_header(inline, headers)
 
     def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
-        cur = ""
-
-        if table.display_name is not None:
-            _key = table.display_name
-        else:
-            _key = key.as_string()
-
-            if prefix is not None:
-                _key = prefix + "." + _key
-
-        header_emitted = _emits_header(key, table)
-        if header_emitted:
-            open_, close = "[", "]"
-            if table.is_aot_element():
-                open_, close = "[[", "]]"
-
-            newline_in_table_trivia = (
-                "\n" if "\n" not in table.trivia.trail and len(table.value) > 0 else ""
-            )
-            cur += (
-                f"{table.trivia.indent}"
-                f"{open_}"
-                f"{decode(_key)}"
-                f"{close}"
-                f"{table.trivia.comment_ws}"
-                f"{decode(table.trivia.comment)}"
-                f"{table.trivia.trail}"
-                f"{newline_in_table_trivia}"
-            )
-        elif table.trivia.indent == "\n":
-            cur += table.trivia.indent
-
-        if header_emitted:
-            # A super table opens no scope, so its fallbacks belong to -- and
-            # were already written by -- the nearest enclosing header instead.
-            for path, aot in _header_less_aots(table.value.body):
-                cur += _render_empty_aot(path, aot)
-        for k, v in table.value.body:
-            if k is not None and _is_empty_aot(v):
-                continue
-            elif isinstance(v, Table):
-                if (
-                    cur.strip(" ")
-                    and not cur.strip(" ").endswith("\n")
-                    and "\n" not in v.trivia.indent
-                ):
-                    cur += "\n"
-                assert k is not None
-                if v.is_super_table():
-                    if k.is_dotted() and not key.is_dotted():
-                        # Dotted key inside table
-                        cur += self._render_table(k, v)
-                    else:
-                        cur += self._render_table(k, v, prefix=_key)
-                else:
-                    cur += self._render_table(k, v, prefix=_key)
-            elif isinstance(v, AoT):
-                if (
-                    cur.strip(" ")
-                    and not cur.strip(" ").endswith("\n")
-                    and "\n" not in v.trivia.indent
-                ):
-                    cur += "\n"
-                assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
-            else:
-                cur += self._render_simple_item(
-                    k, v, prefix=_key if key.is_dotted() else None
-                )
-
-        return cur
+        inline, headers = self._render_table_parts(
+            key,
+            table,
+            header_prefix=prefix,
+            inline_prefix=None,
+        )
+        return self._append_header(inline, headers)
 
     def _render_aot(self, key: Key, aot: AoT, prefix: str | None = None) -> str:
         _key = key.as_string()
@@ -838,26 +880,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             f"{table.trivia.trail}"
         )
 
-        for path, aot in _header_less_aots(table.value.body):
-            cur += _render_empty_aot(path, aot)
-        for k, v in table.value.body:
-            if k is not None and _is_empty_aot(v):
-                continue
-            elif isinstance(v, Table):
-                assert k is not None
-                if v.is_super_table():
-                    if k.is_dotted():
-                        # Dotted key inside table
-                        cur += self._render_table(k, v)
-                    else:
-                        cur += self._render_table(k, v, prefix=_key)
-                else:
-                    cur += self._render_table(k, v, prefix=_key)
-            elif isinstance(v, AoT):
-                assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
-            else:
-                cur += self._render_simple_item(k, v)
+        body_inline, body_headers = table.value._render_body_parts(
+            header_prefix=_key,
+            inline_prefix=None,
+        )
+        cur += self._append_header(body_inline, body_headers)
 
         return cur
 
