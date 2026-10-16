@@ -1258,6 +1258,33 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert parse(rendered).as_string() == rendered
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("a = {x = 1, b.c = 1, y = 2}\n", "a = {x = 1, b = {}, y = 2}\n"),
+        ("a = {x = 1, b.c = 1}\n", "a = {x = 1, b = {}}\n"),
+        ("a = {b.c = 1, y = 2}\n", "a = {b = {}, y = 2}\n"),
+        ("a = {b.c = 1}\n", "a = {b = {}}\n"),
+    ],
+)
+def test_emptying_dotted_key_inside_inline_table(content: str, expected: str) -> None:
+    doc = parse(content)
+    del doc["a"]["b"]["c"]
+
+    # With nothing left under the ``b.`` prefix, the table must still render
+    # as a key, not as an empty slot between two commas.
+    assert doc.as_string() == expected
+    assert parse(expected) == doc
+
+
+def test_emptying_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {x = 1, b.c.d = 1, y = 2}\n")
+    del doc["a"]["b"]["c"]["d"]
+
+    assert doc.as_string() == "a = {x = 1, b.c = {}, y = 2}\n"
+    assert parse(doc.as_string()) == doc
+
+
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
     doc = parse(
         """\
