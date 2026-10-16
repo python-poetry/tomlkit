@@ -7,6 +7,7 @@ import inspect
 import re
 import string
 
+from collections.abc import Callable
 from collections.abc import Collection
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -1624,6 +1625,13 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.clear(self)
         self._index_map.clear()
         self._value.clear()
+
+    def sort(
+        self, *, key: Callable[[Any], Any] | None = None, reverse: bool = False
+    ) -> None:
+        """Sort the array while preserving its formatting."""
+        for index, value in enumerate(sorted(self, key=key, reverse=reverse)):
+            self[index] = value
 
     def __len__(self) -> int:
         return list.__len__(self)
