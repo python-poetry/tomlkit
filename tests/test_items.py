@@ -424,6 +424,118 @@ def test_array_slice_deletion_keeps_render_in_sync() -> None:
     assert a.as_string() == "[3]"
 
 
+class ArrayIndex:
+    def __init__(self, value: int) -> None:
+        self.value = value
+        self.calls = 0
+
+    def __index__(self) -> int:
+        self.calls += 1
+        if self.calls > 1:
+            raise AssertionError("index converted more than once")
+        return self.value
+
+
+@pytest.mark.parametrize("operation", ["set", "delete", "insert"])
+@pytest.mark.parametrize("position", [0, 1, -1, -3])
+def test_array_mutation_with_index_protocol(operation: str, position: int) -> None:
+    doc = parse("a = [\n    1, # first\n    2,\n    3,\n]\n")
+    a = doc["a"]
+    expected = [1, 2, 3]
+    index = ArrayIndex(position)
+
+    if operation == "set":
+        a[index] = 4
+        expected[position] = 4
+    elif operation == "delete":
+        del a[index]
+        del expected[position]
+    else:
+        a.insert(index, 4)
+        expected.insert(position, 4)
+
+    assert index.calls == 1
+    assert a == expected
+    assert parse(doc.as_string())["a"] == expected
+
+
+@pytest.mark.parametrize("position", [-10, 10])
+@pytest.mark.parametrize("operation", ["set", "delete", "insert"])
+def test_array_mutation_with_out_of_bounds_index(operation: str, position: int) -> None:
+    content = "a = [1, 2, 3]\n"
+    doc = parse(content)
+    a = doc["a"]
+    index = ArrayIndex(position)
+
+    if operation == "insert":
+        a.insert(index, 4)
+        expected = [1, 2, 3]
+        expected.insert(position, 4)
+        assert a == expected
+        assert parse(doc.as_string())["a"] == expected
+    else:
+        with pytest.raises(IndexError):
+            if operation == "set":
+                a[index] = 4
+            else:
+                del a[index]
+        assert a == [1, 2, 3]
+        assert doc.as_string() == content
+
+    assert index.calls == 1
+
+
+@pytest.mark.parametrize("operation", ["set", "delete", "insert"])
+def test_array_mutation_with_invalid_index_does_not_mutate(operation: str) -> None:
+    content = "a = [1, 2, 3]\n"
+    doc = parse(content)
+    a = doc["a"]
+
+    with pytest.raises(TypeError):
+        if operation == "set":
+            a[1.5] = 4
+        elif operation == "delete":
+            del a[1.5]
+        else:
+            a.insert(1.5, 4)
+
+    assert a == [1, 2, 3]
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize("bounds", [(0, 3, 2), (-1, -4, -1), (-10, -4, -1)])
+def test_array_slice_deletion_converts_indices_once(
+    bounds: tuple[int, int, int],
+) -> None:
+    doc = parse("a = [1, 2, 3]\n")
+    a = doc["a"]
+    expected = [1, 2, 3]
+    indices = [ArrayIndex(value) for value in bounds]
+
+    del a[slice(*indices)]
+    del expected[slice(*bounds)]
+
+    assert [index.calls for index in indices] == [1, 1, 1]
+    assert a == expected
+    assert parse(doc.as_string())["a"] == expected
+
+
+def test_array_invalid_slice_does_not_mutate() -> None:
+    content = "a = [1, 2, 3]\n"
+    doc = parse(content)
+    a = doc["a"]
+    start = ArrayIndex(0)
+    step = ArrayIndex(0)
+
+    with pytest.raises(ValueError, match="slice step cannot be zero"):
+        del a[slice(start, None, step)]
+
+    assert step.calls == 1
+    assert start.calls == 0
+    assert a == [1, 2, 3]
+    assert doc.as_string() == content
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
