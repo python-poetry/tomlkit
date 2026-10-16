@@ -39,12 +39,29 @@ extensions = [
     "sphinx.ext.intersphinx",
 ]
 
+# Built-in mapping docstrings start with text such as ``D.clear() -> None``.
+# Parse those first lines as prose rather than malformed autodoc signatures.
+autodoc_docstring_signature = False
+
 # Resolve references to the standard library and other projects, so that
 # annotations such as collections.abc.Mapping or datetime.datetime link to
 # their documentation instead of producing "reference target not found"
 # warnings under `sphinx-build -n`.
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+}
+
+# These targets are intentionally not standalone API pages: the wrapper types
+# are private implementation bases, while E and Encoder exist only for typing.
+nitpick_ignore = {
+    ("py:class", "tomlkit._types._CustomDict"),
+    ("py:class", "tomlkit._types._CustomFloat"),
+    ("py:class", "tomlkit._types._CustomInt"),
+    ("py:class", "tomlkit._types._CustomList"),
+    ("py:class", "tomlkit.items.AbstractTable"),
+    ("py:class", "tomlkit.container.OutOfOrderTableProxy"),
+    ("py:class", "E"),
+    ("py:class", "Encoder"),
 }
 
 # Add any paths that contain templates here, relative to this directory.
