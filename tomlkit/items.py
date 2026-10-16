@@ -1881,7 +1881,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
 
         is_replace = key in self
         self._value[key] = value
@@ -2233,7 +2233,7 @@ class InlineTable(AbstractTable):
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
         self._validate_child(value)
         super().__setitem__(key, value)
 
