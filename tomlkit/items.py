@@ -1042,6 +1042,9 @@ class Bool(Item):
     __nonzero__ = __bool__
 
     def __eq__(self, other: object) -> bool:
+        if isinstance(other, Bool):
+            other = other.value
+
         if not isinstance(other, bool):
             return NotImplemented
 
