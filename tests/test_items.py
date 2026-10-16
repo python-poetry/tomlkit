@@ -26,6 +26,7 @@ from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
 from tomlkit.items import Bool
 from tomlkit.items import Comment
+from tomlkit.items import DateTime
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Item
@@ -35,6 +36,7 @@ from tomlkit.items import SingleKey as Key
 from tomlkit.items import String
 from tomlkit.items import StringType
 from tomlkit.items import Table
+from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
@@ -82,6 +84,21 @@ def tz_utc() -> tzinfo:
                 return timedelta(0)
 
         return UTC()
+
+
+@pytest.fixture()
+def tz_fold() -> tzinfo:
+    class FoldTimezone(tzinfo):
+        def utcoffset(self, dt: datetime | None) -> timedelta:
+            return timedelta(hours=-5 if dt is not None and dt.fold else -4)
+
+        def tzname(self, dt: datetime | None) -> str:
+            return "FoldTimezone"
+
+        def dst(self, dt: datetime | None) -> timedelta:
+            return timedelta(0)
+
+    return FoldTimezone()
 
 
 def test_item_base_has_no_unwrap() -> None:
@@ -387,6 +404,26 @@ def test_array_behaves_like_a_list() -> None:
     )
 
 
+def test_array_slice_deletion_keeps_render_in_sync() -> None:
+    # Regression: deleting a slice must keep as_string() consistent with the
+    # list contents. Slices with stop == 0 or negative bounds previously
+    # corrupted the rendered array (e.g. `del a[:0]` wiped every element).
+    a = item([1, 2, 3])
+    del a[:0]  # deletes nothing
+    assert a == [1, 2, 3]
+    assert a.as_string() == "[1, 2, 3]"
+
+    a = item([1, 2, 3])
+    del a[-1:]
+    assert a == [1, 2]
+    assert a.as_string() == "[1, 2]"
+
+    a = item([1, 2, 3])
+    del a[:-1]
+    assert a == [3]
+    assert a.as_string() == "[3]"
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
@@ -557,6 +594,16 @@ def test_array_add_line() -> None:
     # Line 4
 ]"""
     )
+
+
+def test_array_add_line_single_line_comment_round_trips() -> None:
+    # A single-line array whose last rendered element is a trailing comment
+    # (from add_line(..., comment=...)) must keep the closing bracket off the
+    # comment line, otherwise the output does not round-trip (GH #580).
+    t = api.array()
+    t.add_line("foo", comment="bar")
+    rendered = t.as_string()
+    assert parse("a = " + rendered)["a"] == ["foo"]
 
 
 def test_array_add_line_multiline_comment_is_rejected() -> None:
@@ -756,6 +803,42 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
 
 
+@pytest.mark.parametrize("fold", [0, 1])
+def test_datetime_subtraction_preserves_input_fold(tz_fold: tzinfo, fold: int) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
+    other = datetime(2018, 11, 4, 5 + fold, 30, tzinfo=timezone.utc)
+
+    assert item(value) - other == value - other == timedelta(0)
+
+
+@pytest.mark.parametrize("delta", [timedelta(0), timedelta(hours=1)])
+def test_datetime_subtraction_resets_result_fold(
+    tz_fold: tzinfo, delta: timedelta
+) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=1)
+    expected = value - delta
+    result = item(value) - delta
+
+    assert isinstance(result, DateTime)
+    assert result == expected
+    assert result.fold == expected.fold == 0
+    assert result.as_string() == expected.isoformat()
+
+
+def test_unwrap_keeps_fold(tz_fold: tzinfo) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped = item(value).unwrap()
+
+    assert unwrapped.fold == value.fold
+    assert unwrapped.timestamp() == value.timestamp()
+
+    clock = time(1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped_time = item(clock).unwrap()
+
+    assert unwrapped_time.fold == clock.fold
+    assert unwrapped_time.utcoffset() == clock.utcoffset()
+
+
 def test_dates_behave_like_dates() -> None:
     i = item(date(2018, 7, 22))
 
@@ -802,6 +885,63 @@ def test_times_behave_like_times() -> None:
     assert i.as_string() == "13:34:56"
 
 
+def test_times_behave_like_times_fold() -> None:
+    # issue #619: the stdlib `fold` argument is missing from these types.
+    i = item(time(12, 34, 56, fold=1))
+
+    assert i.fold == 1
+    assert i.as_string() == "12:34:56"
+
+    i = i.replace(hour=13)
+    assert i == time(13, 34, 56)
+    assert i.fold == 1
+    assert i.as_string() == "13:34:56"
+
+    j = item(time(12, 34, 56)).replace(fold=1)
+    assert j.fold == 1
+
+    # exact call shape used by pure-python (PyPy) datetime implementations
+    # in `replace()`: type(self)(..., fold=fold)
+    k = Time(12, 34, 56, 0, None, fold=1)
+    assert k.fold == 1
+
+
+def test_datetimes_behave_like_datetimes_fold() -> None:
+    # issue #619: the stdlib `fold` argument is missing from these types.
+    i = item(datetime(2018, 7, 22, 12, 34, 56, fold=1))
+
+    assert i.fold == 1
+
+    i = i.replace(year=2019, fold=1)
+    assert i.fold == 1
+
+    i = i.replace(year=2020)
+    assert i.fold == 1
+
+    j = item(datetime(2018, 7, 22, 12, 34, 56)).replace(fold=1)
+    assert j.fold == 1
+
+    k = DateTime(2018, 7, 22, 12, 34, 56, 0, None, fold=1)
+    assert k.fold == 1
+
+
+def test_time_with_tzinfo_renders_as_local_time() -> None:
+    # TOML local times have no offset/timezone; a tz-aware time must
+    # render without its offset, otherwise the output is not valid TOML
+    # and this library's own parser cannot read it back. The offset is
+    # not representable in the format, so a round-trip yields the local
+    # (naive) time.
+    tz = timezone(timedelta(hours=2))
+    i = item(time(7, 32, tzinfo=tz))
+    assert i.as_string() == "07:32:00"
+    assert parse(f"t = {i.as_string()}")["t"] == time(7, 32)
+
+    # replace() keeps the same rendering rule.
+    j = i.replace(hour=13)
+    assert j.as_string() == "13:32:00"
+    assert parse(f"t = {j.as_string()}")["t"] == time(13, 32)
+
+
 def test_strings_behave_like_strs() -> None:
     i = item("foo")
 
@@ -828,6 +968,34 @@ def test_string_add_preserve_escapes() -> None:
 
     assert i == 'foo"bar baz'
     assert i.as_string() == '"foo\\"bar baz"'
+
+
+def test_string_add_escapes_appended_content() -> None:
+    # Appending a character that must be escaped in a basic string used
+    # to be spliced into the raw value unescaped, producing a literal
+    # that no TOML parser (including this one) can read back.
+    i = item("foo")
+    i += '"'
+    assert i == 'foo"'
+    assert i.as_string() == '"foo\\""'
+    assert parse(f"k = {i.as_string()}")["k"] == 'foo"'
+
+    i = item("foo")
+    i += "\\"
+    assert i == "foo\\"
+    assert i.as_string() == '"foo\\\\"'
+    assert parse(f"k = {i.as_string()}")["k"] == "foo\\"
+
+    # Appending a String splices its raw (already escaped) form.
+    j = item("foo")
+    j += item('"')
+    assert j == 'foo"'
+    assert j.as_string() == '"foo\\""'
+
+    # Plain text without special characters is appended verbatim.
+    k = item("foo")
+    k += " bar"
+    assert k.as_string() == '"foo bar"'
 
 
 def test_tables_behave_like_dicts() -> None:
@@ -1009,6 +1177,17 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_appending_to_compact_inline_table_uses_spaced_separator() -> None:
+    # A compact inline table separates its existing entries with ", " (comma +
+    # space). A key appended after parsing must use the same spacing, instead of
+    # a bare "," that leaves the table inconsistently spaced ("y = 2,z = 3").
+    doc = parse("a = {x = 1, y = 2}\n")
+    doc["a"]["z"] = 3
+
+    assert doc.as_string() == "a = {x = 1, y = 2, z = 3}\n"
+    assert parse(doc.as_string()) == {"a": {"x": 1, "y": 2, "z": 3}}
+
+
 def test_append_key_after_inline_table_trailing_comment() -> None:
     doc = parse("tbl = {\n    p = { k = 1 },\n    q = { k = 2 }  # comment\n}\n")
     doc["tbl"]["added"] = 3
@@ -1140,6 +1319,18 @@ value = false
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
+
+
+def test_booleans_compare_equal_to_each_other() -> None:
+    assert item(True) == item(True)
+    assert item(False) == item(False)
+    assert item(True) != item(False)
+    assert item(True) in [item(True)]
+
+    a = parse("a = [true, false]")["a"]
+    b = parse("a = [true, false]")["a"]
+    assert isinstance(a[0], Bool)
+    assert a == b
 
 
 def test_table_copy() -> None:
@@ -1325,6 +1516,19 @@ def test_no_extra_minus_sign() -> None:
     assert doc.as_string() == "a = +1.5"
     doc["a"] *= -1
     assert doc.as_string() == "a = -1.5"
+
+
+def test_no_extra_plus_sign_on_negative_zero() -> None:
+    doc = parse("a = -1.5")
+    doc["a"] *= 0
+    assert doc.as_string() == "a = -0.0"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +0.0"
+
+    # Integer true division also goes through Float._new.
+    doc = parse("a = +0")
+    doc["a"] /= -1
+    assert doc.as_string() == "a = -0.0"
 
 
 def test_serialize_table_with_dotted_key() -> None:

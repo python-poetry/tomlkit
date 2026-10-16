@@ -160,6 +160,27 @@ name = "bar"
     assert "tool" in d
 
 
+def test_unwrap_keeps_key_order_after_replacing_a_value() -> None:
+    # unwrap() reads _map, which re-inserts a replaced key and so moves it
+    # last; the order has to follow the body, like dumps() and keys() do.
+    doc = parse("a = 1\nb = 2\nc = 3\n")
+    doc["b"] = 9
+
+    assert list(doc.unwrap()) == ["a", "b", "c"]
+    assert list(doc.keys()) == ["a", "b", "c"]
+    assert tomlkit.dumps(doc) == "a = 1\nb = 9\nc = 3\n"
+
+
+def test_unwrap_follows_the_body_when_a_value_becomes_a_table() -> None:
+    # here moving the key is correct: a bare key promoted to [table] has to be
+    # emitted after the inline entries, and unwrap() should agree with dumps()
+    doc = parse("a = 1\nb = 2\n")
+    doc["a"] = {"x": 1}
+
+    assert tomlkit.dumps(doc) == "b = 2\n\n[a]\nx = 1\n"
+    assert list(doc.unwrap()) == ["b", "a"]
+
+
 def test_toml_document_unwrap() -> None:
     content = """[tool.poetry]
 name = "foo"
@@ -641,6 +662,17 @@ def test_valid_out_of_order_independent_tables() -> None:
     doc = parse("[a]\nx=1\n[zz]\n[a.b]\nc=1\n")
     assert doc.unwrap() == {"a": {"x": 1, "b": {"c": 1}}, "zz": {}}
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
+
+
+def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
+    # A deep header [a.b.c] makes a.b an implicit super-table; reopening [a] and
+    # extending a.b via a dotted key (b.z) only adds a key to that super-table,
+    # it is not a table redefinition.  stdlib tomllib accepts this, so it must
+    # parse and round-trip byte-for-byte rather than raise. (The concrete-table
+    # form `[a.b]` then `[a]` `b.z=1` stays rejected, covered above.)
+    doc = parse("[a.b.c]\n[a]\nb.z = 1\n")
+    assert doc.unwrap() == {"a": {"b": {"c": {}, "z": 1}}}
+    assert doc.as_string() == "[a.b.c]\n[a]\nb.z = 1\n"
 
 
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
@@ -1666,3 +1698,109 @@ a.b = 1
     doc["z"] = 2
 
     assert doc.as_string() == "a.b = 1\nz = 2\n"
+
+
+def test_emptied_array_of_tables_renders_as_empty_array() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # An array of tables with no elements left has no `[[key]]` header to
+    # render, so it must fall back to the inline `key = []` form. Rendering
+    # nothing dropped the key entirely.
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert doc.as_string() == "a = []\n"
+    assert parse(doc.as_string()) == {"a": []}
+
+
+def test_emptied_array_of_tables_is_hoisted_above_table_headers() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # TOML only reads bare key/value pairs before the first table header, so
+    # the inline fallback has to be emitted there rather than in body order.
+    # Left in place it would be parsed back as a key of the preceding table.
+    doc = parse("[t]\nq = 2\n\n[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert parse(doc.as_string()) == {"t": {"q": 2}, "a": []}
+    assert doc.as_string().index("a = []") < doc.as_string().index("[t]")
+
+
+def test_emptied_array_of_tables_keeps_preceding_scalars() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    doc = parse("v = 9\n\n[[a]]\nx = 1\n")
+    doc["a"].pop()
+
+    assert parse(doc.as_string()) == {"v": 9, "a": []}
+
+
+def test_non_empty_array_of_tables_is_not_hoisted() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # Only emptied arrays of tables change form; ordinary ones must round-trip
+    # byte for byte.
+    content = "[t]\nq = 2\n\n[[a]]\nx = 1\n"
+
+    assert parse(content).as_string() == content
+
+
+@pytest.mark.parametrize(
+    ("content", "empty"),
+    [
+        # Nested directly under a table.
+        ("[t]\nq = 2\n\n[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # Nested under a table that also has a sibling sub-table after it.
+        ("[t]\n\n[[t.a]]\nx = 1\n\n[t.b]\ny = 3\n", lambda doc: doc["t"]["a"]),
+        # ... and before it, so the fallback has to move.
+        ("[t]\n\n[t.b]\ny = 3\n\n[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # Two levels down.
+        ("[t]\n\n[t.u]\n\n[[t.u.a]]\nx = 1\n", lambda doc: doc["t"]["u"]["a"]),
+        # Inside an element of another array of tables.
+        ("[[e]]\nn = 1\n\n[[e.a]]\nx = 1\n", lambda doc: doc["e"][0]["a"]),
+        # Parent table left implicit: there is no `[t]` header to make `a`
+        # bare, so the fallback has to keep the `t.` prefix.
+        ("[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # ... two levels of implicit parent.
+        ("[[t.u.a]]\nx = 1\n", lambda doc: doc["t"]["u"]["a"]),
+        # ... with an unrelated header before it, which the fallback must not
+        # be read into.
+        ("[x]\nq = 1\n\n[[t.a]]\nx = 1\n", lambda doc: doc["t"]["a"]),
+        # ... and with a sibling sub-table, so the implicit parent survives
+        # into the rendered output as a header of its own.
+        ("[x]\nq = 1\n\n[[t.a]]\nx = 1\n\n[t.b]\ny = 3\n", lambda doc: doc["t"]["a"]),
+        # Explicit grandparent, implicit parent: the fallback is relative to
+        # the nearest header, so it is `u.a`, not `t.u.a`.
+        ("[t]\n\n[[t.u.a]]\nx = 1\n", lambda doc: doc["t"]["u"]["a"]),
+        ("[t]\n\n[[t.u.a]]\nx = 1\n\n[t.u.b]\ny = 3\n", lambda doc: doc["t"]["u"]["a"]),
+        # Implicit parent inside an array-of-tables element.
+        ("[[e]]\nn = 1\n\n[[e.s.a]]\nx = 1\n", lambda doc: doc["e"][0]["s"]["a"]),
+    ],
+)
+def test_emptied_nested_array_of_tables_round_trips(content, empty) -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # The inline fallback is a bare key/value pair emitted inside the scope its
+    # header named, so it must be written with the bare key. Carrying the
+    # header prefix over emitted `t.a = []` under `[t]`, which reads back as
+    # `t.t.a`.
+    doc = parse(content)
+    empty(doc).pop()
+
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_emptied_array_of_tables_under_implicit_parent_keeps_its_path() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # A super table emits no header, so it opens no scope for the fallback to
+    # be bare in. Dropping the prefix here moved the key to the root.
+    doc = parse("[[t.a]]\nx = 1\n")
+    doc["t"]["a"].pop()
+
+    assert doc.as_string() == "t.a = []\n"
+
+
+def test_emptied_array_of_tables_is_relative_to_the_nearest_header() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    # `[t]` is emitted, `t.u` is not, so the fallback is written relative to
+    # `[t]`. Spelling it in full emitted `t.u.a = []` under `[t]`, which reads
+    # back as `t.t.u.a`.
+    doc = parse("[t]\n[[t.u.a]]\nx = 1\n")
+    doc["t"]["u"]["a"].pop()
+
+    assert doc.as_string() == "[t]\nu.a = []\n"
