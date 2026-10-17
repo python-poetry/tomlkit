@@ -1184,7 +1184,7 @@ class DateTime(Item, datetime):
     def replace(self, *args: object, **kwargs: object) -> DateTime:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
-    def astimezone(self, tz: tzinfo) -> DateTime:  # type: ignore[override]
+    def astimezone(self, tz: tzinfo | None = None) -> DateTime:
         result = super().astimezone(tz)
         if PY38:
             return result
