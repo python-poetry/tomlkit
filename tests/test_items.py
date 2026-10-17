@@ -521,6 +521,26 @@ x = [
     assert doc.as_string() == "x = [\n    2\n]"
 
 
+@pytest.mark.parametrize(
+    "content, expected",
+    [
+        ("a = [1\n# end\n]\n", "a = [1,\n# end\n2\n]\n"),
+        ("a = [1,\n# end\n]\n", "a = [1,\n# end\n2,\n]\n"),
+        (
+            "a = [1 # one\n, # separator\n# end\n]\n",
+            "a = [1 # one\n, # separator\n# end\n2\n]\n",
+        ),
+    ],
+)
+def test_append_after_standalone_array_comment(content: str, expected: str) -> None:
+    doc = parse(content)
+    doc["a"].append(2)
+
+    rendered = api.dumps(doc)
+    assert rendered == expected
+    assert parse(rendered)["a"] == [1, 2]
+
+
 def test_append_to_multiline_array_with_comment() -> None:
     doc = parse(
         """\
