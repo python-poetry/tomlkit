@@ -1,5 +1,36 @@
 # Change Log
 
+## [Unreleased]
+
+## [0.15.2] - 2026-10-16
+
+### Changed
+
+- Write the ESC control character as `\u001b` instead of `\e`, which is only valid in TOML 1.1, so the output stays readable by TOML 1.0 parsers such as `tomllib`. ([#641](https://github.com/python-poetry/tomlkit/pull/641))
+- `key_value()` now raises `UnexpectedCharError` on anything other than whitespace or a comment after the pair, instead of silently discarding it (e.g. `key_value("a = 1 b = 2")`), matching `parse()`. ([#594](https://github.com/python-poetry/tomlkit/pull/594))
+- `integer()` given a string now validates it against the TOML integer grammar and keeps the original text, so grouping underscores (e.g. `integer("1_000")`) survive `dumps()`; strings that are not valid TOML integers (e.g. `"010"`) now raise `ValueError`. ([#336](https://github.com/python-poetry/tomlkit/issues/336))
+- Add a `fold` argument to `DateTime` and `Time`, mirroring the stdlib, and carry `fold` through `item()`, arithmetic (including datetime subtraction) and `unwrap()`, so a folded local time no longer converts an hour off. ([#619](https://github.com/python-poetry/tomlkit/issues/619), [#623](https://github.com/python-poetry/tomlkit/pull/623), [#626](https://github.com/python-poetry/tomlkit/pull/626))
+- Declare the project metadata in the PEP 621 `[project]` table; building from source now requires `poetry-core>=2.2.0`. ([#607](https://github.com/python-poetry/tomlkit/pull/607), [#609](https://github.com/python-poetry/tomlkit/pull/609))
+
+### Fixed
+
+- Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
+- Fix uppercase `E` exponent after a leading-zero mantissa (e.g. `0E2`) being rejected as an invalid number while `0e2` parsed fine. ([#586](https://github.com/python-poetry/tomlkit/pull/586))
+- Fix non-lowercase special floats (e.g. `Inf`, `NaN`, `-INF`) being accepted; TOML only allows lowercase `inf` and `nan`, so they now raise `ParseError`. ([#628](https://github.com/python-poetry/tomlkit/pull/628))
+- Fix parse errors reporting the wrong line and column in documents with CRLF or mixed line endings. ([#642](https://github.com/python-poetry/tomlkit/pull/642))
+- Fix `item()` reordering the keys of an inline table (dict-valued keys were forced last) under the default `sort_keys=False`. ([#546](https://github.com/python-poetry/tomlkit/issues/546))
+- Fix `unwrap()` moving a key to the end after its value was replaced (e.g. `doc["b"] = 9`), while `dumps()` and `keys()` kept the original order. ([#591](https://github.com/python-poetry/tomlkit/pull/591))
+- Fix appending a key to a parsed inline table that uses `", "` separators emitting a bare `","` for the new entry, leaving the table inconsistently spaced (e.g. `{x = 1, y = 2,z = 3}`). ([#595](https://github.com/python-poetry/tomlkit/pull/595))
+- Fix an emptied array of tables being dropped from the output: it now renders as `key = []`, placed and keyed relative to the nearest table header so it parses back into the same table. ([#567](https://github.com/python-poetry/tomlkit/pull/567))
+- Fix a single-line array whose last element is a trailing comment (e.g. from `add_line(value, comment=...)`) rendering its closing `]` on the comment line, producing unparseable output. ([#580](https://github.com/python-poetry/tomlkit/issues/580))
+- Fix `del array[start:stop:step]` with a negative or omitted bound removing the wrong elements from the rendered output. ([#599](https://github.com/python-poetry/tomlkit/pull/599))
+- Fix array slice assignment mutating the array before raising `ValueError("slice assignment is not supported")`. ([#600](https://github.com/python-poetry/tomlkit/pull/600))
+- Fix `String.__add__` splicing the appended text into a basic string without escaping it, so appending a quote or backslash produced invalid TOML. ([#612](https://github.com/python-poetry/tomlkit/pull/612))
+- Fix a bare carriage return in a multiline string producing invalid TOML: it is now escaped as `\r` in a multiline basic string and rejected with `InvalidStringError` in a multiline literal string; CRLF line endings are left intact. ([#539](https://github.com/python-poetry/tomlkit/pull/539))
+- Fix a tz-aware `datetime.time` rendering with a UTC offset (e.g. `07:32:00+02:00`), which TOML local times do not allow; it now renders as a local time. ([#613](https://github.com/python-poetry/tomlkit/pull/613))
+- Fix arithmetic on a signed float producing `+-0.0` (e.g. `-1.5` times `0`), which does not parse. ([#629](https://github.com/python-poetry/tomlkit/pull/629))
+- Fix two `Bool` items never comparing equal to each other; they now compare by value. ([#660](https://github.com/python-poetry/tomlkit/pull/660))
+
 ## [0.15.1] - 2026-07-17
 
 ### Changed
@@ -502,7 +533,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.1...master
+[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.2...master
+[0.15.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.2
 [0.15.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.1
 [0.15.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.0
 [0.14.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.14.0

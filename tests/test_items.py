@@ -404,6 +404,26 @@ def test_array_behaves_like_a_list() -> None:
     )
 
 
+def test_array_slice_deletion_keeps_render_in_sync() -> None:
+    # Regression: deleting a slice must keep as_string() consistent with the
+    # list contents. Slices with stop == 0 or negative bounds previously
+    # corrupted the rendered array (e.g. `del a[:0]` wiped every element).
+    a = item([1, 2, 3])
+    del a[:0]  # deletes nothing
+    assert a == [1, 2, 3]
+    assert a.as_string() == "[1, 2, 3]"
+
+    a = item([1, 2, 3])
+    del a[-1:]
+    assert a == [1, 2]
+    assert a.as_string() == "[1, 2]"
+
+    a = item([1, 2, 3])
+    del a[:-1]
+    assert a == [3]
+    assert a.as_string() == "[3]"
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
@@ -574,6 +594,16 @@ def test_array_add_line() -> None:
     # Line 4
 ]"""
     )
+
+
+def test_array_add_line_single_line_comment_round_trips() -> None:
+    # A single-line array whose last rendered element is a trailing comment
+    # (from add_line(..., comment=...)) must keep the closing bracket off the
+    # comment line, otherwise the output does not round-trip (GH #580).
+    t = api.array()
+    t.add_line("foo", comment="bar")
+    rendered = t.as_string()
+    assert parse("a = " + rendered)["a"] == ["foo"]
 
 
 def test_array_add_line_multiline_comment_is_rejected() -> None:
@@ -793,6 +823,20 @@ def test_datetime_subtraction_resets_result_fold(
     assert result == expected
     assert result.fold == expected.fold == 0
     assert result.as_string() == expected.isoformat()
+
+
+def test_unwrap_keeps_fold(tz_fold: tzinfo) -> None:
+    value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped = item(value).unwrap()
+
+    assert unwrapped.fold == value.fold
+    assert unwrapped.timestamp() == value.timestamp()
+
+    clock = time(1, 30, tzinfo=tz_fold, fold=1)
+    unwrapped_time = item(clock).unwrap()
+
+    assert unwrapped_time.fold == clock.fold
+    assert unwrapped_time.utcoffset() == clock.utcoffset()
 
 
 def test_dates_behave_like_dates() -> None:
@@ -1133,6 +1177,17 @@ def test_appending_to_parsed_inline_table_preserves_separator() -> None:
     parse(doc.as_string())
 
 
+def test_appending_to_compact_inline_table_uses_spaced_separator() -> None:
+    # A compact inline table separates its existing entries with ", " (comma +
+    # space). A key appended after parsing must use the same spacing, instead of
+    # a bare "," that leaves the table inconsistently spaced ("y = 2,z = 3").
+    doc = parse("a = {x = 1, y = 2}\n")
+    doc["a"]["z"] = 3
+
+    assert doc.as_string() == "a = {x = 1, y = 2, z = 3}\n"
+    assert parse(doc.as_string()) == {"a": {"x": 1, "y": 2, "z": 3}}
+
+
 def test_append_key_after_inline_table_trailing_comment() -> None:
     doc = parse("tbl = {\n    p = { k = 1 },\n    q = { k = 2 }  # comment\n}\n")
     doc["tbl"]["added"] = 3
@@ -1264,6 +1319,18 @@ value = false
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
+
+
+def test_booleans_compare_equal_to_each_other() -> None:
+    assert item(True) == item(True)
+    assert item(False) == item(False)
+    assert item(True) != item(False)
+    assert item(True) in [item(True)]
+
+    a = parse("a = [true, false]")["a"]
+    b = parse("a = [true, false]")["a"]
+    assert isinstance(a[0], Bool)
+    assert a == b
 
 
 def test_table_copy() -> None:
@@ -1449,6 +1516,19 @@ def test_no_extra_minus_sign() -> None:
     assert doc.as_string() == "a = +1.5"
     doc["a"] *= -1
     assert doc.as_string() == "a = -1.5"
+
+
+def test_no_extra_plus_sign_on_negative_zero() -> None:
+    doc = parse("a = -1.5")
+    doc["a"] *= 0
+    assert doc.as_string() == "a = -0.0"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +0.0"
+
+    # Integer true division also goes through Float._new.
+    doc = parse("a = +0")
+    doc["a"] /= -1
+    assert doc.as_string() == "a = -0.0"
 
 
 def test_serialize_table_with_dotted_key() -> None:
