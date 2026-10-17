@@ -486,6 +486,26 @@ bar=1"""
     assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
 
 
+@pytest.mark.parametrize("copy_document", [copy.copy, TOMLDocument.copy])
+@pytest.mark.parametrize("intervening", ["", "[other]\nz = 3\n"])
+def test_copied_document_can_extend_super_table(
+    copy_document: Callable[[TOMLDocument], TOMLDocument], intervening: str
+) -> None:
+    source = "[a.b]\nx = 1\n" + intervening
+    doc = copy_document(parse(source))
+    extension = tomlkit.table(True)
+    extension.add("c", {"y": 2})
+
+    doc.add("a", extension)
+
+    expected: dict[str, Any] = {"a": {"b": {"x": 1}, "c": {"y": 2}}}
+    if intervening:
+        expected["other"] = {"z": 3}
+    assert doc.unwrap() == expected
+    assert doc.as_string() == source + "\n[a.c]\ny = 2\n"
+    assert parse(doc.as_string()).unwrap() == expected
+
+
 def test_getting_inline_table_is_still_an_inline_table() -> None:
     content = """\
 [tool.poetry]
