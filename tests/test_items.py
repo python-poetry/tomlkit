@@ -86,18 +86,19 @@ def tz_utc() -> tzinfo:
         return UTC()
 
 
+class FoldTimezone(tzinfo):
+    def utcoffset(self, dt: datetime | None) -> timedelta:
+        return timedelta(hours=-5 if dt is not None and dt.fold else -4)
+
+    def tzname(self, dt: datetime | None) -> str:
+        return "FoldTimezone"
+
+    def dst(self, dt: datetime | None) -> timedelta:
+        return timedelta(0)
+
+
 @pytest.fixture()
 def tz_fold() -> tzinfo:
-    class FoldTimezone(tzinfo):
-        def utcoffset(self, dt: datetime | None) -> timedelta:
-            return timedelta(hours=-5 if dt is not None and dt.fold else -4)
-
-        def tzname(self, dt: datetime | None) -> str:
-            return "FoldTimezone"
-
-        def dst(self, dt: datetime | None) -> timedelta:
-            return timedelta(0)
-
     return FoldTimezone()
 
 
@@ -1092,6 +1093,55 @@ def test_items_are_pickable() -> None:
 
     s = pickle.dumps(n)
     assert pickle.loads(s).as_string() == 'foo = "bar"\n'
+
+
+@pytest.mark.parametrize("fold", [0, 1])
+@pytest.mark.parametrize("kind", ["datetime", "time"])
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+def test_temporal_pickle_preserves_fold(
+    tz_fold: tzinfo, fold: int, kind: str, protocol: int
+) -> None:
+    value = (
+        datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
+        if kind == "datetime"
+        else time(1, 30, fold=fold)
+    )
+    wrapped = item(value).comment("ambiguous time")
+    assert isinstance(wrapped, (DateTime, Time))
+    result = pickle.loads(pickle.dumps(wrapped, protocol=protocol))
+    expected = pickle.loads(pickle.dumps(value, protocol=protocol))
+
+    assert type(result) is type(wrapped)
+    assert result.fold == expected.fold
+    assert result.as_string() == wrapped.as_string()
+    assert result.trivia == wrapped.trivia
+    if isinstance(expected, datetime):
+        assert result.timestamp() == expected.timestamp()
+
+
+@pytest.mark.parametrize("fold", [0, 1])
+@pytest.mark.parametrize("kind", ["datetime", "time"])
+@pytest.mark.parametrize("deep", [False, True])
+def test_temporal_copy_preserves_fold(
+    tz_fold: tzinfo, fold: int, kind: str, deep: bool
+) -> None:
+    value = (
+        datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
+        if kind == "datetime"
+        else time(1, 30, fold=fold)
+    )
+    wrapped = item(value).comment("ambiguous time")
+    assert isinstance(wrapped, (DateTime, Time))
+    result = copy.deepcopy(wrapped) if deep else copy.copy(wrapped)
+
+    assert type(result) is type(wrapped)
+    assert result is not wrapped
+    assert result.fold == value.fold
+    assert result.as_string() == wrapped.as_string()
+    assert result.trivia == wrapped.trivia
+    if isinstance(value, datetime):
+        assert isinstance(result, DateTime)
+        assert result.timestamp() == value.timestamp()
 
 
 def test_trim_comments_when_building_inline_table() -> None:
