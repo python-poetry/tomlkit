@@ -274,6 +274,25 @@ def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
         assert value == float(raw)
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "\u0660",  # ARABIC-INDIC DIGIT ZERO
+        "+\u0660",
+        "1.\u0660",
+        "1e\u0660",
+        "\u0661\u0662",
+        "1\x0b",  # vertical tab
+        "1\x0c",  # form feed
+        "1.5\x0b",
+    ],
+)
+def test_parser_rejects_non_ascii_digits_and_whitespace_in_numbers(raw: str) -> None:
+    # int() and float() accept these, but TOML numbers are ASCII digits only.
+    with pytest.raises(ParseError):
+        parse(f"v = {raw}\n")
+
+
 @pytest.mark.parametrize("sign", ["", "+", "-"])
 @pytest.mark.parametrize(
     "raw",
