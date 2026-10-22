@@ -778,6 +778,11 @@ class Parser:
         if "_" in clean:
             return None
 
+        # int() and float() also accept non-ASCII digits and surrounding
+        # whitespace, which are not valid in a TOML number.
+        if not clean.isascii() or any(ch.isspace() for ch in clean):
+            return None
+
         # Special float values must be lowercase in the original token.
         if clean in ("inf", "nan") and raw != clean:
             return None

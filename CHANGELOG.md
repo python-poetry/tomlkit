@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject a number written with non-ASCII digits (e.g. `1.٠`) or followed by a whitespace control character (e.g. `1` and a vertical tab), which `int()` and `float()` accepted but TOML does not allow.
+
 ## [0.15.2] - 2026-10-16
 
 ### Changed
