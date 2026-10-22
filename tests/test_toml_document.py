@@ -1603,6 +1603,28 @@ d = 4
     )
 
 
+@pytest.mark.parametrize("replacement", [{"z": 1}, [{"z": 1}], 1])
+@pytest.mark.parametrize("remove_subtable", [False, True])
+@pytest.mark.parametrize("sibling_first", [False, True])
+def test_update_out_of_order_table_preserves_siblings(
+    replacement: Any, remove_subtable: bool, sibling_first: bool
+) -> None:
+    doc = parse("[y.y.b]\nc = 1\n[y]\nd = 1\n[y.b]\ne = 2\n[y.y]\n")
+    if remove_subtable:
+        doc["y"]["y"].pop("b")
+
+    table = doc["y"]
+    updates = {"y": replacement, "b": {"e": -0.5}}
+    if sibling_first:
+        updates = dict(reversed(updates.items()))
+    table.update(updates)
+
+    expected = {"y": {"y": replacement, "d": 1, "b": {"e": -0.5}}}
+    assert table.unwrap() == expected["y"]
+    assert doc.unwrap() == expected
+    assert parse(doc.as_string()).unwrap() == expected
+
+
 def test_parse_aot_without_ending_newline() -> None:
     content = '''\
 [[products]]
