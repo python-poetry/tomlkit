@@ -2185,9 +2185,7 @@ class InlineTable(AbstractTable):
                 # children were removed the table itself still exists, so it
                 # must render as an empty inline table to stay valid TOML.
                 dotted = self._render_dotted(k, v)
-                rendered = (
-                    ", ".join(dotted) if dotted else f"{k.as_string()} = {{}}"
-                )
+                rendered = ", ".join(dotted) if dotted else f"{k.as_string()} = {{}}"
             else:
                 rendered = (
                     f"{k.as_string() + ('.' if k.is_dotted() else '')}"
