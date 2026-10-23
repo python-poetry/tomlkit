@@ -1258,6 +1258,46 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert parse(rendered).as_string() == rendered
 
 
+def test_deleting_last_key_under_dotted_key_in_inline_table() -> None:
+    # The emptied dotted table still exists, so it must render as an empty
+    # inline table; emitting nothing leaves a dangling separator and produces
+    # invalid TOML like ``{a = 1, , d = 1}``.
+    doc = parse("t = {a = 1, b.c = 2, d = 3}\n")
+    del doc["t"]["b"]["c"]
+    rendered = doc.as_string()
+    assert rendered == "t = {a = 1, b = {}, d = 3}\n"
+    assert parse(rendered) == {"t": {"a": 1, "b": {}, "d": 3}}
+    assert parse(rendered).as_string() == rendered
+
+    doc = parse("t = {b.c = 2, a = 1}\n")
+    del doc["t"]["b"]["c"]
+    rendered = doc.as_string()
+    assert rendered == "t = {b = {}, a = 1}\n"
+    assert parse(rendered) == {"t": {"b": {}, "a": 1}}
+
+    doc = parse("t = {a = 1, b.c = 2}\n")
+    del doc["t"]["b"]["c"]
+    rendered = doc.as_string()
+    assert rendered == "t = {a = 1, b = {}}\n"
+    assert parse(rendered) == {"t": {"a": 1, "b": {}}}
+
+    doc = parse("t = {b.c = 2}\n")
+    del doc["t"]["b"]["c"]
+    rendered = doc.as_string()
+    assert rendered == "t = {b = {}}\n"
+    assert parse(rendered) == {"t": {"b": {}}}
+
+
+def test_deleting_nested_key_under_dotted_key_in_inline_table() -> None:
+    doc = parse("t = {x = 1, a.b.c = 2, y = 3}\n")
+    del doc["t"]["a"]["b"]["c"]
+
+    rendered = doc.as_string()
+    assert rendered == "t = {x = 1, a.b = {}, y = 3}\n"
+    assert parse(rendered) == {"t": {"x": 1, "a": {"b": {}}, "y": 3}}
+    assert parse(rendered).as_string() == rendered
+
+
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
     doc = parse(
         """\
