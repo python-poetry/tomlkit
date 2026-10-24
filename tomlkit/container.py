@@ -819,6 +819,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         cur = ""
         _key = decode(_key)
         for table in aot.body:
+            if (
+                cur
+                and not cur.rstrip(" ").endswith("\n")
+                and "\n" not in table.trivia.indent
+            ):
+                cur += "\n"
             cur += self._render_aot_table(table, prefix=_key)
 
         return cur
