@@ -1675,6 +1675,10 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             indent = self._value[idx].indent
         if idx > 0:
             last_item = self._value[idx - 1]
+            last_value_item = last_item
+            if pos > 0 and length:
+                # Standalone comments may follow the preceding array value.
+                last_value_item = self._value[self._index_map[min(pos, length) - 1]]
             if indent is None:
                 indent = last_item.indent
             if not isinstance(last_item.value, Null) and "\n" in default_indent:
@@ -1683,14 +1687,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
                 comma = last_item.comma
             comma_in_indent = indent is not None and "," in indent.s
             if (
-                last_item.comma is None
-                and not isinstance(last_item.value, Null)
+                last_value_item.comma is None
+                and not isinstance(last_value_item.value, Null)
                 and not comma_in_indent
             ):
                 # Add comma to the last item to separate it from the following
                 # items, unless the new item's indent already starts with a
                 # comma (comma-first style).
-                last_item.comma = Whitespace(",")
+                last_value_item.comma = Whitespace(",")
         if indent is not None and "," in indent.s:
             # Comma-first style: the item that will follow the new one brings
             # its own leading comma, so the new item must not add a trailing

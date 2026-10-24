@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Add a missing separator when appending to an array whose last value is followed by standalone comments.
+
 ## [0.15.2] - 2026-10-16
 
 ### Changed
