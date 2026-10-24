@@ -868,8 +868,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
             old_key = next(filter(lambda k: k == key, self._map))
-            if isinstance(value, str) and not isinstance(value, String):
-                value = self._item_for_key(key, value)
+            value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
             self.append(key, value)
