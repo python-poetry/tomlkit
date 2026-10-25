@@ -707,7 +707,10 @@ bar = "baz"
         ("my_int = 1  # keep\n", lambda item: item + 1),
         ("my_float = 1.5  # keep\n", lambda item: item + 1),
         ('my_str = "a"  # keep\n', lambda item: item + "b"),
-        ("my_dt = 1979-05-27T07:32:00Z  # keep\n", lambda item: item + timedelta(days=1)),
+        (
+            "my_dt = 1979-05-27T07:32:00Z  # keep\n",
+            lambda item: item + timedelta(days=1),
+        ),
         ("my_date = 1979-05-27  # keep\n", lambda item: item + timedelta(days=1)),
         ("my_time = 07:32:00  # keep\n", lambda item: item.replace(second=1)),
     ],
