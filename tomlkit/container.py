@@ -40,7 +40,9 @@ def _is_empty_aot(item: Item) -> bool:
 def _table_is_empty(table: Table) -> bool:
     """Whether ``table`` holds no real items (only whitespace or ``Null``
     placeholders left behind by removals)."""
-    return not any(not isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
+    return not any(
+        not isinstance(v, (Whitespace, Null)) for _, v in table.value.body
+    )
 
 
 def _emits_header(key: Key, table: Table) -> bool:
@@ -756,12 +758,18 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 _key = prefix + "." + _key
 
         header_emitted = _emits_header(key, table)
-        if not header_emitted and _table_is_empty(table):
-            # A table with no real items left (e.g. after its last key was
-            # removed) must still emit its header, or the empty table
-            # silently vanishes from the output while it is still part of
-            # the document. Fragments of an out-of-order table are skipped
-            # when a sibling fragment still holds the table's items.
+        if (
+            not header_emitted
+            and _table_is_empty(table)
+            and key is not None
+            and not key.is_dotted()
+        ):
+            # A table materialized from [table] headers (not a dotted key)
+            # with no real items left - e.g. after its last key was removed -
+            # is still part of the document, so keep its [header] instead of
+            # letting it vanish from the output. For fragments of an
+            # out-of-order table, skip this fragment when a sibling fragment
+            # still holds the table's items, so no duplicate header appears.
             header_emitted = not any(
                 k == key and v is not table and not _table_is_empty(v)
                 for k, v in self._body
