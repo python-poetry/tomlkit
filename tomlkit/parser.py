@@ -778,6 +778,12 @@ class Parser:
         if "_" in clean:
             return None
 
+        # int() and float() also accept non-ASCII Unicode digits, so a token
+        # such as "1" followed by U+0660 (ARABIC-INDIC DIGIT ZERO) would be read
+        # as 10. TOML numbers are ASCII only.
+        if not clean.isascii():
+            return None
+
         # Special float values must be lowercase in the original token.
         if clean in ("inf", "nan") and raw != clean:
             return None

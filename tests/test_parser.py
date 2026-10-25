@@ -274,6 +274,17 @@ def test_parser_accepts_uppercase_exponent_after_leading_zero() -> None:
         assert value == float(raw)
 
 
+def test_parser_rejects_non_ascii_digits_in_numbers() -> None:
+    # int() and float() accept non-ASCII Unicode digits, so a token ending in
+    # U+0660 (ARABIC-INDIC DIGIT ZERO) would otherwise be parsed as an ASCII
+    # number, e.g. "1" followed by that digit as 10. TOML allows ASCII only.
+    zero = chr(0x0660)  # ARABIC-INDIC DIGIT ZERO
+    for raw in (f"1{zero}", f"1_0{zero}", f"1.{zero}", f"1e{zero}", f"+{zero}"):
+        parser = Parser(f"a = {raw}")
+        with pytest.raises(InvalidNumberError):
+            parser.parse()
+
+
 @pytest.mark.parametrize("sign", ["", "+", "-"])
 @pytest.mark.parametrize(
     "raw",

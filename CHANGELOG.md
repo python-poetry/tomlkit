@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix non-ASCII Unicode digits being accepted in numbers. `int()` and `float()` converted them, so `1` followed by U+0660 (ARABIC-INDIC DIGIT ZERO) parsed as `10`. Numbers are now required to be ASCII and otherwise raise `InvalidNumberError`. ([#686](https://github.com/python-poetry/tomlkit/pull/686))
+
 ## [0.15.2] - 2026-10-16
 
 ### Changed
