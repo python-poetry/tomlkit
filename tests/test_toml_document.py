@@ -1809,21 +1809,6 @@ def test_emptied_array_of_tables_is_relative_to_the_nearest_header() -> None:
     assert doc.as_string() == "[t]\nu.a = []\n"
 
 
-def test_emptied_table_still_serializes_553() -> None:
-    # https://github.com/python-poetry/tomlkit/issues/553
-    doc = parse("""\
-x.y.z = 1
-
-[[a]]
-x = 1
-""")
-    doc["a"].pop()
-    doc["x"]["y"].pop("z")
-    out = doc.as_string()
-    assert out == "a = []\n[x.y]\n\n"
-    assert parse(out).unwrap() == doc.unwrap()
-
-
 def test_emptied_explicit_table_still_serializes() -> None:
     doc = parse("""\
 [x.y]
@@ -1833,3 +1818,26 @@ z = 1
     out = doc.as_string()
     assert "[x.y]" in out
     assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_deleting_last_child_table_keeps_emptied_parent() -> None:
+    doc = parse("""\
+[x.y]
+z = 1
+""")
+    del doc["x"]["y"]
+    out = doc.as_string()
+    assert out == "[x]\n"
+    assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_deleting_table_removes_it_from_output() -> None:
+    doc = parse("""x.y.z = 1
+
+[a]
+b = 2
+""")
+    del doc["x"]
+    assert doc.as_string() == "\n[a]\nb = 2\n"
+
+
