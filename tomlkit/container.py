@@ -37,10 +37,35 @@ def _is_empty_aot(item: Item) -> bool:
     return isinstance(item, AoT) and not item.body
 
 
+def _table_has_content(table: Table) -> bool:
+    """Whether ``table`` holds any item that renders content of its own.
+
+    Whitespace and ``Null`` placeholders left behind by removals do not
+    count, and neither do child tables that are themselves emptied.
+    """
+    for _, v in table.value.body:
+        if isinstance(v, (Whitespace, Null)):
+            continue
+        if isinstance(v, Table):
+            if _table_has_content(v):
+                return True
+        elif isinstance(v, AoT):
+            if v.body:
+                return True
+        else:
+            return True
+    return False
+
+
 def _table_is_empty(table: Table) -> bool:
-    """Whether ``table`` holds no real items (only whitespace or ``Null``
-    placeholders left behind by removals)."""
-    return not any(not isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
+    """Whether ``table`` holds no items that render anything at all.
+
+    Unlike ``_table_has_content`` a child table counts here even when it is
+    itself emptied, because the child still renders its own ``[header]``.
+    """
+    return not any(
+        not isinstance(v, (Whitespace, Null)) for _, v in table.value.body
+    )
 
 
 def _emits_header(key: Key, table: Table) -> bool:
@@ -433,11 +458,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                     raise KeyAlreadyPresent(key)
                 else:
                     # An existing concrete table (current) is being extended by
-                    # a super-table (item) — e.g. [a] b=1 then [a.b] c=2 out of
+                    # a super-table (item) â e.g. [a] b=1 then [a.b] c=2 out of
                     # order, or [a] b.c=1 then [a.b] d=2.  Validate that the
                     # super-table does not redefine any existing key, raising
                     # early at parse time.  When validation passes, fall through
-                    # — _raw_append below will create an out-of-order entry and
+                    # â _raw_append below will create an out-of-order entry and
                     # preserve table ordering in the document.
                     assert isinstance(current, Table)
                     self._validate_table_candidate(current, item)
@@ -522,7 +547,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
             if not k.is_dotted():
                 # Even when the candidate key itself is not dotted, an
-                # existing dotted key may already use it as a prefix —
+                # existing dotted key may already use it as a prefix â
                 # e.g.  [a] b.c=1 then [a.b] d=2  (b prefixes b.c).
                 for existing_key in current.value._map:
                     if existing_key.is_dotted() and next(iter(existing_key)) == k:
@@ -715,6 +740,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
+        empty_headers: set[str] = set()
         for path, aot in _header_less_aots(self._body):
             s += _render_empty_aot(path, aot)
         for k, v in self._body:
@@ -728,7 +754,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_table(k, v)
+                    s += self._render_table(
+                        k, v, _root_key=k, _empty_headers=empty_headers
+                    )
                 elif isinstance(v, AoT):
                     if (
                         s.strip(" ")
@@ -736,7 +764,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_aot(k, v)
+                    s += self._render_aot(
+                        k, v, _root_key=k, _empty_headers=empty_headers
+                    )
                 else:
                     s += self._render_simple_item(k, v)
             else:
@@ -749,7 +779,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         key: Key,
         table: Table,
         prefix: str | None = None,
-        _siblings: list[tuple[Key | None, Item]] | None = None,
+        _root_key: Key | None = None,
+        _empty_headers: set[str] | None = None,
     ) -> str:
         cur = ""
 
@@ -764,24 +795,35 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         header_emitted = _emits_header(key, table)
         if (
             not header_emitted
-            and _table_is_empty(table)
             and key is not None
             and not key.is_dotted()
+            and _table_is_empty(table)
         ):
             # A table materialized from [table] headers (not a dotted key)
-            # with no real items left - e.g. after its last key was removed -
-            # is still part of the document, so keep its [header] instead of
-            # letting it vanish from the output. For fragments of an
-            # out-of-order table, skip this fragment when a sibling fragment
-            # still holds the table's items, so no duplicate header appears.
-            # Sibling fragments live in the body of the container that owns
-            # this table, which is not necessarily this container itself.
-            siblings = self._body if _siblings is None else _siblings
-            header_emitted = not any(
-                k == key and v is not table and not _table_is_empty(v)
-                for k, v in siblings
-                if isinstance(v, Table)
-            )
+            # with no renderable content left - e.g. after its last key was
+            # removed - is still part of the document, so keep its [header]
+            # instead of letting it vanish from the output. Fragments of an
+            # out-of-order table complicate this: emitting the header for an
+            # emptied fragment while another fragment still renders the
+            # table's content produces an invalid duplicate, and several
+            # emptied fragments must share a single header between them.
+            root_idx = self._map.get(_root_key if _root_key is not None else key)
+            if _empty_headers is None:
+                _empty_headers = set()
+            if isinstance(root_idx, tuple):
+                fragments = [
+                    v
+                    for _, v in (self._body[i] for i in root_idx)
+                    if isinstance(v, Table)
+                ]
+                header_emitted = (
+                    not any(_table_has_content(f) for f in fragments)
+                    and _key not in _empty_headers
+                )
+            else:
+                header_emitted = _key not in _empty_headers
+            if header_emitted:
+                _empty_headers.add(_key)
         if header_emitted:
             open_, close = "[", "]"
             if table.is_aot_element():
@@ -822,15 +864,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v, _siblings=table.value.body)
+                        cur += self._render_table(k, v, _root_key=_root_key, _empty_headers=_empty_headers)
                     else:
-                        cur += self._render_table(
-                            k, v, prefix=_key, _siblings=table.value.body
-                        )
+                        cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
                 else:
-                    cur += self._render_table(
-                        k, v, prefix=_key, _siblings=table.value.body
-                    )
+                    cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -839,7 +877,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 ):
                     cur += "\n"
                 assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
+                cur += self._render_aot(
+                    k,
+                    v,
+                    prefix=_key,
+                    _root_key=_root_key,
+                    _empty_headers=_empty_headers,
+                )
             else:
                 cur += self._render_simple_item(
                     k, v, prefix=_key if key.is_dotted() else None
@@ -847,7 +891,14 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return cur
 
-    def _render_aot(self, key: Key, aot: AoT, prefix: str | None = None) -> str:
+    def _render_aot(
+        self,
+        key: Key,
+        aot: AoT,
+        prefix: str | None = None,
+        _root_key: Key | None = None,
+        _empty_headers: set[str] | None = None,
+    ) -> str:
         _key = key.as_string()
         if prefix is not None:
             _key = prefix + "." + _key
@@ -855,11 +906,22 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         cur = ""
         _key = decode(_key)
         for table in aot.body:
-            cur += self._render_aot_table(table, prefix=_key)
+            cur += self._render_aot_table(
+                table,
+                prefix=_key,
+                _root_key=_root_key,
+                _empty_headers=_empty_headers,
+            )
 
         return cur
 
-    def _render_aot_table(self, table: Table, prefix: str | None = None) -> str:
+    def _render_aot_table(
+        self,
+        table: Table,
+        prefix: str | None = None,
+        _root_key: Key | None = None,
+        _empty_headers: set[str] | None = None,
+    ) -> str:
         cur = ""
         _key = prefix or ""
         open_, close = "[[", "]]"
@@ -884,18 +946,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v, _siblings=table.value.body)
+                        cur += self._render_table(k, v, _root_key=_root_key, _empty_headers=_empty_headers)
                     else:
-                        cur += self._render_table(
-                            k, v, prefix=_key, _siblings=table.value.body
-                        )
+                        cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
                 else:
-                    cur += self._render_table(
-                        k, v, prefix=_key, _siblings=table.value.body
-                    )
+                    cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
             elif isinstance(v, AoT):
                 assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
+                cur += self._render_aot(
+                    k,
+                    v,
+                    prefix=_key,
+                    _root_key=_root_key,
+                    _empty_headers=_empty_headers,
+                )
             else:
                 cur += self._render_simple_item(k, v)
 
