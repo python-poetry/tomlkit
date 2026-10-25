@@ -63,9 +63,7 @@ def _table_is_empty(table: Table) -> bool:
     Unlike ``_table_has_content`` a child table counts here even when it is
     itself emptied, because the child still renders its own ``[header]``.
     """
-    return not any(
-        not isinstance(v, (Whitespace, Null)) for _, v in table.value.body
-    )
+    return not any(not isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
 
 
 def _emits_header(key: Key, table: Table) -> bool:
@@ -864,11 +862,25 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v, _root_key=_root_key, _empty_headers=_empty_headers)
+                        cur += self._render_table(
+                            k, v, _root_key=_root_key, _empty_headers=_empty_headers
+                        )
                     else:
-                        cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
+                        cur += self._render_table(
+                            k,
+                            v,
+                            prefix=_key,
+                            _root_key=_root_key,
+                            _empty_headers=_empty_headers,
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
+                    cur += self._render_table(
+                        k,
+                        v,
+                        prefix=_key,
+                        _root_key=_root_key,
+                        _empty_headers=_empty_headers,
+                    )
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -946,11 +958,25 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v, _root_key=_root_key, _empty_headers=_empty_headers)
+                        cur += self._render_table(
+                            k, v, _root_key=_root_key, _empty_headers=_empty_headers
+                        )
                     else:
-                        cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
+                        cur += self._render_table(
+                            k,
+                            v,
+                            prefix=_key,
+                            _root_key=_root_key,
+                            _empty_headers=_empty_headers,
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key, _root_key=_root_key, _empty_headers=_empty_headers)
+                    cur += self._render_table(
+                        k,
+                        v,
+                        prefix=_key,
+                        _root_key=_root_key,
+                        _empty_headers=_empty_headers,
+                    )
             elif isinstance(v, AoT):
                 assert k is not None
                 cur += self._render_aot(
