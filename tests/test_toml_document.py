@@ -1839,3 +1839,15 @@ b = 2
 """)
     del doc["x"]
     assert doc.as_string() == "\n[a]\nb = 2\n"
+
+
+
+
+def test_emptied_nested_table_with_same_named_top_level_table() -> None:
+    # The emptied t.a must not vanish just because an unrelated top-level
+    # [a] table exists (sibling fragments only share a container body).
+    doc = parse("[a]\nx=1\n[t.a.b]\nx=1\n")
+    del doc["t"]["a"]["b"]
+    out = doc.as_string()
+    assert out == "[a]\nx=1\n[t.a]\n"
+    assert parse(out).unwrap() == doc.unwrap()
