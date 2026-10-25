@@ -1841,8 +1841,6 @@ b = 2
     assert doc.as_string() == "\n[a]\nb = 2\n"
 
 
-
-
 def test_emptied_nested_table_with_same_named_top_level_table() -> None:
     # The emptied t.a must not vanish just because an unrelated top-level
     # [a] table exists (sibling fragments only share a container body).
