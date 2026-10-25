@@ -1804,3 +1804,48 @@ def test_emptied_array_of_tables_is_relative_to_the_nearest_header() -> None:
     doc["t"]["u"]["a"].pop()
 
     assert doc.as_string() == "[t]\nu.a = []\n"
+
+
+def test_delete_last_dotted_key_in_inline_table_keeps_valid_toml() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/662
+    # Removing the only child of a dotted key in an inline table left a
+    # dangling separator, producing invalid TOML like ``t = {a="", , d=1}``.
+    doc = parse('t = {a="", b.c=1, d=1}\n')
+    del doc["t"]["b"]["c"]
+
+    assert doc.as_string() == 't = {a="", b={}, d=1}\n'
+    tomllib = pytest.importorskip("tomllib")
+    assert tomllib.loads(doc.as_string()) == {"t": {"a": "", "b": {}, "d": 1}}
+
+
+def test_delete_last_dotted_key_in_inline_table_key_positions() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/662
+    # The empty slot used to surface as a leading or trailing comma depending
+    # on where the dotted key sat, and dropped ``b`` entirely when it was the
+    # only key.
+    tomllib = pytest.importorskip("tomllib")
+
+    doc = parse("t = {a=1, b.c=1}\n")
+    del doc["t"]["b"]["c"]
+    assert doc.as_string() == "t = {a=1, b={}}\n"
+    tomllib.loads(doc.as_string())
+
+    doc = parse("t = {b.c=1, a=1}\n")
+    del doc["t"]["b"]["c"]
+    assert doc.as_string() == "t = {b={}, a=1}\n"
+    tomllib.loads(doc.as_string())
+
+    doc = parse("t = {b.c=1}\n")
+    del doc["t"]["b"]["c"]
+    assert doc.as_string() == "t = {b={}}\n"
+    tomllib.loads(doc.as_string())
+
+
+def test_delete_last_nested_dotted_key_in_inline_table_keeps_valid_toml() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/662
+    doc = parse('t = {a="", b.c.d=1, e=1}\n')
+    del doc["t"]["b"]["c"]["d"]
+
+    assert doc.as_string() == 't = {a="", b.c={}, e=1}\n'
+    tomllib = pytest.importorskip("tomllib")
+    assert tomllib.loads(doc.as_string()) == {"t": {"a": "", "b": {"c": {}}, "e": 1}}
