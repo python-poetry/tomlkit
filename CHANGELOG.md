@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `Container.__copy__` now carries over `_table_keys`, so appending a table to a copied container no longer raises `IndexError` when a table with the same name already exists.
+
 ## [0.15.2] - 2026-10-16
 
 ### Changed

@@ -486,6 +486,22 @@ bar=1"""
     assert json.loads(json.dumps(doc)) == {"foo": {"bar": 1}}
 
 
+def test_toml_document_copy_keeps_table_keys() -> None:
+    doc = parse("[a.b]\nx = 1\n")
+
+    doc_copy = doc.copy()
+    doc_copy.append("a", tomlkit.table(True).append("d", 3))
+
+    # The copy accepts the append instead of raising IndexError, and the
+    # merged rendering stays parseable with both tables intact. (The copy is
+    # shallow, so table objects are shared with the original — only the
+    # container's own key bookkeeping is what __copy__ must duplicate.)
+    reloaded = parse(doc_copy.as_string())
+    assert reloaded["a"]["b"]["x"] == 1
+    assert reloaded["a"]["d"] == 3
+    assert doc._table_keys == ["a"]
+
+
 def test_getting_inline_table_is_still_an_inline_table() -> None:
     content = """\
 [tool.poetry]
