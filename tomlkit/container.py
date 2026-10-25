@@ -40,9 +40,7 @@ def _is_empty_aot(item: Item) -> bool:
 def _table_is_empty(table: Table) -> bool:
     """Whether ``table`` holds no real items (only whitespace or ``Null``
     placeholders left behind by removals)."""
-    return not any(
-        not isinstance(v, (Whitespace, Null)) for _, v in table.value.body
-    )
+    return not any(not isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
 
 
 def _emits_header(key: Key, table: Table) -> bool:
