@@ -1841,6 +1841,8 @@ b = 2
     assert doc.as_string() == "\n[a]\nb = 2\n"
 
 
+
+
 def test_emptied_nested_table_with_same_named_top_level_table() -> None:
     # The emptied t.a must not vanish just because an unrelated top-level
     # [a] table exists (sibling fragments only share a container body).
@@ -1848,4 +1850,37 @@ def test_emptied_nested_table_with_same_named_top_level_table() -> None:
     del doc["t"]["a"]["b"]
     out = doc.as_string()
     assert out == "[a]\nx=1\n[t.a]\n"
+    assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_deleting_table_with_later_fragment_of_same_parent() -> None:
+    # The emptied fragment of t.a must be dropped: the later [t] fragment
+    # still renders t's content, so emitting [t.a] would redefine the table.
+    # (Regression guard: an earlier version of this fix emitted [t.a] here,
+    # producing invalid TOML with the table defined twice.)
+    doc = parse("[t.a.b]\nx=1\n[t]\na.c=1\n")
+    del doc["t"]["a"]["b"]
+    out = doc.as_string()
+    assert out == "[t]\na.c=1\n"
+    assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_deleting_table_with_interleaved_fragment_of_same_parent() -> None:
+    # Like above, but another table sits between the two fragments of t;
+    # the surviving [t.a] fragment keeps its content after the emptied one.
+    doc = parse("[t.a.b]\nx=1\n[q]\nx=1\n[t.a]\nc=1\n")
+    del doc["t"]["a"]["b"]
+    out = doc.as_string()
+    assert out == "[q]\nx=1\n[t.a]\nc=1\n"
+    assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_all_emptied_fragments_of_out_of_order_parent_each_serialize() -> None:
+    # When every fragment of an out-of-order parent is emptied, each emptied
+    # sub-table still gets its header exactly once.
+    doc = parse("[t.a]\nx=1\n[q]\ny=1\n[t.b]\nz=1\n")
+    del doc["t"]["a"]["x"]
+    del doc["t"]["b"]["z"]
+    out = doc.as_string()
+    assert out == "[t.a]\n[q]\ny=1\n[t.b]\n"
     assert parse(out).unwrap() == doc.unwrap()
