@@ -2182,7 +2182,14 @@ class InlineTable(AbstractTable):
                 # A table materialized from a dotted key renders one
                 # `prefix.child = value` pair per child, so that keys added
                 # after parsing stay attached to the dotted prefix.
-                rendered = ", ".join(self._render_dotted(k, v))
+                dotted = self._render_dotted(k, v)
+                if dotted:
+                    rendered = ", ".join(dotted)
+                else:
+                    # Every child of the dotted key was removed: keep the
+                    # now-empty table rather than emitting nothing, which
+                    # would leave a dangling separator and invalid TOML.
+                    rendered = f"{k.as_string()}{k.sep or '='}{{}}"
             else:
                 rendered = (
                     f"{k.as_string() + ('.' if k.is_dotted() else '')}"
@@ -2220,7 +2227,13 @@ class InlineTable(AbstractTable):
             if k is None:
                 continue
             if isinstance(v, Table):
-                parts.extend(f"{prefix}{sub}" for sub in self._render_dotted(k, v))
+                sub = self._render_dotted(k, v)
+                if sub:
+                    parts.extend(f"{prefix}{s}" for s in sub)
+                else:
+                    # A dotted child whose keys were all removed renders as
+                    # an empty inline table so the output stays valid TOML.
+                    parts.append(f"{prefix}{k.as_string()}{k.sep or '='}{{}}")
             else:
                 trail = v.trivia.trail.replace("\n", "")
                 parts.append(
