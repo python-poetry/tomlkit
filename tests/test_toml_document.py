@@ -1839,5 +1839,3 @@ b = 2
 """)
     del doc["x"]
     assert doc.as_string() == "\n[a]\nb = 2\n"
-
-
