@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
+
 ## [0.15.2] - 2026-10-16
 
 ### Changed
