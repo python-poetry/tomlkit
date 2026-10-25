@@ -40,7 +40,9 @@ def _is_empty_aot(item: Item) -> bool:
 def _table_is_empty(table: Table) -> bool:
     """Whether ``table`` holds no real items (only whitespace or ``Null``
     placeholders left behind by removals)."""
-    return not any(not isinstance(v, (Whitespace, Null)) for _, v in table.value.body)
+    return not any(
+        not isinstance(v, (Whitespace, Null)) for _, v in table.value.body
+    )
 
 
 def _emits_header(key: Key, table: Table) -> bool:
@@ -744,7 +746,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return s
 
-    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
+    def _render_table(
+        self,
+        key: Key,
+        table: Table,
+        prefix: str | None = None,
+        _siblings: list[tuple[Key | None, Item]] | None = None,
+    ) -> str:
         cur = ""
 
         if table.display_name is not None:
@@ -768,9 +776,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             # letting it vanish from the output. For fragments of an
             # out-of-order table, skip this fragment when a sibling fragment
             # still holds the table's items, so no duplicate header appears.
+            # Sibling fragments live in the body of the container that owns
+            # this table, which is not necessarily this container itself.
+            siblings = self._body if _siblings is None else _siblings
             header_emitted = not any(
                 k == key and v is not table and not _table_is_empty(v)
-                for k, v in self._body
+                for k, v in siblings
                 if isinstance(v, Table)
             )
         if header_emitted:
@@ -813,11 +824,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, _siblings=table.value.body)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(k, v, prefix=_key, _siblings=table.value.body)
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, _siblings=table.value.body)
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -871,11 +882,11 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, _siblings=table.value.body)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(k, v, prefix=_key, _siblings=table.value.body)
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, _siblings=table.value.body)
             elif isinstance(v, AoT):
                 assert k is not None
                 cur += self._render_aot(k, v, prefix=_key)
