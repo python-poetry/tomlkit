@@ -1480,12 +1480,15 @@ name = "bar-a-c"
 """
     doc = parse(content)
     del doc["bar"]["a"]
+    # The emptied "bar" table is still part of the document, so it keeps
+    # serializing as an empty table instead of vanishing (#553).
     assert (
         doc.as_string()
         == """\
 [foo]
 name = "foo"
 
+[bar]
 [foo.a]
 name = "foo-a"
 
@@ -1804,3 +1807,29 @@ def test_emptied_array_of_tables_is_relative_to_the_nearest_header() -> None:
     doc["t"]["u"]["a"].pop()
 
     assert doc.as_string() == "[t]\nu.a = []\n"
+
+
+def test_emptied_table_still_serializes_553() -> None:
+    # https://github.com/python-poetry/tomlkit/issues/553
+    doc = parse("""\
+x.y.z = 1
+
+[[a]]
+x = 1
+""")
+    doc["a"].pop()
+    doc["x"]["y"].pop("z")
+    out = doc.as_string()
+    assert out == "a = []\n[x.y]\n\n"
+    assert parse(out).unwrap() == doc.unwrap()
+
+
+def test_emptied_explicit_table_still_serializes() -> None:
+    doc = parse("""\
+[x.y]
+z = 1
+""")
+    del doc["x"]["y"]["z"]
+    out = doc.as_string()
+    assert "[x.y]" in out
+    assert parse(out).unwrap() == doc.unwrap()
