@@ -717,7 +717,7 @@ bar = "baz"
 )
 def test_arithmetic_result_does_not_share_trivia(content: str, op: Callable) -> None:
     doc = parse(content)
-    original = doc[list(doc)[0]]
+    original = doc[next(iter(doc))]
 
     result = op(original)
     assert result.trivia is not original.trivia
