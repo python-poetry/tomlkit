@@ -671,7 +671,7 @@ class Integer(Item, _CustomInt):
         if self._sign and result >= 0:
             raw = f"+{raw}"
 
-        return Integer(result, self._trivia, raw)
+        return Integer(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, Trivia, str]:
         return int(self), self._trivia, self._raw
@@ -896,7 +896,7 @@ class Float(Item, _CustomFloat):
         if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
-        return Float(result, self._trivia, raw)
+        return Float(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[float, Trivia, str]:
         return float(self), self._trivia, self._raw
@@ -1202,7 +1202,7 @@ class DateTime(Item, datetime):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -1297,7 +1297,7 @@ class Date(Item, date):
     def _new(self, result: date) -> Date:
         raw = result.isoformat()
 
-        return Date(result.year, result.month, result.day, self._trivia, raw)
+        return Date(result.year, result.month, result.day, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, int, int, Trivia, str]:
         return (self.year, self.month, self.day, self._trivia, self._raw)
@@ -1363,7 +1363,7 @@ class Time(Item, time):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -2291,7 +2291,7 @@ class String(str, Item):
         return self._new(result, original)
 
     def _new(self, result: str, original: str) -> String:
-        return String(self._t, result, original, self._trivia)
+        return String(self._t, result, original, self._trivia.copy())
 
     def _getstate(self, protocol: int = 3) -> tuple[StringType, str, str, Trivia]:
         return self._t, str(self), self._original, self._trivia
