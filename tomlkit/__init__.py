@@ -27,7 +27,7 @@ from tomlkit.api import value
 from tomlkit.api import ws
 
 
-__version__ = "0.15.1"
+__version__ = "0.15.2"
 __all__ = [
     "TOMLDocument",
     "aot",
