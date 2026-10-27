@@ -671,7 +671,7 @@ class Integer(Item, _CustomInt):
         if self._sign and result >= 0:
             raw = f"+{raw}"
 
-        return Integer(result, self._trivia, raw)
+        return Integer(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, Trivia, str]:
         return int(self), self._trivia, self._raw
@@ -896,7 +896,7 @@ class Float(Item, _CustomFloat):
         if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
-        return Float(result, self._trivia, raw)
+        return Float(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[float, Trivia, str]:
         return float(self), self._trivia, self._raw
@@ -1042,6 +1042,9 @@ class Bool(Item):
     __nonzero__ = __bool__
 
     def __eq__(self, other: object) -> bool:
+        if isinstance(other, Bool):
+            other = other.value
+
         if not isinstance(other, bool):
             return NotImplemented
 
@@ -1199,7 +1202,7 @@ class DateTime(Item, datetime):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -1294,7 +1297,7 @@ class Date(Item, date):
     def _new(self, result: date) -> Date:
         raw = result.isoformat()
 
-        return Date(result.year, result.month, result.day, self._trivia, raw)
+        return Date(result.year, result.month, result.day, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, int, int, Trivia, str]:
         return (self.year, self.month, self.day, self._trivia, self._raw)
@@ -1360,7 +1363,7 @@ class Time(Item, time):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -2288,7 +2291,7 @@ class String(str, Item):
         return self._new(result, original)
 
     def _new(self, result: str, original: str) -> String:
-        return String(self._t, result, original, self._trivia)
+        return String(self._t, result, original, self._trivia.copy())
 
     def _getstate(self, protocol: int = 3) -> tuple[StringType, str, str, Trivia]:
         return self._t, str(self), self._original, self._trivia
@@ -2305,20 +2308,19 @@ class String(str, Item):
         if any(c in checked for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
 
-        escaped = type_.escaped_sequences
-        string_value = escape_string(value, escaped) if escape and escaped else value
+        string_value = value
+        if escape:
+            string_value = escape_string(string_value, type_.escaped_sequences)
+            if type_ is StringType.MLB and escape:
+                string_value = _BARE_CR.sub(r"\\r", string_value)
+            if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
+                # A newline immediately following the opening delimiter of a
+                # multiline string is trimmed by the parser, so a value that
+                # starts with a newline would otherwise lose it on round-trip.
+                # Emit an extra leading newline (the trimmed one) to preserve it.
+                string_value = "\n" + string_value
 
-        if type_ is StringType.MLB and escape:
-            string_value = _BARE_CR.sub(r"\\r", string_value)
-
-        if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
-            # A newline immediately following the opening delimiter of a
-            # multiline string is trimmed by the parser, so a value that
-            # starts with a newline would otherwise lose it on round-trip.
-            # Emit an extra leading newline (the trimmed one) to preserve it.
-            string_value = "\n" + string_value
-
-        return cls(type_, decode(value), string_value, Trivia())
+        return cls(type_, value, string_value, Trivia())
 
 
 class AoT(Item, _CustomList):  # type: ignore[type-arg]
