@@ -1708,3 +1708,34 @@ def test_out_of_order_table_proxy_membership() -> None:
         _ = 123 in table
     # membership must not resolve values or mutate the document
     assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "ending", ["x=1", "x=1# one", "# empty", "", "x=1\n[a.child]\ny=3# child"]
+)
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_aot_insert_preserves_unterminated_table_boundaries(
+    ending: str, newline: str
+) -> None:
+    doc = parse(("[[a]]\nx=2\n[[a]]\n" + ending).replace("\n", newline))
+    aot = doc["a"]
+    moved = aot.pop()
+    aot.insert(0, moved)
+    expected = [moved.unwrap(), {"x": 2}]
+    rendered = api.dumps(doc)
+    assert parse(rendered)["a"].unwrap() == expected
+    assert aot.unwrap() == expected
+    assert aot == expected
+    if "#" in ending:
+        assert ending.split("#")[-1] in rendered
+    assert aot[0] is moved
+    assert api.dumps(doc) == rendered
+
+
+def test_aot_insert_keeps_existing_table_spacing() -> None:
+    text = "[[a]]\nx=2\n\n[[a]] # one\nx=1\n"
+    doc = parse(text)
+    aot = doc["a"]
+    moved = aot.pop()
+    aot.insert(0, moved)
+    assert api.dumps(doc) == "[[a]] # one\nx=1\n[[a]]\nx=2\n\n"
