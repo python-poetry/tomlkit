@@ -6,14 +6,14 @@ babel==2.15.0
     # via sphinx
 beautifulsoup4==4.12.3
     # via furo
-certifi==2024.7.4
+certifi==2026.10.19
     # via requests
 charset-normalizer==3.3.2
     # via requests
 docutils==0.21.2
     # via sphinx
 furo==2024.7.18
-    # via -r docs/requirements.in
+    # via -r requirements.in
 idna==3.15
     # via requests
 imagesize==1.4.1
@@ -36,7 +36,7 @@ soupsieve==2.9
     # via beautifulsoup4
 sphinx==7.4.7
     # via
-    #   -r docs/requirements.in
+    #   -r requirements.in
     #   furo
     #   sphinx-basic-ng
 sphinx-basic-ng==1.0.0b2
@@ -52,8 +52,6 @@ sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.8
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.10
-    # via sphinx
-tomli==2.5.0
     # via sphinx
 urllib3==2.8.0
     # via requests
