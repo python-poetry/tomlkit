@@ -481,6 +481,20 @@ def test_append_to_empty_array() -> None:
     assert doc.as_string() == 'x = [\n    "a"\n]'
 
 
+def test_insert_at_front_of_array_keeps_space_after_comma() -> None:
+    doc = parse("x = [1, 2]\ny = [1]\n")
+    doc["x"].insert(0, 0)
+    doc["y"].insert(-1, 0)
+    rendered = doc.as_string()
+    assert rendered == "x = [0, 1, 2]\ny = [0, 1]\n"
+    assert parse(rendered) == {"x": [0, 1, 2], "y": [0, 1]}
+    assert parse(rendered).as_string() == rendered
+
+    a = item([1, 2])
+    a.insert(0, 0)
+    assert a.as_string() == "[0, 1, 2]"
+
+
 def test_modify_array_with_comment() -> None:
     doc = parse("x = [ # comment\n]")
     doc["x"].append("a")
