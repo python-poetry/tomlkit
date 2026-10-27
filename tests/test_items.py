@@ -42,6 +42,28 @@ from tomlkit.items import item
 from tomlkit.parser import Parser
 
 
+@pytest.mark.parametrize("reverse", [False, True])
+def test_array_sort_updates_serialized_values(reverse: bool) -> None:
+    document = parse("values = [3, 1, 2]\n")
+    values = document["values"]
+    values.sort(reverse=reverse)
+    expected = [3, 2, 1] if reverse else [1, 2, 3]
+    assert values == expected
+    assert parse(document.as_string())["values"] == expected
+    values[1] = 4
+    expected[1] = 4
+    assert parse(document.as_string())["values"] == expected
+
+
+def test_array_sort_with_key_preserves_formatting() -> None:
+    document = parse('values = [\n  "bb", # first\n  "a", # second\n  "ccc",\n]\n')
+    document["values"].sort(key=len)
+    assert document.as_string() == (
+        'values = [\n  "a", # first\n  "bb", # second\n  "ccc",\n]\n'
+    )
+    assert document["values"] == ["a", "bb", "ccc"]
+
+
 @pytest.fixture()
 def tz_pst() -> tzinfo:
     try:
