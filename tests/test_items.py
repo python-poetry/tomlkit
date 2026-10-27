@@ -329,6 +329,42 @@ def test_key_automatically_sets_proper_string_type_if_not_bare() -> None:
 
 
 @pytest.mark.parametrize(
+    "k, t",
+    [
+        ("", KeyType.Bare),
+        ("foo bar", KeyType.Bare),
+        ("foo.bar", KeyType.Bare),
+        ("é", KeyType.Bare),
+        ('a = "x"\nb', KeyType.Bare),
+        ("a'b", KeyType.Literal),
+        ("a\nb", KeyType.Literal),
+        ("a\x7fb", KeyType.Literal),
+    ],
+)
+def test_key_rejects_text_invalid_for_explicit_type(k: str, t: KeyType) -> None:
+    with pytest.raises(ValueError):
+        Key(k, t)
+
+
+@pytest.mark.parametrize(
+    "k, t, expected",
+    [
+        ("foo-bar_1", KeyType.Bare, "foo-bar_1"),
+        ("", KeyType.Literal, "''"),
+        ('a.b "c"\td', KeyType.Literal, "'a.b \"c\"\td'"),
+        ("a'\nb", KeyType.Basic, '"a\'\\nb"'),
+    ],
+)
+def test_key_with_explicit_type_round_trips(k: str, t: KeyType, expected: str) -> None:
+    key = Key(k, t)
+    assert key.as_string() == expected
+
+    doc = api.document()
+    doc.add(key, 1)
+    assert parse(doc.as_string()) == {k: 1}
+
+
+@pytest.mark.parametrize(
     "index, replacement",
     [
         (slice(None), [4, 5, 6]),
