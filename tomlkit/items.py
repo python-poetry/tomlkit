@@ -1699,8 +1699,7 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         new_item = _ArrayItemGroup(value=it, indent=indent, comma=comma)
         self._value.insert(idx, new_item)
         if (
-            type(pos) is int
-            and pos >= length
+            pos >= length
             and len(self._index_map) == length
             and not isinstance(it, (Comment, Whitespace, Null))
         ):
