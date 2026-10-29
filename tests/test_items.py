@@ -113,11 +113,11 @@ def test_item_base_has_no_unwrap() -> None:
 
 
 def test_integer_unwrap() -> None:
-    elementary_test(item(666), int)
+    elementary_test(item(666), int, 666)
 
 
 def test_float_unwrap() -> None:
-    elementary_test(item(2.78), float)
+    elementary_test(item(2.78), float, 2.78)
 
 
 @pytest.mark.skipif(
@@ -133,25 +133,25 @@ def test_float_is_not_a_sequence() -> None:
 
 
 def test_false_unwrap() -> None:
-    elementary_test(item(False), bool)
+    elementary_test(item(False), bool, False)
 
 
 def test_true_unwrap() -> None:
-    elementary_test(item(True), bool)
+    elementary_test(item(True), bool, True)
 
 
 def test_datetime_unwrap() -> None:
     dt = datetime.now(tz=timezone.utc)
-    elementary_test(item(dt), datetime)
+    elementary_test(item(dt), datetime, dt)
 
 
 def test_string_unwrap() -> None:
-    elementary_test(item("hello"), str)
+    elementary_test(item("hello"), str, "hello")
 
 
 def test_null_unwrap() -> None:
     n = Null()
-    elementary_test(n, type(None))
+    elementary_test(n, type(None), None)
 
 
 def test_aot_unwrap() -> None:
@@ -181,12 +181,12 @@ def test_aot_set_item() -> None:
 
 def test_time_unwrap() -> None:
     t = time(3, 8, 14)
-    elementary_test(item(t), time)
+    elementary_test(item(t), time, t)
 
 
 def test_date_unwrap() -> None:
     d = date.today()
-    elementary_test(item(d), date)
+    elementary_test(item(d), date, d)
 
 
 def test_array_unwrap() -> None:
