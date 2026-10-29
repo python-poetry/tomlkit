@@ -22,6 +22,7 @@
 
 ### Fixed
 
+- Fix invalid output after deleting the last key under a dotted key inside an inline table; the emptied table now renders as `b = {}`. ([#664](https://github.com/python-poetry/tomlkit/pull/664))
 - Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
 - Fix uppercase `E` exponent after a leading-zero mantissa (e.g. `0E2`) being rejected as an invalid number while `0e2` parsed fine. ([#586](https://github.com/python-poetry/tomlkit/pull/586))
 - Fix non-lowercase special floats (e.g. `Inf`, `NaN`, `-INF`) being accepted; TOML only allows lowercase `inf` and `nan`, so they now raise `ParseError`. ([#628](https://github.com/python-poetry/tomlkit/pull/628))

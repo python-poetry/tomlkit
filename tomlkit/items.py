@@ -2234,6 +2234,9 @@ class InlineTable(AbstractTable):
                     f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
                     f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
                 )
+        if not parts:
+            # every key under the prefix was removed, keep it as an empty table
+            return [f"{key.as_string()} = {{}}"]
         return parts
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
