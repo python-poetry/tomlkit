@@ -828,6 +828,18 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
 
 
+def test_datetime_astimezone_defaults_to_local_timezone() -> None:
+    value = parse("time = 1979-05-27T07:32:00Z # birthday\n")["time"]
+    expected = datetime(1979, 5, 27, 7, 32, tzinfo=timezone.utc).astimezone()
+
+    result = value.astimezone()
+
+    assert isinstance(result, DateTime)
+    assert result.unwrap() == expected
+    assert result.as_string() == expected.isoformat()
+    assert result == value.astimezone(None)
+
+
 @pytest.mark.parametrize("fold", [0, 1])
 def test_datetime_subtraction_preserves_input_fold(tz_fold: tzinfo, fold: int) -> None:
     value = datetime(2018, 11, 4, 1, 30, tzinfo=tz_fold, fold=fold)
