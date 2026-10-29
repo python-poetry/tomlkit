@@ -1254,11 +1254,13 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         _key: Key = key if isinstance(key, Key) else SingleKey(key)
 
         if _key in self._tables_map:
-            # Overwrite the first table and remove others
+            # Overwrite the first occurrence and remove this key from later parts.
             map_indices = self._tables_map[_key]
             while len(map_indices) > 1:
                 table = self._tables[map_indices.pop()]
-                self._remove_table(table)
+                del table[key]
+                if not table:
+                    self._remove_table(table)
             old_value = self._tables[map_indices[0]][key]
             if _is_table_or_aot(old_value) and not _is_table_or_aot(value):
                 # Remove the entry from the map and set value again.
