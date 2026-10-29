@@ -4,6 +4,7 @@ import abc
 import copy
 import dataclasses
 import inspect
+import operator
 import re
 import string
 
@@ -19,6 +20,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import SupportsIndex
 from typing import TypeVar
 from typing import overload
 
@@ -1628,22 +1630,24 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
     def __len__(self) -> int:
         return list.__len__(self)
 
-    def item(self, index: int) -> Item:
+    def item(self, index: SupportsIndex) -> Item:
         return list.__getitem__(self, index)  # type: ignore[no-any-return]
 
-    def __getitem__(self, key: int | slice) -> Any:  # type: ignore[override]
+    def __getitem__(self, key: SupportsIndex | slice) -> Any:
         return list.__getitem__(self, key)
 
-    def __setitem__(self, key: int | slice, value: Any) -> None:  # type: ignore[override]
+    def __setitem__(self, key: SupportsIndex | slice, value: Any) -> None:
         if isinstance(key, slice):
             raise ValueError("slice assignment is not supported")
+        key = operator.index(key)
         it = item(value, _parent=self)
         list.__setitem__(self, key, it)
         if key < 0:
             key += len(self)
         self._value[self._index_map[key]].value = it
 
-    def insert(self, pos: int, value: Any) -> None:  # type: ignore[override]
+    def insert(self, pos: SupportsIndex, value: Any) -> None:
+        pos = operator.index(pos)
         it = item(value, _parent=self)
         length = len(self)
         if not isinstance(it, (Comment, Whitespace)):
@@ -1710,7 +1714,18 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         else:
             self._reindex()
 
-    def __delitem__(self, key: int | slice) -> None:  # type: ignore[override]
+    def __delitem__(self, key: SupportsIndex | slice) -> None:
+        if isinstance(key, slice):
+            step = None if key.step is None else operator.index(key.step)
+            if step == 0:
+                raise ValueError("slice step cannot be zero")
+            key = slice(
+                None if key.start is None else operator.index(key.start),
+                None if key.stop is None else operator.index(key.stop),
+                step,
+            )
+        else:
+            key = operator.index(key)
         length = len(self)
         list.__delitem__(self, key)
 
