@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Speed up repeated array appends by keeping existing indexes instead of rebuilding them.
+
 ### Fixed
 
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.

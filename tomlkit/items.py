@@ -1701,7 +1701,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             indent = Whitespace(default_indent)
         new_item = _ArrayItemGroup(value=it, indent=indent, comma=comma)
         self._value.insert(idx, new_item)
-        self._reindex()
+        if (
+            pos >= length
+            and len(self._index_map) == length
+            and not isinstance(it, (Comment, Whitespace, Null))
+        ):
+            self._index_map[length] = idx
+        else:
+            self._reindex()
 
     def __delitem__(self, key: int | slice) -> None:  # type: ignore[override]
         length = len(self)
