@@ -22,6 +22,7 @@ from tests.util import elementary_test
 from tomlkit import api
 from tomlkit import parse
 from tomlkit.container import OutOfOrderTableProxy
+from tomlkit.exceptions import InvalidStringError
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.items import Array
 from tomlkit.items import Bool
@@ -1021,6 +1022,89 @@ def test_string_add_escapes_appended_content() -> None:
     k = item("foo")
     k += " bar"
     assert k.as_string() == '"foo bar"'
+
+
+@pytest.mark.parametrize(
+    "left_style", [(False, False), (False, True), (True, False), (True, True)]
+)
+@pytest.mark.parametrize(
+    "right_style", [(False, False), (False, True), (True, False), (True, True)]
+)
+def test_string_add_quote_styles_roundtrip(
+    left_style: tuple[bool, bool], right_style: tuple[bool, bool]
+) -> None:
+    left = api.string("prefix/", literal=left_style[0], multiline=left_style[1])
+    right = api.string(r"C:\temp", literal=right_style[0], multiline=right_style[1])
+    combined = left + right
+    expected = str(left) + str(right)
+
+    assert str(combined) == expected
+    assert combined.type is left.type
+    assert parse(api.dumps({"value": combined}))["value"] == expected
+
+
+def test_string_add_literal_decodes_basic_escape() -> None:
+    left = api.string("prefix/", literal=True)
+    right = parse(r'value = "\u0041"')["value"]
+    combined = left + right
+    assert parse(api.dumps({"value": combined}))["value"] == "prefix/A"
+
+
+def test_string_add_multiline_preserves_carriage_return() -> None:
+    combined = api.string("prefix/", multiline=True) + api.string("\r")
+    assert parse(api.dumps({"value": combined}))["value"] == "prefix/\r"
+
+
+@pytest.mark.parametrize("as_item", [False, True])
+@pytest.mark.parametrize(
+    "multiline, value",
+    [
+        (False, "newline\n"),
+        (False, "apostrophe'"),
+        (False, "carriage\r"),
+        (False, "crlf\r\n"),
+        (True, "carriage\r"),
+        (True, "triple'''"),
+    ],
+)
+def test_string_add_rejects_invalid_literal_content(
+    multiline: bool, value: str, as_item: bool
+) -> None:
+    left = api.string("prefix/", literal=True, multiline=multiline)
+    right = api.string(value) if as_item else value
+
+    with pytest.raises(InvalidStringError):
+        left + right
+
+    assert left == "prefix/"
+    assert (
+        left.as_string()
+        == api.string("prefix/", literal=True, multiline=multiline).as_string()
+    )
+
+
+def test_string_add_rejects_literal_delimiter_across_boundary() -> None:
+    left = api.string("prefix''", literal=True, multiline=True)
+    right = api.string("'suffix", literal=True, multiline=True)
+
+    with pytest.raises(InvalidStringError):
+        left + right
+
+
+@pytest.mark.parametrize("as_item", [False, True])
+@pytest.mark.parametrize("prefix", ["", "prefix/"])
+@pytest.mark.parametrize("value", ["\nline", "quote''", "crlf\r\n", "tab\t"])
+def test_string_add_multiline_literal_valid_content(
+    value: str, prefix: str, as_item: bool
+) -> None:
+    left = api.string(prefix, literal=True, multiline=True).comment("preserved")
+    right = api.string(value) if as_item else value
+    combined = left + right
+
+    assert combined.type is StringType.MLL
+    assert combined == prefix + value
+    assert combined.trivia.comment == left.trivia.comment
+    assert parse(api.dumps({"value": combined}))["value"] == prefix + value
 
 
 def test_tables_behave_like_dicts() -> None:

@@ -2287,13 +2287,16 @@ class String(str, Item):
 
     def __add__(self, other: str) -> String:
         result = super().__add__(other)
-        if isinstance(other, String):
+        if self._t.is_literal():
+            original = String.from_raw(result, self._t)._original
+        elif isinstance(other, String) and other._t is self._t:
             original = self._original + other._original
         else:
             escaped = self._t.escaped_sequences
-            original = self._original + (
-                escape_string(other, escaped) if escaped else other
-            )
+            appended = escape_string(other, escaped) if escaped else other
+            if self._t is StringType.MLB:
+                appended = _BARE_CR.sub(r"\\r", appended)
+            original = self._original + appended
 
         return self._new(result, original)
 
