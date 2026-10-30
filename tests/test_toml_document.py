@@ -664,6 +664,77 @@ def test_valid_out_of_order_independent_tables() -> None:
     assert doc.as_string() == "[a]\nx=1\n[zz]\n[a.b]\nc=1\n"
 
 
+def test_valid_nested_out_of_order_table_after_unrelated_table() -> None:
+    content = "[a]\n[a.b.c]\n[a.b]\n[[zz]]\n[a.b.d]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {"a": {"b": {"c": {}, "d": {}}}, "zz": [{}]}
+    assert doc.as_string() == content
+
+
+def test_valid_nested_out_of_order_table_with_multiple_fragments() -> None:
+    content = "[a]\n[a.b.c]\n[a.b]\nx=1\n[a.b.d.e]\n[[zz]]\n[a.b.f]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {
+        "a": {"b": {"c": {}, "x": 1, "d": {"e": {}}, "f": {}}},
+        "zz": [{}],
+    }
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(
+            "[a.b.c]\n[a.b]\n[a]\n[a.b.d]\n[a.b]\n",
+            id="duplicate-concrete-table-across-fragments",
+        ),
+        pytest.param(
+            "[a]\n[a.b.c]\n[a.b]\n[q]\n[a.b.d]\n[a.b]\n",
+            id="duplicate-concrete-table-in-earlier-fragment",
+        ),
+        pytest.param(
+            "[a]\n[q]\n[a.b.c.e]\n[a.b]\n[a]\n[a.b.d]\n",
+            id="duplicate-concrete-parent-in-earlier-fragment",
+        ),
+        pytest.param(
+            "a.x=1\n[a.b.c]\n[a.b.d]\n[q]\n[a.b.d]\n",
+            id="duplicate-table-merged-into-validated-fragment",
+        ),
+        pytest.param(
+            "[a]\nb.y=1\n[a.b.c]\n[q]\n[a.b]\n",
+            id="dotted-key-table-redefined-by-header",
+        ),
+    ],
+)
+def test_out_of_order_table_rejects_redefinition(content: str) -> None:
+    with pytest.raises(TOMLKitError):
+        parse(content)
+
+
+def test_valid_out_of_order_sub_table_of_dotted_key_table() -> None:
+    content = "[a]\nb.y=1\n[a.b.c]\n[q]\n[a.b.d]\n"
+    doc = parse(content)
+    assert doc.unwrap() == {"a": {"b": {"y": 1, "c": {}, "d": {}}}, "q": {}}
+    assert doc.as_string() == content
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        pytest.param("[a.b]", id="duplicate-concrete-parent"),
+        pytest.param("[a.b.c]", id="duplicate-child-in-first-fragment"),
+        pytest.param("[a.b.d.e]", id="duplicate-nested-child-in-later-fragment"),
+        pytest.param("[a.b.x]", id="scalar-redefined-as-table"),
+    ],
+)
+def test_nested_out_of_order_table_rejects_collisions(header: str) -> None:
+    prefix = "[a]\n[a.b.c]\n[a.b]\nx=1\n[a.b.d.e]\n[[zz]]\n"
+    # The existing fragments are valid; only the appended header collides.
+    assert parse(prefix).as_string() == prefix
+    with pytest.raises(ParseError):
+        parse(prefix + header + "\n")
+
+
 def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
     # A deep header [a.b.c] makes a.b an implicit super-table; reopening [a] and
     # extending a.b via a dotted key (b.z) only adds a key to that super-table,
