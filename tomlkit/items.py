@@ -1677,6 +1677,18 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             last_item = self._value[idx - 1]
             if indent is None:
                 indent = last_item.indent
+            # Skip standalone comments when looking for the preceding separator.
+            for previous in self._value[:idx][::-1]:
+                if (
+                    (
+                        previous.value is not None
+                        and not isinstance(previous.value, Null)
+                    )
+                    or previous.comma is not None
+                    or (previous.indent is not None and "," in previous.indent.s)
+                ):
+                    last_item = previous
+                    break
             if not isinstance(last_item.value, Null) and "\n" in default_indent:
                 # Copy the comma from the last item if 1) it contains a value and
                 # 2) the array is multiline
