@@ -675,6 +675,25 @@ def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
     assert doc.as_string() == "[a.b.c]\n[a]\nb.z = 1\n"
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (" [a.b.c.d]\n[a.b.c]\n", {"a": {"b": {"c": {"d": {}}}}}),
+        (" [[a.b.c.d]]\n[a.b.c]\n", {"a": {"b": {"c": {"d": [{}]}}}}),
+        (" [a.b.c.d]\n[x]\n[a.b.c]\n", {"a": {"b": {"c": {"d": {}}}}, "x": {}}),
+    ],
+)
+def test_out_of_order_table_after_indented_header(
+    content: str, expected: dict[str, Any]
+) -> None:
+    # https://github.com/python-poetry/tomlkit/issues/263 covered `[a.b]` after
+    # an indented `[[a.b.c]]`. One level deeper, the out-of-order table lands
+    # under an intermediate table that carries the header's indent.
+    doc = parse(content)
+    assert doc.unwrap() == expected
+    assert doc.as_string() == content
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
