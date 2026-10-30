@@ -521,6 +521,28 @@ x = [
     assert doc.as_string() == "x = [\n    2\n]"
 
 
+@pytest.mark.parametrize("trailing_comma", [False, True])
+@pytest.mark.parametrize("operation", ["append", "extend", "insert"])
+@pytest.mark.parametrize("comments", ["# trailing\n", "# first\n# trailing\n"])
+def test_append_after_standalone_array_comments(
+    trailing_comma: bool, operation: str, comments: str
+) -> None:
+    doc = parse("x = [\n1" + ("," if trailing_comma else "") + "\n" + comments + "]\n")
+    array = doc["x"]
+    if operation == "append":
+        array.append(2)
+    elif operation == "extend":
+        array.extend([2, 3])
+    else:
+        array.insert(len(array) + 5, 2)
+
+    expected = [1, 2, 3] if operation == "extend" else [1, 2]
+    rendered = doc.as_string()
+    assert array == expected
+    assert parse(rendered)["x"] == expected
+    assert comments in rendered
+
+
 def test_append_to_multiline_array_with_comment() -> None:
     doc = parse(
         """\
