@@ -1102,6 +1102,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._table_keys += self._table_keys
         c._out_of_order_keys |= self._out_of_order_keys
 
         return c
