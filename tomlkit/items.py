@@ -941,7 +941,7 @@ class Float(Item, _CustomFloat):
         return self._new(float.__pos__(self))
 
     def __pow__(self, other: object, mod: None = None) -> Float:
-        result = float.__pow__(self, other)  # type: ignore[operator]
+        result = float.__pow__(self, other, mod)  # type: ignore[operator]
         if result is NotImplemented:
             return result  # type: ignore[no-any-return]
         return self._new(result)
@@ -974,7 +974,7 @@ class Float(Item, _CustomFloat):
         return self._new(float.__round__(self, ndigits))
 
     def __rpow__(self, other: object, mod: None = None) -> Float:
-        result = float.__rpow__(self, other)  # type: ignore[operator]
+        result = float.__rpow__(self, other, mod)  # type: ignore[operator]
         if result is NotImplemented:
             return result  # type: ignore[no-any-return]
         return self._new(result)
