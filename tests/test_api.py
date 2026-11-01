@@ -445,6 +445,21 @@ def test_add_dotted_key() -> None:
     assert table.as_string() == "foo.bar = 1\n"
 
 
+def test_add_dotted_key_to_inline_table() -> None:
+    table = tomlkit.inline_table()
+    table.add(tomlkit.key(["foo", "bar"]), 1)
+    table[tomlkit.key(["foo", "baz"])] = 2
+    assert table.as_string() == "{foo.bar = 1, foo.baz = 2}"
+
+
+def test_add_dotted_key_to_parsed_inline_table() -> None:
+    doc = parse("a = {b.c = 1}\n")
+    doc["a"].add(tomlkit.key(["b", "d"]), 2)
+    doc["a"].append(tomlkit.key(["e", "f", "g"]), 3)
+    assert doc.as_string() == "a = {b.c = 1, b.d = 2, e.f.g = 3}\n"
+    assert doc == {"a": {"b": {"c": 1, "d": 2}, "e": {"f": {"g": 3}}}}
+
+
 def test_key_with_single_element_list_is_a_single_key() -> None:
     # Regression test for
     # https://github.com/python-poetry/tomlkit/issues/430: a one-element key

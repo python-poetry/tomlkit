@@ -210,10 +210,14 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if isinstance(value, (Table, AoT)):
             raise TOMLKitError("Can't add a table to a dotted key")
         name, *mid, last = key
+        # The parts before the last one are followed by a dot, not by the
+        # separator, so leave theirs empty as the parser does
         name._dotted = True
+        name.sep = ""
         table = current = Table(Container(True), Trivia(), False, is_super_table=True)
         for _name in mid:
             _name._dotted = True
+            _name.sep = ""
             new_table = Table(Container(True), Trivia(), False, is_super_table=True)
             current.append(_name, new_table)
             current = new_table
