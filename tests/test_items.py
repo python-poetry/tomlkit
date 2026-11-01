@@ -27,6 +27,7 @@ from tomlkit.items import Array
 from tomlkit.items import Bool
 from tomlkit.items import Comment
 from tomlkit.items import DateTime
+from tomlkit.items import Float
 from tomlkit.items import InlineTable
 from tomlkit.items import Integer
 from tomlkit.items import Item
@@ -114,6 +115,25 @@ def test_item_base_has_no_unwrap() -> None:
 
 def test_integer_unwrap() -> None:
     elementary_test(item(666), int)
+
+
+@pytest.mark.parametrize("method", ["__pow__", "__rpow__"])
+@pytest.mark.parametrize("modulus", [0, 3, 0.5])
+def test_float_power_rejects_modulus(method: str, modulus: float) -> None:
+    with pytest.raises(TypeError):
+        getattr(2.0, method)(3, modulus)
+
+    with pytest.raises(TypeError):
+        getattr(item(2.0), method)(3, modulus)
+
+
+@pytest.mark.parametrize("method", ["__pow__", "__rpow__"])
+def test_float_power_allows_none_modulus(method: str) -> None:
+    result = getattr(item(2.0), method)(3, None)
+
+    assert isinstance(result, Float)
+    assert result == getattr(2.0, method)(3, None)
+    assert result.as_string() == str(getattr(2.0, method)(3, None))
 
 
 def test_float_unwrap() -> None:
