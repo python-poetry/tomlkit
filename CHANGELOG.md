@@ -6,6 +6,10 @@
 
 - Speed up parsing of comments: the comment text is scanned in one pass up to the line break or the first invalid control character, instead of one character at a time. ([#723](https://github.com/python-poetry/tomlkit/pull/723))
 
+### Fixed
+
+- Emptying an array of tables under a table that a later header declares (e.g. `[[a.b.c]]` before `[a]` or `[a.b]`) no longer renders invalid TOML; the `key = []` fallback is now written under that header. ([#690](https://github.com/python-poetry/tomlkit/issues/690))
+
 ## [0.15.3] - 2026-11-24
 
 ### Changed
