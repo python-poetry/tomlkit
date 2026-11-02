@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Emptying an array of tables under a table that a later header declares (e.g. `[[a.b.c]]` before `[a]` or `[a.b]`) no longer renders invalid TOML; the `key = []` fallback is now written under that header. ([#690](https://github.com/python-poetry/tomlkit/issues/690))
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
 
 ## [0.15.2] - 2026-10-16

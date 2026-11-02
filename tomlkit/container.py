@@ -64,8 +64,8 @@ def _emits_header(key: Key, table: Table) -> bool:
 
 
 def _header_less_aots(
-    body: list[tuple[Key | None, Item]], prefix: str = ""
-) -> list[tuple[str, AoT]]:
+    body: list[tuple[Key | None, Item]], prefix: tuple[Key, ...] = ()
+) -> list[tuple[tuple[Key, ...], AoT]]:
     """Every emptied array of tables reachable without crossing a header.
 
     An emptied array of tables has no ``[[key]]`` header left to render, so it
@@ -75,18 +75,69 @@ def _header_less_aots(
     with a key relative to it, and that includes the ones sitting inside super
     tables, which emit no header to separate them.
 
-    Returns ``(dotted key, aot)`` pairs, keyed relative to the scope ``body``
+    Returns ``(key path, aot)`` pairs, keyed relative to the scope ``body``
     belongs to.
     """
-    found: list[tuple[str, AoT]] = []
+    found: list[tuple[tuple[Key, ...], AoT]] = []
     for k, v in body:
         if k is None:
             continue
-        path = f"{prefix}.{k.as_string()}" if prefix else k.as_string()
+        path = (*prefix, k)
         if _is_empty_aot(v):
             found.append((path, v))
         elif isinstance(v, Table) and not _emits_header(k, v):
             found.extend(_header_less_aots(v.value.body, path))
+    return found
+
+
+def _declaring_table(
+    body: list[tuple[Key | None, Item]], path: tuple[Key, ...]
+) -> tuple[Table, tuple[Key, ...]] | None:
+    """The deepest table whose header declares a parent of ``path``.
+
+    An out-of-order table is split into fragments, so that header may be in a
+    different fragment than the array of tables itself. A fallback written
+    with a dotted key above it would declare the table a second time.
+
+    Returns the table and ``path`` relative to it, or ``None`` if no header
+    in ``body`` declares a parent of ``path``.
+    """
+    if len(path) < 2:
+        return None
+    found = None
+    for k, v in body:
+        if k != path[0] or not isinstance(v, Table):
+            continue
+        candidate = _declaring_table(v.value.body, path[1:])
+        if candidate is None and _emits_header(k, v):
+            candidate = (v, path[1:])
+        if candidate is not None and (
+            found is None or len(candidate[1]) < len(found[1])
+        ):
+            found = candidate
+    return found
+
+
+def _scope_aots(
+    body: list[tuple[Key | None, Item]],
+    inherited: list[tuple[tuple[Key, ...], AoT]],
+    delegated: dict[int, list[tuple[tuple[Key, ...], AoT]]],
+) -> list[tuple[str, AoT]]:
+    """The fallbacks to write at the top of the scope ``body`` belongs to.
+
+    Those whose parent is declared by a header within the scope are left in
+    ``delegated``, keyed by the ``id()`` of that table, for it to write.
+
+    Returns ``(dotted key, aot)`` pairs, keyed relative to the scope.
+    """
+    found: list[tuple[str, AoT]] = []
+    for path, aot in [*inherited, *_header_less_aots(body)]:
+        declaring = _declaring_table(body, path)
+        if declaring is None:
+            found.append((".".join(k.as_string() for k in path), aot))
+        else:
+            table, rest = declaring
+            delegated.setdefault(id(table), []).append((rest, aot))
     return found
 
 
@@ -709,7 +760,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
     def as_string(self) -> str:
         """Render as TOML string."""
         s = ""
-        for path, aot in _header_less_aots(self._body):
+        delegated: dict[int, list[tuple[tuple[Key, ...], AoT]]] = {}
+        for path, aot in _scope_aots(self._body, [], delegated):
             s += _render_empty_aot(path, aot)
         for k, v in self._body:
             if k is not None:
@@ -722,7 +774,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_table(k, v)
+                    s += self._render_table(k, v, delegated=delegated)
                 elif isinstance(v, AoT):
                     if (
                         s.strip(" ")
@@ -738,8 +790,16 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return s
 
-    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
+    def _render_table(
+        self,
+        key: Key,
+        table: Table,
+        prefix: str | None = None,
+        delegated: dict[int, list[tuple[tuple[Key, ...], AoT]]] | None = None,
+    ) -> str:
         cur = ""
+        if delegated is None:
+            delegated = {}
 
         if table.display_name is not None:
             _key = table.display_name
@@ -774,7 +834,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if header_emitted:
             # A super table opens no scope, so its fallbacks belong to -- and
             # were already written by -- the nearest enclosing header instead.
-            for path, aot in _header_less_aots(table.value.body):
+            inherited = delegated.pop(id(table), [])
+            for path, aot in _scope_aots(table.value.body, inherited, delegated):
                 cur += _render_empty_aot(path, aot)
         for k, v in table.value.body:
             if k is not None and _is_empty_aot(v):
@@ -790,11 +851,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, delegated=delegated)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k, v, prefix=_key, delegated=delegated
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, delegated=delegated)
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -838,7 +901,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             f"{table.trivia.trail}"
         )
 
-        for path, aot in _header_less_aots(table.value.body):
+        delegated: dict[int, list[tuple[tuple[Key, ...], AoT]]] = {}
+        for path, aot in _scope_aots(table.value.body, [], delegated):
             cur += _render_empty_aot(path, aot)
         for k, v in table.value.body:
             if k is not None and _is_empty_aot(v):
@@ -848,11 +912,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, delegated=delegated)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k, v, prefix=_key, delegated=delegated
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, delegated=delegated)
             elif isinstance(v, AoT):
                 assert k is not None
                 cur += self._render_aot(k, v, prefix=_key)
