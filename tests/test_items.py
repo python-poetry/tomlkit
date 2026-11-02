@@ -800,6 +800,52 @@ def test_floats_behave_like_floats() -> None:
     assert doc.as_string() == "float = +35.12"
 
 
+@pytest.mark.parametrize("value", [-3.5, -2.5, 2.5, 3.5])
+@pytest.mark.parametrize("mode", ["omitted", "none", "direct"])
+def test_float_round_without_digits_returns_integer(value: float, mode: str) -> None:
+    wrapped = item(value)
+    if mode == "omitted":
+        result = round(wrapped)
+    elif mode == "none":
+        result = round(wrapped, None)
+    else:
+        result = wrapped.__round__(None)
+
+    assert isinstance(result, Integer)
+    assert result == round(value)
+    assert list(range(abs(result))) == list(range(abs(round(value))))
+    assert result.as_string() == str(round(value))
+
+
+@pytest.mark.parametrize("ndigits", [-1, 0, 1, 2])
+def test_float_round_with_digits_remains_float(ndigits: int) -> None:
+    value = 12.345
+    result = round(item(value), ndigits)
+    assert isinstance(result, float)
+    assert result == round(value, ndigits)
+    assert result.as_string() == str(round(value, ndigits))
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [(math.inf, OverflowError), (-math.inf, OverflowError), (math.nan, ValueError)],
+)
+def test_float_round_nonfinite_raises(value: float, error: type[Exception]) -> None:
+    with pytest.raises(error):
+        round(item(value))
+
+
+def test_float_round_to_integer_preserves_trivia() -> None:
+    content = "count = +2.5  # keep\n"
+    doc = parse(content)
+    original = doc["count"]
+    result = round(original)
+    assert result.trivia is not original.trivia
+    doc["count"] = result
+    assert doc.as_string() == "count = +2  # keep\n"
+    assert parse(doc.as_string())["count"] == 2
+
+
 def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None:
     i = item(datetime(2018, 7, 22, 12, 34, 56))
 

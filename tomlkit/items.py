@@ -19,6 +19,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import SupportsIndex
 from typing import TypeVar
 from typing import overload
 
@@ -970,7 +971,15 @@ class Float(Item, _CustomFloat):
             return result  # type: ignore[return-value]
         return self._new(result)
 
-    def __round__(self, ndigits: int = 0) -> Float:  # type: ignore[override]
+    @overload
+    def __round__(self, ndigits: None = None) -> Integer: ...
+
+    @overload
+    def __round__(self, ndigits: SupportsIndex) -> Float: ...
+
+    def __round__(self, ndigits: SupportsIndex | None = None) -> Integer | Float:
+        if ndigits is None:
+            return Integer._new(self, float.__round__(self))  # type: ignore[arg-type]
         return self._new(float.__round__(self, ndigits))
 
     def __rpow__(self, other: object, mod: None = None) -> Float:
