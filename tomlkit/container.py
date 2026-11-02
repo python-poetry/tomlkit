@@ -1066,6 +1066,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return bool(_equal_with_nan(self.value, other))
 
+    def __ne__(self, other: object) -> bool:
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return NotImplemented
+        return not result
+
     def _getstate(self, protocol: int) -> tuple[bool]:
         return (self._parsed,)
 
