@@ -22,6 +22,44 @@ from tomlkit.exceptions import TOMLKitError
 from tomlkit.toml_document import TOMLDocument
 
 
+@pytest.mark.parametrize(
+    "content", ["value = nan", "value = [nan]", "[table]\nvalue = nan"]
+)
+@pytest.mark.parametrize("plain", [False, True])
+def test_document_inequality_complements_nan_equality(
+    content: str, plain: bool
+) -> None:
+    doc = parse(content)
+    other_doc = parse(content)
+    other = other_doc.unwrap() if plain else other_doc
+
+    assert doc == other
+    assert other == doc
+    assert not (doc != other)
+    assert not (other != doc)
+
+
+@pytest.mark.parametrize("content", ["value = 1", "value = inf", "value = [1, 2]"])
+def test_document_inequality_detects_different_values(content: str) -> None:
+    doc = parse(content)
+    other = parse("value = 2")
+    assert doc != other
+    assert other != doc
+    assert not (doc == other)
+
+
+def test_document_inequality_preserves_reflected_comparison() -> None:
+    class Comparator:
+        def __ne__(self, other: object) -> bool:
+            return False
+
+    doc = parse("value = nan")
+    other = Comparator()
+    assert doc.__ne__(other) is NotImplemented
+    assert not (doc != other)
+    assert doc != object()
+
+
 def test_document_is_a_dict(example: Callable[[str], str]) -> None:
     content = example("example")
 
