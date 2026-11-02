@@ -710,6 +710,15 @@ def test_document_value_preserves_split_arrays_of_tables(path: str, count: int) 
     assert doc.as_string() == content
 
 
+def test_document_value_preserves_wrapped_array_items() -> None:
+    doc = parse("[a]\nvalues = [1, 2]\n[other]\nx = 3\n[a.child]\nx = 4\n")
+    original = doc["a"]["values"]
+    values = doc.value
+    assert values["a"]["values"] is original
+    assert values["a"]["values"] == [1, 2]
+    assert doc.value["a"]["values"] == [1, 2]
+
+
 def test_out_of_order_table_merges_aot_fragments() -> None:
     # https://github.com/python-poetry/tomlkit/issues/505
     content = """\
