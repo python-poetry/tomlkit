@@ -689,6 +689,27 @@ def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     assert parse(doc.as_string()).unwrap() == {"x": {"y": {"z": {"w": {}}}, "c": 3}}
 
 
+@pytest.mark.parametrize("path", ["hooks.Stop", "hooks.events.Stop"])
+@pytest.mark.parametrize("count", [2, 3])
+def test_document_value_preserves_split_arrays_of_tables(path: str, count: int) -> None:
+    content = "".join(
+        f"[[{path}]]\nvalue = {i}\n[unrelated{i}]\nvalue = {i}\n" for i in range(count)
+    )
+    doc = parse(content)
+    expected: dict[str, Any] = {}
+    parent = expected
+    *parents, key = path.split(".")
+    for name in parents:
+        parent = parent.setdefault(name, {})
+    parent[key] = [{"value": i} for i in range(count)]
+    expected.update({f"unrelated{i}": {"value": i} for i in range(count)})
+
+    assert doc.unwrap() == expected
+    assert doc.value == expected
+    assert doc == expected
+    assert doc.as_string() == content
+
+
 def test_out_of_order_table_merges_aot_fragments() -> None:
     # https://github.com/python-poetry/tomlkit/issues/505
     content = """\

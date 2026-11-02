@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
-from tomlkit._utils import merge_dicts
 from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.exceptions import TOMLKitError
@@ -157,19 +156,18 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         """The wrapped dict value"""
         d: dict[str, Any] = {}
         for k, v in self._body:
-            if k is None:
+            if k is None or k.key in d:
                 continue
 
-            key_str = k.key
-            val: Any = v.value
+            # Resolve all out-of-order parts together so split arrays of tables
+            # retain every element, just as item access and unwrap() do.
+            resolved = self.item(k) if isinstance(self._map[k], tuple) else v
+            val: Any = resolved.value
 
             if isinstance(val, Container):
                 val = val.value
 
-            if key_str in d:
-                merge_dicts(d[key_str], val)
-            else:
-                d[key_str] = val
+            d[k.key] = val
 
         return d
 
