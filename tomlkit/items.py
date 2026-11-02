@@ -223,14 +223,34 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             try:
                 # Check if encoder accepts keyword arguments for backward compatibility
                 sig = inspect.signature(encoder)
-                if "_parent" in sig.parameters or any(
+                has_kwargs = any(
                     p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
-                ):
-                    # New style encoder that can accept additional parameters
-                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)  # type: ignore[call-arg]
-                else:
-                    # Old style encoder that only accepts value
-                    rv = encoder(value)
+                )
+                first_parameter = next(iter(sig.parameters.values()), None)
+                bound_name = (
+                    first_parameter.name
+                    if first_parameter is not None
+                    and first_parameter.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    else None
+                )
+                context = {"_parent": _parent, "_sort_keys": _sort_keys}
+                kwargs = {
+                    name: argument
+                    for name, argument in context.items()
+                    if name != bound_name
+                    and (
+                        has_kwargs
+                        or (
+                            name in sig.parameters
+                            and sig.parameters[name].kind
+                            in (
+                                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                                inspect.Parameter.KEYWORD_ONLY,
+                            )
+                        )
+                    )
+                }
+                rv = encoder(value, **kwargs)
             except ConvertError:
                 pass
             else:
