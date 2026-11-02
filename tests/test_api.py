@@ -587,6 +587,18 @@ def test_create_super_table_with_aot() -> None:
         ({}, "My String\x7f", '"My String\\u007f"'),
         ({"escape": False}, "My String\u0001", '"My String\u0001"'),
         ({"multiline": True}, "\nMy\nString\n", '"""\n\nMy\nString\n"""'),
+        # with escape=False the value is used verbatim, so a leading newline is
+        # not doubled (#655)
+        (
+            {"multiline": True, "escape": False},
+            "\nMy\nString\n",
+            '"""\nMy\nString\n"""',
+        ),
+        (
+            {"multiline": True, "literal": True, "escape": False},
+            "\n  aligned\n  strings\n",
+            "'''\n  aligned\n  strings\n'''",
+        ),
         ({"multiline": True}, 'My"String', '"""My"String"""'),
         ({"multiline": True}, 'My""String', '"""My""String"""'),
         ({"multiline": True}, 'My"""String', '"""My""\\"String"""'),
