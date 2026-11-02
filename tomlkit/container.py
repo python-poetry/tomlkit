@@ -1268,11 +1268,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                 return
             self._tables[map_indices[0]][key] = value
         elif self._tables:
+            table_index = 0
             if not _is_table_or_aot(value):  # if the value is a plain value
-                for table in self._tables:
+                for i, table in enumerate(self._tables):
                     # find the first table that allows plain values
                     if any(not _is_table_or_aot(v) for _, v in table.items()):
-                        table[key] = value
+                        table_index = i
                         break
                 else:
                     # No part holds a plain value yet, so the chosen part must
@@ -1281,14 +1282,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                     # turning a header-less super part concrete here would emit a
                     # second, duplicate header next to an existing concrete part
                     # and produce TOML that no longer parses.
-                    for table in self._tables:
+                    for i, table in enumerate(self._tables):
                         if not table.is_super_table():
-                            table[key] = value
+                            table_index = i
                             break
-                    else:
-                        self._tables[0][key] = value
-            else:
-                self._tables[0][key] = value
+            self._tables[table_index][key] = value
+            self._tables_map[_key] = [table_index]
         else:
             self._container[key] = value
 
