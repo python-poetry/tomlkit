@@ -9,6 +9,7 @@
 ### Fixed
 
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
+- Fix a dotted key made with `key()` and added to an inline table (e.g. `table.add(key(["c", "d"]), 2)`) being written as invalid TOML such as `{c. = d = 2}`; it is now written as `{c.d = 2}`.
 
 ## [0.15.2] - 2026-10-16
 

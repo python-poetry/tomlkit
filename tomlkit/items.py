@@ -2088,13 +2088,24 @@ class InlineTable(AbstractTable):
 
         self._validate_child(_item)
 
+        needs_indent = False
         if not isinstance(_item, (Whitespace, Comment)):
-            if not _item.trivia.indent and len(self._value) > 0 and not self._new:
-                _item.trivia.indent = " "
+            needs_indent = (
+                not _item.trivia.indent and len(self._value) > 0 and not self._new
+            )
             if _item.trivia.comment:
                 _item.trivia.comment = ""
 
-        self._value.append(key, _item)
+        if isinstance(key, Key) and key.is_multi():
+            # The value of a dotted key is rendered after the key (``a.b = 1``),
+            # so the space goes on the table that the key adds as a new entry
+            self._value.append(key, _item)
+            if needs_indent:
+                self._value.body[-1][1].trivia.indent = " "
+        else:
+            if needs_indent:
+                _item.trivia.indent = " "
+            self._value.append(key, _item)
 
         if isinstance(key, Key):
             key = key.key
