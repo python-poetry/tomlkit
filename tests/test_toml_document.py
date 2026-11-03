@@ -835,7 +835,9 @@ a = "b"
     assert expected == doc.as_string()
 
 
-def test_string_output_order_is_preserved_for_out_of_order_tables_separated_by_aot() -> None:
+def test_string_output_order_is_preserved_for_out_of_order_tables_separated_by_aot() -> (
+    None
+):
     content = """[tool.poetry]
 name = "foo"
 
