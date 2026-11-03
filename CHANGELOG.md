@@ -8,7 +8,7 @@
 
 ### Fixed
 
-- Emptying an array of tables under a table that a later header declares (e.g. `[[a.b.c]]` before `[a]` or `[a.b]`) no longer renders invalid TOML; the `key = []` fallback is now written under that header. ([#690](https://github.com/python-poetry/tomlkit/issues/690))
+- Emptying an array of tables under a table that a later header declares (e.g. `[[a.b.c]]` before `[a]` or `[a.b]`), or that a header in an earlier fragment of an out-of-order table declares (e.g. `[a.b]` before `[a]` and `[[a.b.c]]`), no longer renders invalid TOML; the `key = []` fallback is now written under that header. ([#690](https://github.com/python-poetry/tomlkit/issues/690))
 - Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`.
 - Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`.
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
