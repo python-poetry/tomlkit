@@ -967,6 +967,44 @@ def test_time_with_tzinfo_renders_as_local_time() -> None:
     assert parse(f"t = {j.as_string()}")["t"] == time(13, 32)
 
 
+@pytest.mark.parametrize(
+    "offset",
+    [
+        timedelta(seconds=30),
+        timedelta(hours=1, seconds=1),
+        -timedelta(minutes=44, seconds=30),
+        timedelta(microseconds=1),
+    ],
+)
+def test_datetime_with_sub_minute_offset_renders_valid_toml(
+    offset: timedelta,
+) -> None:
+    # TOML offsets are whole minutes (``HH:MM``), but ``isoformat`` adds
+    # seconds for other offsets, such as the LMT offsets zoneinfo gives for
+    # historical dates. Such a value is written as the same instant in UTC.
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(offset))
+
+    i = item(value)
+    assert parse(f"dt = {i.as_string()}")["dt"] == value
+    assert parse(api.dumps({"dt": value}))["dt"] == value
+
+    j = item(datetime(2020, 1, 1, tzinfo=timezone.utc)).astimezone(timezone(offset))
+    assert parse(f"dt = {j.as_string()}")["dt"] == j
+
+    k = item(datetime(2020, 1, 1)).replace(tzinfo=timezone(offset))
+    assert parse(f"dt = {k.as_string()}")["dt"] == k
+
+
+def test_datetime_with_sub_minute_offset_keeps_value_fields() -> None:
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(timedelta(seconds=30)))
+    i = item(value)
+
+    assert i.as_string() == "1900-01-01T11:59:30Z"
+    assert i == value
+    assert i.hour == 12
+    assert i.tzinfo == timezone(timedelta(seconds=30))
+
+
 def test_strings_behave_like_strs() -> None:
     i = item("foo")
 
