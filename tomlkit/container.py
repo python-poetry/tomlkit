@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import math
 
+from collections import Counter
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 from typing import Any
@@ -118,6 +119,51 @@ def _declaring_table(
     return found
 
 
+def _fragment_aots(
+    body: list[tuple[Key | None, Item]], prefix: tuple[Key, ...] = ()
+) -> list[tuple[tuple[Key, ...], AoT, Table]]:
+    """Every emptied array of tables under a header of an out-of-order table.
+
+    The header declaring its parent may be in an earlier fragment, which is
+    rendered before the header the array of tables sits under, so only the
+    scope holding all the fragments can hand the fallback over in time.
+
+    Returns ``(key path, aot, table)`` triples, keyed relative to the scope
+    ``body`` belongs to, where ``table`` is the closest header above ``aot``.
+    """
+    found: list[tuple[tuple[Key, ...], AoT, Table]] = []
+    counts = Counter(k for k, _ in body if k is not None)
+    for k, v in body:
+        if k is None or not isinstance(v, Table):
+            continue
+        path = (*prefix, k)
+        if not _emits_header(k, v):
+            found.extend(_fragment_aots(v.value.body, path))
+        elif counts[k] > 1:
+            found.extend(_aots_below(v, path, v))
+    return found
+
+
+def _aots_below(
+    table: Table, prefix: tuple[Key, ...], header: Table
+) -> list[tuple[tuple[Key, ...], AoT, Table]]:
+    """Every emptied array of tables below ``table``, across headers.
+
+    Returns ``(key path, aot, table)`` triples like ``_fragment_aots()``,
+    starting from ``prefix`` and ``header``.
+    """
+    found: list[tuple[tuple[Key, ...], AoT, Table]] = []
+    for k, v in table.value.body:
+        if k is None:
+            continue
+        path = (*prefix, k)
+        if _is_empty_aot(v):
+            found.append((path, v, header))
+        elif isinstance(v, Table):
+            found.extend(_aots_below(v, path, v if _emits_header(k, v) else header))
+    return found
+
+
 def _scope_aots(
     body: list[tuple[Key | None, Item]],
     inherited: list[tuple[tuple[Key, ...], AoT]],
@@ -126,12 +172,23 @@ def _scope_aots(
     """The fallbacks to write at the top of the scope ``body`` belongs to.
 
     Those whose parent is declared by a header within the scope are left in
-    ``delegated``, keyed by the ``id()`` of that table, for it to write.
+    ``delegated``, keyed by the ``id()`` of that table, for it to write. One
+    handed to a header in another fragment is also keyed by its own ``id()``,
+    so the scope it sits in does not write it a second time.
 
     Returns ``(dotted key, aot)`` pairs, keyed relative to the scope.
     """
+    for path, aot, header in _fragment_aots(body):
+        declaring = _declaring_table(body, path)
+        if id(aot) not in delegated and declaring and declaring[0] is not header:
+            table, rest = declaring
+            delegated.setdefault(id(table), []).append((rest, aot))
+            delegated[id(aot)] = []
     found: list[tuple[str, AoT]] = []
-    for path, aot in [*inherited, *_header_less_aots(body)]:
+    for path, aot in [
+        *inherited,
+        *((p, a) for p, a in _header_less_aots(body) if id(a) not in delegated),
+    ]:
         declaring = _declaring_table(body, path)
         if declaring is None:
             found.append((".".join(k.as_string() for k in path), aot))
