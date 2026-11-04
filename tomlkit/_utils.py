@@ -115,7 +115,9 @@ _escaped = {
     "\\": "\\",
 }
 _compact_escapes = {
-    **{v: f"\\{k}" for k, v in _escaped.items()},
+    # ``\e`` is TOML 1.1 only; write ESC as ``\u001b`` so TOML 1.0 parsers
+    # (e.g. ``tomllib``) can read the output.
+    **{v: f"\\{k}" for k, v in _escaped.items() if k != "e"},
     '"""': '""\\"',
 }
 _basic_escapes = CONTROL_CHARS | {'"', "\\"}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime as _datetime
+import re
 
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -114,8 +115,33 @@ def document() -> TOMLDocument:
 
 
 # Items
+_INTEGER_RE = re.compile(
+    r"(?:"
+    r"0x[0-9a-fA-F](?:_?[0-9a-fA-F])*"  # hex: lowercase prefix only, no sign
+    r"|0o[0-7](?:_?[0-7])*"  # octal: lowercase prefix only, no sign
+    r"|0b[01](?:_?[01])*"  # binary: lowercase prefix only, no sign
+    r"|[+-]?(?:0|[1-9](?:_?[0-9])*)"  # decimal: optional sign, no leading zeros
+    r")"
+)
+"""Valid TOML v1.0.0 integer literals (https://toml.io/en/v1.0.0#integer).
+
+Underscores may only appear between digits; hex/octal/binary use a
+lowercase prefix and take no sign, mirroring ``Parser._parse_number``.
+"""
+
+
 def integer(raw: str | int) -> Integer:
-    """Create an integer item from a number or string."""
+    """Create an integer item from a number or string.
+
+    When ``raw`` is a string it must be a valid TOML v1.0.0 integer
+    literal; the original text is then preserved verbatim so grouping
+    underscores (e.g. ``"1_000"``) survive ``dumps()``. Anything else
+    raises ``ValueError``.
+    """
+    if isinstance(raw, str):
+        if not _INTEGER_RE.fullmatch(raw):
+            raise ValueError(f"Invalid TOML integer: {raw!r}")
+        return Integer(int(raw, 0), Trivia(), raw)
     return item(int(raw))
 
 
@@ -144,10 +170,12 @@ def string(
 
     For more information, please check the spec: `<https://toml.io/en/v1.0.0#string>`__.
 
-    Common escaping rules will be applied for basic strings.
-    This can be controlled by explicitly setting ``escape=False``.
-    Please note that, if you disable escaping, you will have to make sure that
-    the given strings don't contain any forbidden character or sequence.
+    Dumping produces a TOML string that faithfully represents the given string.
+    This includes character escaping for basic strings.
+    This behaviour can be disabled by setting ``escape=False``.
+    In that case, the given string is used verbatim for the content of the TOML string.
+    Please note that this makes you responsible for ensuring the given string does not
+    contain any forbidden character or sequence.
     """
     type_ = _StringType.select(literal, multiline)
     return String.from_raw(raw, type_, escape)
@@ -156,7 +184,7 @@ def string(
 def date(raw: str) -> Date:
     """Create a TOML date."""
     value = parse_rfc3339(raw)
-    if not isinstance(value, _datetime.date):
+    if isinstance(value, _datetime.datetime) or not isinstance(value, _datetime.date):
         raise ValueError("date() only accepts date strings.")
 
     return item(value)
@@ -290,12 +318,19 @@ def value(raw: str) -> _Item:
 def key_value(src: str) -> tuple[Key, _Item]:
     """Parse a key-value pair from a string.
 
+    Anything other than whitespace or a comment after the pair is an error,
+    as it is when the same text is given to :func:`parse`.
+
     :Example:
 
     >>> key_value("foo = 1")
     (Key('foo'), 1)
     """
-    return Parser(src)._parse_key_value()
+    parser = Parser(src)
+    k, v = parser._parse_key_value(parse_comment=True)
+    if not parser.end():
+        raise parser.parse_error(UnexpectedCharError, char=parser._current)
+    return k, v
 
 
 def ws(src: str) -> Whitespace:
@@ -325,7 +360,8 @@ def register_encoder(encoder: E) -> E:
 
     The encoder should return a TOMLKit item or raise a ``ConvertError``.
 
-    Example:
+    Example::
+
         @register_encoder
         def encode_custom_dict(obj, _parent=None, _sort_keys=False):
             if isinstance(obj, CustomDict):

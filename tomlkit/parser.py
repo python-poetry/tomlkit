@@ -778,6 +778,10 @@ class Parser:
         if "_" in clean:
             return None
 
+        # Special float values must be lowercase in the original token.
+        if clean in ("inf", "nan") and raw != clean:
+            return None
+
         if clean.endswith(".") or (
             not clean.startswith("0x") and clean.split("e", 1)[0].endswith(".")
         ):

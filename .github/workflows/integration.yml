@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ Ubuntu, macOS, Windows ]
-        python-version: [ "3.12" ]
+        python-version: [ "3.14" ]
         project: [ "poetry", "poetry-core" ]
         include:
           - os: Ubuntu
@@ -92,4 +92,8 @@ jobs:
           cp -R ./tomlkit/tomlkit src/poetry/core/_vendor/.
 
       - name: Run tests
-        run: poetry run pytest -q tests/
+        # The deselected poetry test expects a tarfile error that recent CPython
+        # patch releases (e.g. 3.12.15, 3.14.8) no longer raise; unrelated to tomlkit.
+        run: >-
+          poetry run pytest -q tests/
+          --deselect tests/utils/test_helpers.py::test_extractall_sdist_no_symlink_path_traversal_via_directory_symlink
