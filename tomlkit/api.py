@@ -170,10 +170,12 @@ def string(
 
     For more information, please check the spec: `<https://toml.io/en/v1.0.0#string>`__.
 
-    Common escaping rules will be applied for basic strings.
-    This can be controlled by explicitly setting ``escape=False``.
-    Please note that, if you disable escaping, you will have to make sure that
-    the given strings don't contain any forbidden character or sequence.
+    Dumping produces a TOML string that faithfully represents the given string.
+    This includes character escaping for basic strings.
+    This behaviour can be disabled by setting ``escape=False``.
+    In that case, the given string is used verbatim for the content of the TOML string.
+    Please note that this makes you responsible for ensuring the given string does not
+    contain any forbidden character or sequence.
     """
     type_ = _StringType.select(literal, multiline)
     return String.from_raw(raw, type_, escape)
@@ -182,7 +184,7 @@ def string(
 def date(raw: str) -> Date:
     """Create a TOML date."""
     value = parse_rfc3339(raw)
-    if not isinstance(value, _datetime.date):
+    if isinstance(value, _datetime.datetime) or not isinstance(value, _datetime.date):
         raise ValueError("date() only accepts date strings.")
 
     return item(value)
@@ -358,7 +360,8 @@ def register_encoder(encoder: E) -> E:
 
     The encoder should return a TOMLKit item or raise a ``ConvertError``.
 
-    Example:
+    Example::
+
         @register_encoder
         def encode_custom_dict(obj, _parent=None, _sort_keys=False):
             if isinstance(obj, CustomDict):

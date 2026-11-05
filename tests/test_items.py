@@ -701,6 +701,31 @@ bar = "baz"
     )
 
 
+@pytest.mark.parametrize(
+    ("content", "op"),
+    [
+        ("my_int = 1  # keep\n", lambda item: item + 1),
+        ("my_float = 1.5  # keep\n", lambda item: item + 1),
+        ('my_str = "a"  # keep\n', lambda item: item + "b"),
+        (
+            "my_dt = 1979-05-27T07:32:00Z  # keep\n",
+            lambda item: item + timedelta(days=1),
+        ),
+        ("my_date = 1979-05-27  # keep\n", lambda item: item + timedelta(days=1)),
+        ("my_time = 07:32:00  # keep\n", lambda item: item.replace(second=1)),
+    ],
+)
+def test_arithmetic_result_does_not_share_trivia(content: str, op: Callable) -> None:
+    doc = parse(content)
+    original = doc[next(iter(doc))]
+
+    result = op(original)
+    assert result.trivia is not original.trivia
+
+    result.trivia.comment = "# MUTATED"
+    assert doc.as_string() == content
+
+
 def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
@@ -1258,6 +1283,33 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert parse(rendered).as_string() == rendered
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("a = {x = 1, b.c = 1, y = 2}\n", "a = {x = 1, b = {}, y = 2}\n"),
+        ("a = {x = 1, b.c = 1}\n", "a = {x = 1, b = {}}\n"),
+        ("a = {b.c = 1, y = 2}\n", "a = {b = {}, y = 2}\n"),
+        ("a = {b.c = 1}\n", "a = {b = {}}\n"),
+    ],
+)
+def test_emptying_dotted_key_inside_inline_table(content: str, expected: str) -> None:
+    doc = parse(content)
+    del doc["a"]["b"]["c"]
+
+    # With nothing left under the ``b.`` prefix, the table must still render
+    # as a key, not as an empty slot between two commas.
+    assert doc.as_string() == expected
+    assert parse(expected) == doc
+
+
+def test_emptying_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {x = 1, b.c.d = 1, y = 2}\n")
+    del doc["a"]["b"]["c"]["d"]
+
+    assert doc.as_string() == "a = {x = 1, b.c = {}, y = 2}\n"
+    assert parse(doc.as_string()) == doc
+
+
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
     doc = parse(
         """\
@@ -1319,6 +1371,18 @@ value = false
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
+
+
+def test_booleans_compare_equal_to_each_other() -> None:
+    assert item(True) == item(True)
+    assert item(False) == item(False)
+    assert item(True) != item(False)
+    assert item(True) in [item(True)]
+
+    a = parse("a = [true, false]")["a"]
+    b = parse("a = [true, false]")["a"]
+    assert isinstance(a[0], Bool)
+    assert a == b
 
 
 def test_table_copy() -> None:

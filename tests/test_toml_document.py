@@ -22,6 +22,74 @@ from tomlkit.exceptions import TOMLKitError
 from tomlkit.toml_document import TOMLDocument
 
 
+@pytest.mark.parametrize(
+    "content,path",
+    [
+        ("before = 1\n  value  =  'old' # keep\nafter = 2\n", ()),
+        ("before = 1\r\nvalue = 'old' # keep\r\nafter = 2\r\n", ()),
+        ("[table]\nbefore = 1\n  value  =  'old' # keep\nafter = 2\n", ("table",)),
+        ("table = {before = 1, value = 'old', after = 2}\n", ("table",)),
+        (
+            "[table.a]\nx = 1\n[other]\ny = 2\n[table]\nvalue = 'old' # keep\n",
+            ("table",),
+        ),
+    ],
+)
+def test_replace_literal_string_preserves_table_style(
+    content: str, path: tuple[str, ...]
+) -> None:
+    doc = parse(content)
+    table: Any = doc
+    for key in path:
+        table = table[key]
+    table["value"] = "new"
+    assert doc.as_string() == content.replace("'old'", "'new'")
+    assert table["value"] == dict(table)["value"] == table.unwrap()["value"] == "new"
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+    # Explicit items retain the caller's quote choice instead of inheriting it.
+    table["value"] = tomlkit.string("explicit")
+    assert doc.as_string() == content.replace("'old'", '"explicit"')
+    table["value"] = tomlkit.string("literal", literal=True)
+    assert doc.as_string() == content.replace("'old'", "'literal'")
+    table.update(value="updated")
+    assert doc.as_string() == content.replace("'old'", "'updated'")
+    table["value"] = "can't"
+    assert doc.as_string() == content.replace("'old'", '"can\'t"')
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+@pytest.mark.parametrize("value", ["", "unicode λ", "a\\b", 'a"b', "a\tb"])
+def test_replace_literal_string_preserves_value(value: str) -> None:
+    doc = parse("value = 'old'\n")
+    doc["value"] = value
+    assert doc.as_string() == f"value = '{value}'\n"
+    assert parse(doc.as_string())["value"] == value
+
+
+@pytest.mark.parametrize("value", ["can't", "a\nb", "a\rb", "a\x00b", "a\x7fb"])
+def test_replace_literal_string_falls_back_to_basic(value: str) -> None:
+    doc = parse("value = 'old' # keep\n")
+    doc["value"] = value
+    assert doc.as_string() == f"value = {tomlkit.string(value).as_string()} # keep\n"
+    assert parse(doc.as_string())["value"] == value
+
+
+@pytest.mark.parametrize("original", ['"old"', "'''old'''", '"""old"""', "1"])
+def test_replace_other_items_keeps_default_string_style(original: str) -> None:
+    doc = parse(f"value = {original}\n")
+    doc["value"] = "new"
+    assert doc.as_string() == 'value = "new"\n'
+
+
+def test_literal_replacement_does_not_change_new_keys_or_arrays() -> None:
+    doc = parse("value = 'old'\narray = ['old']\n")
+    doc["new"] = "new"
+    doc["array"][0] = "new"
+    doc["value"] = 2
+    assert doc.as_string() == 'value = 2\narray = ["new"]\nnew = "new"\n'
+
+
 def test_document_is_a_dict(example: Callable[[str], str]) -> None:
     content = example("example")
 
