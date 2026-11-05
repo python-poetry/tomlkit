@@ -19,6 +19,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import SupportsIndex
 from typing import TypeVar
 from typing import overload
 
@@ -223,14 +224,34 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             try:
                 # Check if encoder accepts keyword arguments for backward compatibility
                 sig = inspect.signature(encoder)
-                if "_parent" in sig.parameters or any(
+                has_kwargs = any(
                     p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
-                ):
-                    # New style encoder that can accept additional parameters
-                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)  # type: ignore[call-arg]
-                else:
-                    # Old style encoder that only accepts value
-                    rv = encoder(value)
+                )
+                first_parameter = next(iter(sig.parameters.values()), None)
+                bound_name = (
+                    first_parameter.name
+                    if first_parameter is not None
+                    and first_parameter.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    else None
+                )
+                context = {"_parent": _parent, "_sort_keys": _sort_keys}
+                kwargs = {
+                    name: argument
+                    for name, argument in context.items()
+                    if name != bound_name
+                    and (
+                        has_kwargs
+                        or (
+                            name in sig.parameters
+                            and sig.parameters[name].kind
+                            in (
+                                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                                inspect.Parameter.KEYWORD_ONLY,
+                            )
+                        )
+                    )
+                }
+                rv = encoder(value, **kwargs)
             except ConvertError:
                 pass
             else:
@@ -994,7 +1015,15 @@ class Float(Item, _CustomFloat):
             return result  # type: ignore[return-value]
         return self._new(result)
 
-    def __round__(self, ndigits: int = 0) -> Float:  # type: ignore[override]
+    @overload
+    def __round__(self, ndigits: None = None) -> Integer: ...
+
+    @overload
+    def __round__(self, ndigits: SupportsIndex) -> Float: ...
+
+    def __round__(self, ndigits: SupportsIndex | None = None) -> Integer | Float:
+        if ndigits is None:
+            return Integer._new(self, float.__round__(self))  # type: ignore[arg-type]
         return self._new(float.__round__(self, ndigits))
 
     def __rpow__(self, other: object, mod: None = None) -> Float:
@@ -1208,7 +1237,7 @@ class DateTime(Item, datetime):
     def replace(self, *args: object, **kwargs: object) -> DateTime:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
-    def astimezone(self, tz: tzinfo) -> DateTime:  # type: ignore[override]
+    def astimezone(self, tz: tzinfo | None = None) -> DateTime:
         result = super().astimezone(tz)
         if PY38:
             return result
@@ -1912,7 +1941,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
 
         is_replace = key in self
         self._value[key] = value
@@ -1993,7 +2022,9 @@ class Table(AbstractTable):
 
         indent = m.group(1)
 
-        if not isinstance(_item, Whitespace):
+        # A table split out of order is looked up as an OutOfOrderTableProxy,
+        # which has no trivia; its parts keep their own indentation.
+        if isinstance(_item, Item) and not isinstance(_item, Whitespace):
             m = re.match("(?s)^([^ ]*)(.*)$", _item.trivia.indent)
             if not m:
                 _item.trivia.indent = indent
@@ -2258,13 +2289,16 @@ class InlineTable(AbstractTable):
                     f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
                     f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
                 )
+        if not parts:
+            # every key under the prefix was removed, keep it as an empty table
+            return [f"{key.as_string()} = {{}}"]
         return parts
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
         self._validate_child(value)
         super().__setitem__(key, value)
 

@@ -9,7 +9,9 @@
 ### Fixed
 
 - Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`.
+- Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`.
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
+- Fix an `AttributeError` when a table is defined out of order under an indented header nested four or more levels deep, e.g. ` [a.b.c.d]` then `[a.b.c]`. ([#663](https://github.com/python-poetry/tomlkit/pull/663))
 
 ## [0.15.2] - 2026-10-16
 
@@ -23,6 +25,7 @@
 
 ### Fixed
 
+- Fix invalid output after deleting the last key under a dotted key inside an inline table; the emptied table now renders as `b = {}`. ([#664](https://github.com/python-poetry/tomlkit/pull/664))
 - Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
 - Fix uppercase `E` exponent after a leading-zero mantissa (e.g. `0E2`) being rejected as an invalid number while `0e2` parsed fine. ([#586](https://github.com/python-poetry/tomlkit/pull/586))
 - Fix non-lowercase special floats (e.g. `Inf`, `NaN`, `-INF`) being accepted; TOML only allows lowercase `inf` and `nan`, so they now raise `ParseError`. ([#628](https://github.com/python-poetry/tomlkit/pull/628))
@@ -61,6 +64,7 @@
 
 ### Fixed
 
+- Preserve single-line literal quotes when replacing a table field with a plain string, falling back to basic quoting when the value requires escaping. ([#325](https://github.com/python-poetry/tomlkit/issues/325))
 - Fix `string()` dropping a leading newline of a multiline string on round-trip: a value beginning with a newline is now rendered with an extra leading newline (the one the parser trims after the opening delimiter) so it survives re-parsing.
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))

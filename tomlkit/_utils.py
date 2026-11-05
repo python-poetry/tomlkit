@@ -160,5 +160,9 @@ def merge_dicts(d1: dict[str, Any], d2: dict[str, Any]) -> None:
     for k, v in d2.items():
         if k in d1 and isinstance(d1[k], dict) and isinstance(v, Mapping):
             merge_dicts(d1[k], dict(v))
+        elif k in d1 and type(d1[k]) is list and type(v) is list:
+            # AoT.value creates plain lists for each fragment. Arrays retain
+            # their Array wrapper and must keep the usual replacement behavior.
+            d1[k].extend(v)
         else:
             d1[k] = d2[k]
