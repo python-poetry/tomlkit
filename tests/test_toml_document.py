@@ -1,6 +1,7 @@
 import copy
 import json
 import pickle
+import sys
 
 from collections.abc import Callable
 from datetime import datetime
@@ -1891,3 +1892,83 @@ def test_emptied_array_of_tables_is_relative_to_the_nearest_header() -> None:
     doc["t"]["u"]["a"].pop()
 
     assert doc.as_string() == "[t]\nu.a = []\n"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        # The super table is declared later by a header.
+        "[[a.b.c]]\nx = 1\n\n[a]\ny = 1\n",
+        # ... which extends the implicit parent with a dotted key.
+        "[[a.b.c]]\nx = 1\n[a]\nb.z = 1\n",
+        # The implicit parent is declared later by a header.
+        "[[a.b.c]]\nx = 1\n[a.b]\ny = 1\n",
+        # Both are declared later.
+        "[[a.b.c]]\nx = 1\n[a]\ny = 1\n[a.b]\nw = 1\n",
+        # A sibling table header comes before the super table.
+        "[[a.b.c]]\nx = 1\n[a.b.d]\nz = 1\n[a]\ny = 1\n",
+    ],
+)
+def test_emptied_array_of_tables_before_out_of_order_header(content) -> None:
+    # https://github.com/python-poetry/tomlkit/issues/690
+    # The fallback belongs to the header that declares its parent, even when
+    # that header is in a later fragment. Writing `a.b.c = []` at the top
+    # declared `a` before `[a]` did.
+    doc = parse(content)
+    doc["a"]["b"]["c"].pop()
+    out = doc.as_string()
+
+    assert parse(out).unwrap() == doc.unwrap()
+    if sys.version_info >= (3, 11):
+        # tomlkit's own parser accepts some of the broken output.
+        import tomllib
+
+        assert tomllib.loads(out) == doc.unwrap()
+
+
+def test_emptied_array_of_tables_is_written_under_the_out_of_order_header() -> None:
+    doc = parse("[[a.b.c]]\nx = 1\n\n[a]\ny = 1\n")
+    doc["a"]["b"]["c"].pop()
+
+    assert doc.as_string() == "[a]\nb.c = []\ny = 1\n"
+
+
+@pytest.mark.parametrize(
+    "content, path",
+    [
+        # The parent is declared by a header in an earlier fragment of `a`.
+        ("[a.b]\nz = 1\n[a]\ny = 1\n[[a.b.c]]\nx = 1\n", ["a", "b", "c"]),
+        # ... a level deeper, under a super table in both fragments.
+        ("[a.b.d]\nz = 1\n[a]\ny = 1\n[[a.b.d.e]]\nx = 1\n", ["a", "b", "d", "e"]),
+        # ... with a header in between in the later fragment.
+        (
+            "[a.b.d]\nz = 1\n[a]\ny = 1\n[a.b]\nw = 1\n[[a.b.d.e]]\nx = 1\n",
+            ["a", "b", "d", "e"],
+        ),
+    ],
+)
+def test_emptied_array_of_tables_after_out_of_order_header(
+    content: str, path: list[str]
+) -> None:
+    # The header declaring the parent comes first, in another fragment of the
+    # out-of-order table, so the fallback has to be handed to it before it is
+    # rendered.
+    doc = parse(content)
+    aot: Any = doc
+    for key in path:
+        aot = aot[key]
+    aot.pop()
+    out = doc.as_string()
+
+    assert parse(out).unwrap() == doc.unwrap()
+    if sys.version_info >= (3, 11):
+        import tomllib
+
+        assert tomllib.loads(out) == doc.unwrap()
+
+
+def test_emptied_array_of_tables_is_written_under_the_earlier_fragment() -> None:
+    doc = parse("[a.b]\nz = 1\n[a]\ny = 1\n[[a.b.c]]\nx = 1\n")
+    doc["a"]["b"]["c"].pop()
+
+    assert doc.as_string() == "[a.b]\nc = []\nz = 1\n[a]\ny = 1\n"

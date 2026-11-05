@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Emptying an array of tables under a table that a later header declares (e.g. `[[a.b.c]]` before `[a]` or `[a.b]`), or that a header in an earlier fragment of an out-of-order table declares (e.g. `[a.b]` before `[a]` and `[[a.b.c]]`), no longer renders invalid TOML; the `key = []` fallback is now written under that header. ([#690](https://github.com/python-poetry/tomlkit/issues/690))
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
 - Fix an `AttributeError` when a table is defined out of order under an indented header nested four or more levels deep, e.g. ` [a.b.c.d]` then `[a.b.c]`. ([#663](https://github.com/python-poetry/tomlkit/pull/663))
 
