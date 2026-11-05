@@ -841,6 +841,50 @@ z = 3
     assert hooks["state"]["z"] == 3
 
 
+@pytest.mark.parametrize("value", [4, "text", [1, 2], {"nested": 3}])
+@pytest.mark.parametrize("operation", ["delete", "pop"])
+def test_out_of_order_proxy_can_remove_new_key(value: Any, operation: str) -> None:
+    doc = parse("[a.b]\nx=1\n[other]\ny=2\n[a]\nexisting=3\n")
+    proxy = doc["a"]
+    proxy["new"] = value
+    assert proxy["new"] == value
+
+    if operation == "delete":
+        del proxy["new"]
+    else:
+        assert proxy.pop("new") == value
+
+    assert "new" not in proxy
+    assert "new" not in doc["a"]
+    assert parse(doc.as_string()).unwrap() == {
+        "a": {"b": {"x": 1}, "existing": 3},
+        "other": {"y": 2},
+    }
+
+
+@pytest.mark.parametrize(
+    ("initial", "replacement"),
+    [
+        (4, 5),
+        ({"old": 4}, {"new": 5}),
+        ({"old": 4}, 5),
+        (4, {"new": 5}),
+        ([{"old": 4}], 5),
+        (4, [{"new": 5}]),
+    ],
+)
+def test_out_of_order_proxy_can_replace_new_key(initial: Any, replacement: Any) -> None:
+    doc = parse("[a.b]\nx=1\n[other]\ny=2\n[a]\nexisting=3\n")
+    proxy = doc["a"]
+    proxy["new"] = initial
+    proxy["new"] = replacement
+    assert proxy["new"] == replacement
+    assert parse(doc.as_string()).unwrap() == {
+        "a": {"b": {"x": 1}, "existing": 3, "new": replacement},
+        "other": {"y": 2},
+    }
+
+
 def test_out_of_order_tables_are_still_dicts() -> None:
     content = """
 [a.a]
