@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
 from tomlkit._utils import merge_dicts
+from tomlkit.exceptions import InvalidStringError
 from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.exceptions import TOMLKitError
@@ -23,6 +24,8 @@ from tomlkit.items import Item
 from tomlkit.items import Key
 from tomlkit.items import Null
 from tomlkit.items import SingleKey
+from tomlkit.items import String
+from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
@@ -918,9 +921,25 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 OutOfOrderTableProxy(self, idx)
         return True
 
+    def _item_for_key(
+        self, key: Key | str, value: object, parent: Item | None = None
+    ) -> Item:
+        # Inspect plain strings before conversion, so an explicit String keeps
+        # the caller's chosen quoting style.
+        if isinstance(value, str) and not isinstance(value, String):
+            previous = self.get(key)
+            if isinstance(previous, String) and previous._t is StringType.SLL:
+                try:
+                    return String.from_raw(value, StringType.SLL)
+                except InvalidStringError:
+                    # Some values need the escaping provided by a basic string.
+                    pass
+        return _item(value, _parent=parent)
+
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
             old_key = next(filter(lambda k: k == key, self._map))
+            value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
             self.append(key, value)
@@ -1268,11 +1287,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                 return
             self._tables[map_indices[0]][key] = value
         elif self._tables:
+            table_index = 0
             if not _is_table_or_aot(value):  # if the value is a plain value
-                for table in self._tables:
+                for i, table in enumerate(self._tables):
                     # find the first table that allows plain values
                     if any(not _is_table_or_aot(v) for _, v in table.items()):
-                        table[key] = value
+                        table_index = i
                         break
                 else:
                     # No part holds a plain value yet, so the chosen part must
@@ -1281,14 +1301,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                     # turning a header-less super part concrete here would emit a
                     # second, duplicate header next to an existing concrete part
                     # and produce TOML that no longer parses.
-                    for table in self._tables:
+                    for i, table in enumerate(self._tables):
                         if not table.is_super_table():
-                            table[key] = value
+                            table_index = i
                             break
-                    else:
-                        self._tables[0][key] = value
-            else:
-                self._tables[0][key] = value
+            self._tables[table_index][key] = value
+            self._tables_map[_key] = [table_index]
         else:
             self._container[key] = value
 

@@ -800,6 +800,52 @@ def test_floats_behave_like_floats() -> None:
     assert doc.as_string() == "float = +35.12"
 
 
+@pytest.mark.parametrize("value", [-3.5, -2.5, 2.5, 3.5])
+@pytest.mark.parametrize("mode", ["omitted", "none", "direct"])
+def test_float_round_without_digits_returns_integer(value: float, mode: str) -> None:
+    wrapped = item(value)
+    if mode == "omitted":
+        result = round(wrapped)
+    elif mode == "none":
+        result = round(wrapped, None)
+    else:
+        result = wrapped.__round__(None)
+
+    assert isinstance(result, Integer)
+    assert result == round(value)
+    assert list(range(abs(result))) == list(range(abs(round(value))))
+    assert result.as_string() == str(round(value))
+
+
+@pytest.mark.parametrize("ndigits", [-1, 0, 1, 2])
+def test_float_round_with_digits_remains_float(ndigits: int) -> None:
+    value = 12.345
+    result = round(item(value), ndigits)
+    assert isinstance(result, float)
+    assert result == round(value, ndigits)
+    assert result.as_string() == str(round(value, ndigits))
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [(math.inf, OverflowError), (-math.inf, OverflowError), (math.nan, ValueError)],
+)
+def test_float_round_nonfinite_raises(value: float, error: type[Exception]) -> None:
+    with pytest.raises(error):
+        round(item(value))
+
+
+def test_float_round_to_integer_preserves_trivia() -> None:
+    content = "count = +2.5  # keep\n"
+    doc = parse(content)
+    original = doc["count"]
+    result = round(original)
+    assert result.trivia is not original.trivia
+    doc["count"] = result
+    assert doc.as_string() == "count = +2  # keep\n"
+    assert parse(doc.as_string())["count"] == 2
+
+
 def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None:
     i = item(datetime(2018, 7, 22, 12, 34, 56))
 
@@ -847,6 +893,18 @@ def test_reflected_temporal_addition_preserves_serialization(
     assert result.trivia == expected.trivia
     doc["when"] = result
     assert parse(doc.as_string())["when"] == expected
+
+
+def test_datetime_astimezone_defaults_to_local_timezone() -> None:
+    value = parse("time = 1979-05-27T07:32:00Z # birthday\n")["time"]
+    expected = datetime(1979, 5, 27, 7, 32, tzinfo=timezone.utc).astimezone()
+
+    result = value.astimezone()
+
+    assert isinstance(result, DateTime)
+    assert result.unwrap() == expected
+    assert result.as_string() == expected.isoformat()
+    assert result == value.astimezone(None)
 
 
 @pytest.mark.parametrize("fold", [0, 1])
@@ -986,6 +1044,44 @@ def test_time_with_tzinfo_renders_as_local_time() -> None:
     j = i.replace(hour=13)
     assert j.as_string() == "13:32:00"
     assert parse(f"t = {j.as_string()}")["t"] == time(13, 32)
+
+
+@pytest.mark.parametrize(
+    "offset",
+    [
+        timedelta(seconds=30),
+        timedelta(hours=1, seconds=1),
+        -timedelta(minutes=44, seconds=30),
+        timedelta(microseconds=1),
+    ],
+)
+def test_datetime_with_sub_minute_offset_renders_valid_toml(
+    offset: timedelta,
+) -> None:
+    # TOML offsets are whole minutes (``HH:MM``), but ``isoformat`` adds
+    # seconds for other offsets, such as the LMT offsets zoneinfo gives for
+    # historical dates. Such a value is written as the same instant in UTC.
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(offset))
+
+    i = item(value)
+    assert parse(f"dt = {i.as_string()}")["dt"] == value
+    assert parse(api.dumps({"dt": value}))["dt"] == value
+
+    j = item(datetime(2020, 1, 1, tzinfo=timezone.utc)).astimezone(timezone(offset))
+    assert parse(f"dt = {j.as_string()}")["dt"] == j
+
+    k = item(datetime(2020, 1, 1)).replace(tzinfo=timezone(offset))
+    assert parse(f"dt = {k.as_string()}")["dt"] == k
+
+
+def test_datetime_with_sub_minute_offset_keeps_value_fields() -> None:
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(timedelta(seconds=30)))
+    i = item(value)
+
+    assert i.as_string() == "1900-01-01T11:59:30Z"
+    assert i == value
+    assert i.hour == 12
+    assert i.tzinfo == timezone(timedelta(seconds=30))
 
 
 def test_strings_behave_like_strs() -> None:
@@ -1302,6 +1398,33 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert rendered == "a = {b.c.e = 1, b.c.g = 2}\n"
     assert parse(rendered) == {"a": {"b": {"c": {"e": 1, "g": 2}}}}
     assert parse(rendered).as_string() == rendered
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("a = {x = 1, b.c = 1, y = 2}\n", "a = {x = 1, b = {}, y = 2}\n"),
+        ("a = {x = 1, b.c = 1}\n", "a = {x = 1, b = {}}\n"),
+        ("a = {b.c = 1, y = 2}\n", "a = {b = {}, y = 2}\n"),
+        ("a = {b.c = 1}\n", "a = {b = {}}\n"),
+    ],
+)
+def test_emptying_dotted_key_inside_inline_table(content: str, expected: str) -> None:
+    doc = parse(content)
+    del doc["a"]["b"]["c"]
+
+    # With nothing left under the ``b.`` prefix, the table must still render
+    # as a key, not as an empty slot between two commas.
+    assert doc.as_string() == expected
+    assert parse(expected) == doc
+
+
+def test_emptying_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {x = 1, b.c.d = 1, y = 2}\n")
+    del doc["a"]["b"]["c"]["d"]
+
+    assert doc.as_string() == "a = {x = 1, b.c = {}, y = 2}\n"
+    assert parse(doc.as_string()) == doc
 
 
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:

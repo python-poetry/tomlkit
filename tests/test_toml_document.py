@@ -22,6 +22,74 @@ from tomlkit.exceptions import TOMLKitError
 from tomlkit.toml_document import TOMLDocument
 
 
+@pytest.mark.parametrize(
+    "content,path",
+    [
+        ("before = 1\n  value  =  'old' # keep\nafter = 2\n", ()),
+        ("before = 1\r\nvalue = 'old' # keep\r\nafter = 2\r\n", ()),
+        ("[table]\nbefore = 1\n  value  =  'old' # keep\nafter = 2\n", ("table",)),
+        ("table = {before = 1, value = 'old', after = 2}\n", ("table",)),
+        (
+            "[table.a]\nx = 1\n[other]\ny = 2\n[table]\nvalue = 'old' # keep\n",
+            ("table",),
+        ),
+    ],
+)
+def test_replace_literal_string_preserves_table_style(
+    content: str, path: tuple[str, ...]
+) -> None:
+    doc = parse(content)
+    table: Any = doc
+    for key in path:
+        table = table[key]
+    table["value"] = "new"
+    assert doc.as_string() == content.replace("'old'", "'new'")
+    assert table["value"] == dict(table)["value"] == table.unwrap()["value"] == "new"
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+    # Explicit items retain the caller's quote choice instead of inheriting it.
+    table["value"] = tomlkit.string("explicit")
+    assert doc.as_string() == content.replace("'old'", '"explicit"')
+    table["value"] = tomlkit.string("literal", literal=True)
+    assert doc.as_string() == content.replace("'old'", "'literal'")
+    table.update(value="updated")
+    assert doc.as_string() == content.replace("'old'", "'updated'")
+    table["value"] = "can't"
+    assert doc.as_string() == content.replace("'old'", '"can\'t"')
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+@pytest.mark.parametrize("value", ["", "unicode λ", "a\\b", 'a"b', "a\tb"])
+def test_replace_literal_string_preserves_value(value: str) -> None:
+    doc = parse("value = 'old'\n")
+    doc["value"] = value
+    assert doc.as_string() == f"value = '{value}'\n"
+    assert parse(doc.as_string())["value"] == value
+
+
+@pytest.mark.parametrize("value", ["can't", "a\nb", "a\rb", "a\x00b", "a\x7fb"])
+def test_replace_literal_string_falls_back_to_basic(value: str) -> None:
+    doc = parse("value = 'old' # keep\n")
+    doc["value"] = value
+    assert doc.as_string() == f"value = {tomlkit.string(value).as_string()} # keep\n"
+    assert parse(doc.as_string())["value"] == value
+
+
+@pytest.mark.parametrize("original", ['"old"', "'''old'''", '"""old"""', "1"])
+def test_replace_other_items_keeps_default_string_style(original: str) -> None:
+    doc = parse(f"value = {original}\n")
+    doc["value"] = "new"
+    assert doc.as_string() == 'value = "new"\n'
+
+
+def test_literal_replacement_does_not_change_new_keys_or_arrays() -> None:
+    doc = parse("value = 'old'\narray = ['old']\n")
+    doc["new"] = "new"
+    doc["array"][0] = "new"
+    doc["value"] = 2
+    assert doc.as_string() == 'value = 2\narray = ["new"]\nnew = "new"\n'
+
+
 def test_document_is_a_dict(example: Callable[[str], str]) -> None:
     content = example("example")
 
@@ -675,6 +743,25 @@ def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
     assert doc.as_string() == "[a.b.c]\n[a]\nb.z = 1\n"
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (" [a.b.c.d]\n[a.b.c]\n", {"a": {"b": {"c": {"d": {}}}}}),
+        (" [[a.b.c.d]]\n[a.b.c]\n", {"a": {"b": {"c": {"d": [{}]}}}}),
+        (" [a.b.c.d]\n[x]\n[a.b.c]\n", {"a": {"b": {"c": {"d": {}}}}, "x": {}}),
+    ],
+)
+def test_out_of_order_table_after_indented_header(
+    content: str, expected: dict[str, Any]
+) -> None:
+    # https://github.com/python-poetry/tomlkit/issues/263 covered `[a.b]` after
+    # an indented `[[a.b.c]]`. One level deeper, the out-of-order table lands
+    # under an intermediate table that carries the header's indent.
+    doc = parse(content)
+    assert doc.unwrap() == expected
+    assert doc.as_string() == content
+
+
 def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     # A super table defined after its sub-table (the "defining a super-table
     # afterward is ok" spec example) leaves an empty concrete `[x]` part.
@@ -687,6 +774,36 @@ def test_set_value_on_out_of_order_table_with_empty_concrete_part() -> None:
     assert doc["x"]["c"] == 3
     assert doc.as_string() == "[x.y.z.w]\n\n[x]\nc = 3\n"
     assert parse(doc.as_string()).unwrap() == {"x": {"y": {"z": {"w": {}}}, "c": 3}}
+
+
+@pytest.mark.parametrize("path", ["hooks.Stop", "hooks.events.Stop"])
+@pytest.mark.parametrize("count", [2, 3])
+def test_document_value_preserves_split_arrays_of_tables(path: str, count: int) -> None:
+    content = "".join(
+        f"[[{path}]]\nvalue = {i}\n[unrelated{i}]\nvalue = {i}\n" for i in range(count)
+    )
+    doc = parse(content)
+    expected: dict[str, Any] = {}
+    parent = expected
+    *parents, key = path.split(".")
+    for name in parents:
+        parent = parent.setdefault(name, {})
+    parent[key] = [{"value": i} for i in range(count)]
+    expected.update({f"unrelated{i}": {"value": i} for i in range(count)})
+
+    assert doc.unwrap() == expected
+    assert doc.value == expected
+    assert doc == expected
+    assert doc.as_string() == content
+
+
+def test_document_value_preserves_wrapped_array_items() -> None:
+    doc = parse("[a]\nvalues = [1, 2]\n[other]\nx = 3\n[a.child]\nx = 4\n")
+    original = doc["a"]["values"]
+    values = doc.value
+    assert values["a"]["values"] is original
+    assert values["a"]["values"] == [1, 2]
+    assert doc.value["a"]["values"] == [1, 2]
 
 
 def test_out_of_order_table_merges_aot_fragments() -> None:
@@ -752,6 +869,50 @@ z = 3
     assert list(hooks.keys()) == ["Stop", "state"]
     assert [t["matcher"] for t in hooks["Stop"]] == ["a", "b", "c"]
     assert hooks["state"]["z"] == 3
+
+
+@pytest.mark.parametrize("value", [4, "text", [1, 2], {"nested": 3}])
+@pytest.mark.parametrize("operation", ["delete", "pop"])
+def test_out_of_order_proxy_can_remove_new_key(value: Any, operation: str) -> None:
+    doc = parse("[a.b]\nx=1\n[other]\ny=2\n[a]\nexisting=3\n")
+    proxy = doc["a"]
+    proxy["new"] = value
+    assert proxy["new"] == value
+
+    if operation == "delete":
+        del proxy["new"]
+    else:
+        assert proxy.pop("new") == value
+
+    assert "new" not in proxy
+    assert "new" not in doc["a"]
+    assert parse(doc.as_string()).unwrap() == {
+        "a": {"b": {"x": 1}, "existing": 3},
+        "other": {"y": 2},
+    }
+
+
+@pytest.mark.parametrize(
+    ("initial", "replacement"),
+    [
+        (4, 5),
+        ({"old": 4}, {"new": 5}),
+        ({"old": 4}, 5),
+        (4, {"new": 5}),
+        ([{"old": 4}], 5),
+        (4, [{"new": 5}]),
+    ],
+)
+def test_out_of_order_proxy_can_replace_new_key(initial: Any, replacement: Any) -> None:
+    doc = parse("[a.b]\nx=1\n[other]\ny=2\n[a]\nexisting=3\n")
+    proxy = doc["a"]
+    proxy["new"] = initial
+    proxy["new"] = replacement
+    assert proxy["new"] == replacement
+    assert parse(doc.as_string()).unwrap() == {
+        "a": {"b": {"x": 1}, "existing": 3, "new": replacement},
+        "other": {"y": 2},
+    }
 
 
 def test_out_of_order_tables_are_still_dicts() -> None:
