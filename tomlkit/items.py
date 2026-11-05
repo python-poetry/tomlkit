@@ -203,7 +203,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.microsecond,
             value.tzinfo,
             Trivia(),
-            value.isoformat().replace("+00:00", "Z"),
+            _format_datetime(value).replace("+00:00", "Z"),
             fold=value.fold,
         )
     elif isinstance(value, date):
@@ -274,6 +274,30 @@ def _format_time(value: time) -> str:
     if value.microsecond:
         s += f".{value.microsecond:06d}".rstrip("0")
     return s
+
+
+def _format_datetime(value: datetime) -> str:
+    # TOML offsets are ``HH:MM``, but ``isoformat`` adds seconds for an
+    # offset that is not a whole number of minutes (e.g. the LMT offsets
+    # ``zoneinfo`` gives for historical dates), which no TOML parser accepts.
+    # Such a value is written as the same instant in UTC. The conversion
+    # uses a plain ``datetime`` so it does not go back through ``_new``.
+    offset = value.utcoffset()
+    if offset is None or not offset % timedelta(minutes=1):
+        return value.isoformat()
+    utc = (
+        datetime(
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            value.microsecond,
+        )
+        - offset
+    )
+    return utc.isoformat() + "+00:00"
 
 
 # A carriage return that is not the CR of a CRLF line ending. Inside a multiline
@@ -1136,7 +1160,7 @@ class DateTime(Item, datetime):
     ) -> None:
         super().__init__(trivia or Trivia())
 
-        self._raw = raw or self.isoformat()
+        self._raw = raw or _format_datetime(self)
 
     def unwrap(self) -> datetime:
         (
@@ -1220,7 +1244,7 @@ class DateTime(Item, datetime):
         return self._new(result)
 
     def _new(self, result: datetime) -> DateTime:
-        raw = result.isoformat()
+        raw = _format_datetime(result)
 
         return DateTime(
             result.year,

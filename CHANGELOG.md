@@ -8,8 +8,8 @@
 
 ### Fixed
 
+- Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`.
 - Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`.
-
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
 - Fix an `AttributeError` when a table is defined out of order under an indented header nested four or more levels deep, e.g. ` [a.b.c.d]` then `[a.b.c]`. ([#663](https://github.com/python-poetry/tomlkit/pull/663))
 
