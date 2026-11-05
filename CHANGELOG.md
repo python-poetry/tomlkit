@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`.
+
 - Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
 - Fix an `AttributeError` when a table is defined out of order under an indented header nested four or more levels deep, e.g. ` [a.b.c.d]` then `[a.b.c]`. ([#663](https://github.com/python-poetry/tomlkit/pull/663))
 
