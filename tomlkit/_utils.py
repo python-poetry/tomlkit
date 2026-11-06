@@ -123,6 +123,13 @@ _compact_escapes = {
 _basic_escapes = CONTROL_CHARS | {'"', "\\"}
 
 
+def validate_comment(comment: str) -> None:
+    """Reject forbidden control characters, allowing LF and CRLF line endings."""
+    for char in comment.replace("\r\n", "\n"):
+        if char in CONTROL_CHARS and char not in "\t\n":
+            raise ValueError(f"Comment cannot contain control character {char!r}")
+
+
 def _unicode_escape(seq: str) -> str:
     return "".join(f"\\u{ord(c):04x}" for c in seq)
 
