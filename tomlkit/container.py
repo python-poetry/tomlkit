@@ -111,6 +111,10 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def __init__(self, parsed: bool = False) -> None:
         self._map: dict[Key, int | tuple[int, ...]] = {}
+        # SingleKey hashes and compares like its string value. Custom Key
+        # implementations may require a Key operand, so keep their lookups on
+        # the normalization path, even after such a key has been removed.
+        self._has_custom_keys = False
         self._body: list[tuple[Key | None, Item]] = []
         self._parsed = parsed
         self._table_keys: list[Key] = []
@@ -528,6 +532,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 raise TOMLKitError("Redefinition of an existing table")
 
     def _raw_append(self, key: Key | None, item: Item) -> None:
+        if key is not None and type(key) is not SingleKey:
+            self._has_custom_keys = True
         if key is not None and key in self._map:
             current_idx = self._map[key]
             if not isinstance(current_idx, tuple):
@@ -596,6 +602,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         if not isinstance(key, Key):
             key = SingleKey(key)
 
+        if type(key) is not SingleKey:
+            self._has_custom_keys = True
+
         item = _item(item)
 
         if idx > 0:
@@ -638,11 +647,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         """Get an item for the given key."""
-        if not isinstance(key, Key):
+        if not isinstance(key, Key) and (type(key) is not str or self._has_custom_keys):
             key = SingleKey(key)
 
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
+            if isinstance(key, str):
+                key = SingleKey(key)
             raise NonExistentKey(key)
 
         if isinstance(idx, tuple):
@@ -849,16 +860,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return item
 
     def __contains__(self, key: object) -> bool:
-        # Native membership test. The inherited ``MutableMapping.__contains__``
-        # resolves the value via ``__getitem__``/``item()`` (and builds a
-        # ``NonExistentKey`` on every absent key) only to discard it. Resolve the
-        # key the same way ``item()`` does -- ``str`` becomes a ``SingleKey``
-        # (a non-str/non-``Key`` argument still raises ``TypeError``) -- then
-        # probe ``_map`` directly. For an out-of-order table the proxy is still
-        # built so its validation runs exactly as before.
-        if not isinstance(key, Key):
+        # Exact strings can probe standard SingleKeys directly. Other queries
+        # retain normalization, including its TypeError for invalid key types.
+        # Out-of-order tables must still validate their fragments.
+        if not isinstance(key, Key) and (type(key) is not str or self._has_custom_keys):
             key = SingleKey(key)  # type: ignore[arg-type]
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
             return False
         if isinstance(idx, tuple):
@@ -866,7 +873,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             # if the validation cache covers exactly these fragments they
             # are already known to merge cleanly, so skip rebuilding the
             # proxy (which is linear in the number of fragments)
-            validated, _ = self._validation_cache.get(key, (0, None))
+            validated, _ = self._validation_cache.get(key, (0, None))  # type: ignore[arg-type]
             if not (self._parsed and validated == len(idx)):
                 OutOfOrderTableProxy(self, idx)
         return True
@@ -888,7 +895,17 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
-            old_key = next(filter(lambda k: k == key, self._map))
+            old_key: Key | None
+            if self._has_custom_keys or (
+                type(key) is not str and type(key) is not SingleKey
+            ):
+                old_key = next(filter(lambda k: k == key, self._map))
+            else:
+                idx = self._map[key]  # type: ignore[index]
+                if isinstance(idx, tuple):
+                    idx = idx[0]
+                old_key = self._body[idx][0]
+                assert old_key is not None
             value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
@@ -957,6 +974,8 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             else:  # Inherit the sep of the old key
                 new_key = k
 
+        if type(new_key) is not SingleKey:
+            self._has_custom_keys = True
         del self._map[k]
         self._map[new_key] = idx
         if new_key != k:
@@ -1050,6 +1069,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def __setstate__(self, state: tuple[Any, ...]) -> None:
         self._map = state[0]
+        self._has_custom_keys = any(type(k) is not SingleKey for k in self._map)
         self._body = state[1]
         self._parsed = state[2]
         self._table_keys = state[3]
@@ -1071,6 +1091,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         c._body += self.body
         c._map.update(self._map)
+        c._has_custom_keys = self._has_custom_keys
         c._out_of_order_keys |= self._out_of_order_keys
 
         return c

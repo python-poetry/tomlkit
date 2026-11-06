@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Speed up looking up and replacing keys in tables: string lookups no longer build a temporary key, and replacing an existing value no longer scans every key in the table, which made updating many keys of a large table quadratic.
 - Speed up repeated array appends by keeping existing indexes instead of rebuilding them.
 
 ### Fixed
