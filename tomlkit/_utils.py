@@ -123,8 +123,10 @@ _compact_escapes = {
 _basic_escapes = CONTROL_CHARS | {'"', "\\"}
 
 
-def validate_comment(comment: str) -> None:
-    """Reject forbidden control characters, allowing LF and CRLF line endings."""
+def validate_comment(comment: str, *, multiline: bool = False) -> None:
+    """Reject forbidden controls, optionally allowing LF and CRLF line endings."""
+    if not multiline and ("\n" in comment or "\r" in comment):
+        raise ValueError("Comment cannot contain line breaks")
     for char in comment.replace("\r\n", "\n"):
         if char in CONTROL_CHARS and char not in "\t\n":
             raise ValueError(f"Comment cannot contain control character {char!r}")

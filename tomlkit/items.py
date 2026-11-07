@@ -576,8 +576,6 @@ class Item:
 
     def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
-        if "\n" in comment or "\r" in comment:
-            raise ValueError("Comment cannot contain line breaks")
         validate_comment(comment)
         if not comment.strip().startswith("#"):
             comment = "# " + comment
@@ -1620,8 +1618,6 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             4, 5, 6,
         ]
         """
-        if comment and ("\n" in comment or "\r" in comment):
-            raise ValueError("Comment cannot contain line breaks")
         if comment:
             validate_comment(comment)
         new_values: list[Item] = []
