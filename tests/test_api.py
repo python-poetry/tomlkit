@@ -292,6 +292,54 @@ def test_comment_multiline_is_valid_toml() -> None:
     assert parse(rendered).as_string() == rendered
 
 
+@pytest.mark.parametrize(
+    "character", [chr(code) for code in range(32) if code not in (9, 10, 13)] + ["\x7f"]
+)
+@pytest.mark.parametrize("kind", ["standalone", "item", "array"])
+def test_comments_reject_control_characters(character: str, kind: str) -> None:
+    doc = parse("value = 1 # original\nvalues = [1]\n")
+    original = doc.as_string()
+    text = f"before{character}after"
+
+    with pytest.raises(ValueError, match="Comment cannot contain"):
+        if kind == "standalone":
+            doc.add(tomlkit.comment(text))
+        elif kind == "item":
+            doc["value"].comment(text)
+        else:
+            doc["values"].add_line(2, comment=text)
+
+    assert doc.as_string() == original
+    assert doc.unwrap() == {"value": 1, "values": [1]}
+
+
+@pytest.mark.parametrize("text", ["before\rafter", "before\r", "before\r\r\nafter"])
+def test_comment_rejects_bare_carriage_return(text: str) -> None:
+    with pytest.raises(ValueError, match="Comment cannot contain"):
+        tomlkit.comment(text)
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_comment_preserves_valid_line_endings(newline: str) -> None:
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment(f"one{newline}two{newline}"))
+    rendered = f"# one{newline}# two{newline}#\n"
+    assert doc.as_string() == rendered
+    assert parse(rendered).as_string() == rendered
+
+
+def test_comment_apis_preserve_tabs_and_unicode() -> None:
+    text = "tab\tunicode \u00e9 \u0085 \u2028"
+    doc = parse("value = 1\nvalues = []\n")
+    doc.add(tomlkit.comment(text))
+    doc["value"].comment(text)
+    doc["values"].add_line(2, comment=text)
+    rendered = doc.as_string()
+    assert rendered.count(text) == 3
+    assert parse(rendered).as_string() == rendered
+    assert parse(rendered).unwrap() == {"value": 1, "values": [2]}
+
+
 def test_array() -> None:
     a = tomlkit.array()
 

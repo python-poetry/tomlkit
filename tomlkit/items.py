@@ -31,6 +31,7 @@ from tomlkit._types import _CustomInt
 from tomlkit._types import _CustomList
 from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
+from tomlkit._utils import validate_comment
 from tomlkit.exceptions import ConvertError
 from tomlkit.exceptions import InvalidStringError
 
@@ -575,8 +576,7 @@ class Item:
 
     def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
-        if "\n" in comment or "\r" in comment:
-            raise ValueError("Comment cannot contain line breaks")
+        validate_comment(comment)
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -1618,8 +1618,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             4, 5, 6,
         ]
         """
-        if comment and ("\n" in comment or "\r" in comment):
-            raise ValueError("Comment cannot contain line breaks")
+        if comment:
+            validate_comment(comment)
         new_values: list[Item] = []
         first_indent = f"\n{indent}" if newline else indent
         if first_indent:

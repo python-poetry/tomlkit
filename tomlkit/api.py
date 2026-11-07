@@ -12,6 +12,7 @@ from typing import Any
 from typing import TypeVar
 
 from tomlkit._utils import parse_rfc3339
+from tomlkit._utils import validate_comment
 from tomlkit.container import Container
 from tomlkit.exceptions import UnexpectedCharError
 from tomlkit.items import CUSTOM_ENCODERS
@@ -349,6 +350,7 @@ def comment(string: str) -> Comment:
     A multiline string produces one ``#``-prefixed line per line so that the
     result is still valid TOML.
     """
+    validate_comment(string, multiline=True)
     lines = string.split("\n")
     rendered = "\n".join(f"# {line}" if line else "#" for line in lines)
     return Comment(Trivia(comment_ws="  ", comment=rendered))
