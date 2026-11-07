@@ -543,7 +543,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._map[key] = len(self._body)
 
         self._body.append((key, item))
-        if item.is_table() and key is not None:
+        if isinstance(item, (Table, AoT)) and key is not None:
             self._table_keys.append(key)
 
         if key is not None:
