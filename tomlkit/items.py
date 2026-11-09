@@ -1302,7 +1302,7 @@ class Date(Item, date):
     ) -> None:
         super().__init__(trivia or Trivia())
 
-        self._raw = raw
+        self._raw = raw or date.isoformat(self)
 
     def unwrap(self) -> date:
         (year, month, day, _, _) = self._getstate()
@@ -1387,7 +1387,7 @@ class Time(Item, time):
     ) -> None:
         super().__init__(trivia or Trivia())
 
-        self._raw = raw
+        self._raw = raw or _format_time(self)
 
     def unwrap(self) -> time:
         (hour, minute, second, microsecond, tzinfo, _, _) = self._getstate()
