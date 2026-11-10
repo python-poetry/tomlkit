@@ -306,6 +306,8 @@ def _format_datetime(value: datetime) -> str:
 # a control character that a basic string must escape.
 _BARE_CR = re.compile(r"\r(?!\n)")
 
+_BARE_KEY_CHARS = frozenset(string.ascii_letters + string.digits + "-_")
+
 
 class StringType(Enum):
     # Single Line Basic
@@ -329,27 +331,14 @@ class StringType(Enum):
     @property
     def escaped_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
-        escaped_in_basic = CONTROL_CHARS | {"\\"}
-        allowed_in_multiline = {"\n", "\r"}
-        return {
-            StringType.SLB: escaped_in_basic | {'"'},
-            StringType.MLB: (escaped_in_basic | {'"""'}) - allowed_in_multiline,
-            StringType.SLL: (),
-            StringType.MLL: (),
-        }[self]
+        return _ESCAPED_SEQUENCES[self]
 
     @property
     def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
-        forbidden_in_literal = CONTROL_CHARS - {"\t"}
         # CR stays forbidden in multiline: the value is checked with CRLF
         # pairs collapsed, so any remaining CR is a lone control character
-        return {
-            StringType.SLB: (),
-            StringType.MLB: (),
-            StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: (forbidden_in_literal | {"'''"}) - {"\n"},
-        }[self]
+        return _INVALID_SEQUENCES[self]
 
     @property
     def unit(self) -> str:
@@ -374,6 +363,23 @@ class StringType(Enum):
             StringType.SLL: StringType.MLL,
             StringType.MLL: StringType.SLL,
         }[self]
+
+
+_ESCAPED_IN_BASIC = CONTROL_CHARS | {"\\"}
+_FORBIDDEN_IN_LITERAL = CONTROL_CHARS - {"\t"}
+_ESCAPED_SEQUENCES: dict[StringType, Collection[str]] = {
+    StringType.SLB: _ESCAPED_IN_BASIC | {'"'},
+    # raw line breaks are allowed in multiline strings
+    StringType.MLB: (_ESCAPED_IN_BASIC | {'"""'}) - {"\n", "\r"},
+    StringType.SLL: (),
+    StringType.MLL: (),
+}
+_INVALID_SEQUENCES: dict[StringType, Collection[str]] = {
+    StringType.SLB: (),
+    StringType.MLB: (),
+    StringType.SLL: _FORBIDDEN_IN_LITERAL | {"'"},
+    StringType.MLL: (_FORBIDDEN_IN_LITERAL | {"'''"}) - {"\n"},
+}
 
 
 class BoolType(Enum):
@@ -480,9 +486,7 @@ class SingleKey(Key):
             raise TypeError("Keys must be strings")
 
         if t is None:
-            if not k or any(
-                c not in string.ascii_letters + string.digits + "-" + "_" for c in k
-            ):
+            if not k or not _BARE_KEY_CHARS.issuperset(k):
                 t = KeyType.Basic
             else:
                 t = KeyType.Bare
