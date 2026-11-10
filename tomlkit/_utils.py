@@ -136,33 +136,25 @@ def _unicode_escape(seq: str) -> str:
     return "".join(f"\\u{ord(c):04x}" for c in seq)
 
 
+def _escape_match(match: re.Match[str]) -> str:
+    seq = match.group()
+    return _compact_escapes.get(seq) or _unicode_escape(seq)
+
+
 def escape_string(s: str, escape_sequences: Collection[str] = _basic_escapes) -> str:
     s = decode(s)
 
-    res = []
-    start = 0
+    found_sequences = [seq for seq in escape_sequences if seq in s]
+    if not found_sequences:
+        # always return a plain str, also for str subclasses such as String
+        return str(s)
 
-    def flush(inc: int = 1) -> int:
-        if start != i:
-            res.append(s[start:i])
-
-        return i + inc
-
-    found_sequences = {seq for seq in escape_sequences if seq in s}
-
-    i = 0
-    while i < len(s):
-        for seq in found_sequences:
-            seq_len = len(seq)
-            if s[i:].startswith(seq):
-                start = flush(seq_len)
-                res.append(_compact_escapes.get(seq) or _unicode_escape(seq))
-                i += seq_len - 1  # fast-forward escape sequence
-        i += 1
-
-    flush()
-
-    return "".join(res)
+    # Replace every sequence in a single left-to-right pass. Longer sequences
+    # come first so that '"""' is matched as a whole.
+    pattern = "|".join(
+        re.escape(seq) for seq in sorted(found_sequences, key=len, reverse=True)
+    )
+    return re.sub(pattern, _escape_match, s)
 
 
 def merge_dicts(d1: dict[str, Any], d2: dict[str, Any]) -> None:

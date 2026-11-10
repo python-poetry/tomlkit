@@ -5,6 +5,7 @@
 ### Changed
 
 - Speed up repeated array appends by keeping existing indexes instead of rebuilding them.
+- Speed up creating string values and keys, e.g. when building a document from Python data and dumping it: strings are escaped in one pass instead of per character, and the escape and bare-key character sets are built once.
 
 ### Fixed
 
