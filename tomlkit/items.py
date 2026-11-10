@@ -1909,7 +1909,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         return self._value.item(key)
 
-    def setdefault(self, key: Key | str, default: Any) -> Any:  # type: ignore[override]
+    def setdefault(self, key: Key | str, default: Any = None) -> Any:
         super().setdefault(key, default)
         return self[key]
 
