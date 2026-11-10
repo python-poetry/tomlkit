@@ -494,6 +494,23 @@ def test_array_slice_deletion_keeps_render_in_sync() -> None:
     assert a.as_string() == "[3]"
 
 
+def test_array_index_deletion_keeps_later_items_addressable() -> None:
+    doc = parse("a = [\n  # first\n  1,\n  2, # two\n  # gap\n  3,\n  4,\n  5,\n]\n")
+    a = doc["a"]
+
+    del a[1]
+    assert a.pop() == 5
+    a.remove(3)
+    a[1] = 40
+    a.insert(1, 30)
+    a.append(50)
+
+    assert a == [1, 30, 40, 50]
+    assert doc.as_string() == (
+        "a = [\n  # first\n  1,\n  # gap\n  30,\n  40,\n  50,\n]\n"
+    )
+
+
 def test_array_multiline() -> None:
     t = item([1, 2, 3, 4, 5, 6, 7, 8])
     t.multiline(True)
@@ -664,6 +681,19 @@ def test_array_add_line() -> None:
     # Line 4
 ]"""
     )
+
+
+def test_array_add_line_keeps_items_addressable() -> None:
+    doc = parse("a = [\n    1, # one\n]\n")
+    a = doc["a"]
+    a.add_line(2, 3, comment="two")
+    a.add_line(comment="note")
+    a.add_line(4)
+    a[2] = 30
+    del a[0]
+
+    assert a == [2, 30, 4]
+    assert doc.as_string() == "a = [\n    2, 30, # two\n    # note\n    4,\n]\n"
 
 
 def test_array_add_line_single_line_comment_round_trips() -> None:
