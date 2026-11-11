@@ -2085,3 +2085,46 @@ def test_emptied_array_of_tables_is_written_under_the_earlier_fragment() -> None
     doc["a"]["b"]["c"].pop()
 
     assert doc.as_string() == "[a.b]\nc = []\nz = 1\n[a]\ny = 1\n"
+
+
+@pytest.mark.parametrize(
+    "content, path",
+    [
+        # A deeper header in a later fragment of `a` declares the parent.
+        ("[a.b]\n[[a.b.c.d]]\n[a]\n[a.b.c]\n", ["a", "b", "c", "d"]),
+        # ... with a quoted key.
+        ('[a.b]\n[[a.b."c".d]]\n[a]\n[a.b.c]\n', ["a", "b", "c", "d"]),
+        # ... a level deeper.
+        ("[a.b]\n[[a.b.c.d.e]]\n[a]\n[a.b.c.d]\n", ["a", "b", "c", "d", "e"]),
+        # ... with no `[a]` header, so neither fragment of `a` has one.
+        ("[a.b]\n[[a.b.c.d]]\n[x]\n[a.b.c]\n", ["a", "b", "c", "d"]),
+        # ... or with that header in the earlier fragment instead.
+        ("[a.b.c]\nw = 1\n[x]\n[a.b]\n[[a.b.c.d]]\nx = 1\n", ["a", "b", "c", "d"]),
+    ],
+)
+def test_emptied_array_of_tables_under_deeper_header_in_other_fragment(
+    content: str, path: list[str]
+) -> None:
+    # The nearest header above the array of tables declares a table that a
+    # deeper header in another fragment declares again, so the fallback has to
+    # be handed to the deeper header even when no fragment of the out-of-order
+    # table renders a header of its own.
+    doc = parse(content)
+    aot: Any = doc
+    for key in path:
+        aot = aot[key]
+    aot.pop()
+    out = doc.as_string()
+
+    assert parse(out).unwrap() == doc.unwrap()
+    if sys.version_info >= (3, 11):
+        import tomllib
+
+        assert tomllib.loads(out) == doc.unwrap()
+
+
+def test_emptied_array_of_tables_is_written_under_the_deeper_header() -> None:
+    doc = parse("[a.b]\n[[a.b.c.d]]\n[a]\n[a.b.c]\n")
+    doc["a"]["b"]["c"]["d"].pop()
+
+    assert doc.as_string() == "[a.b]\n[a]\n[a.b.c]\nd = []\n"

@@ -124,12 +124,15 @@ def _fragment_aots(
 ) -> list[tuple[tuple[Key, ...], AoT, Table]]:
     """Every emptied array of tables under a header of an out-of-order table.
 
-    The header declaring its parent may be in an earlier fragment, which is
-    rendered before the header the array of tables sits under, so only the
-    scope holding all the fragments can hand the fallback over in time.
+    The header declaring its parent may be in another fragment: an earlier one
+    is rendered before the header the array of tables sits under, and a deeper
+    one in a later fragment declares a table that a fallback under that header
+    would already have declared. Only the scope holding all the fragments can
+    hand the fallback over in time, whether or not the fragments emit headers.
 
     Returns ``(key path, aot, table)`` triples, keyed relative to the scope
-    ``body`` belongs to, where ``table`` is the closest header above ``aot``.
+    ``body`` belongs to, where ``table`` is the closest header above ``aot``,
+    or the fragment itself if there is none.
     """
     found: list[tuple[tuple[Key, ...], AoT, Table]] = []
     counts = Counter(k for k, _ in body if k is not None)
@@ -137,10 +140,10 @@ def _fragment_aots(
         if k is None or not isinstance(v, Table):
             continue
         path = (*prefix, k)
-        if not _emits_header(k, v):
-            found.extend(_fragment_aots(v.value.body, path))
-        elif counts[k] > 1:
+        if counts[k] > 1:
             found.extend(_aots_below(v, path, v))
+        elif not _emits_header(k, v):
+            found.extend(_fragment_aots(v.value.body, path))
     return found
 
 
