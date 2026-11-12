@@ -240,6 +240,24 @@ def test_aot_integer_assignment_updates_list_storage() -> None:
     assert parse(doc.as_string()).unwrap() == doc.unwrap()
 
 
+@pytest.mark.parametrize(
+    "index", [0, -1, slice(None), slice(None, None, 2), slice(None, None, -2)]
+)
+@pytest.mark.parametrize("invalid", [42, "text", [1, 2], api.inline_table()])
+def test_aot_assignment_rejects_non_tables_without_mutation(
+    index: int | slice, invalid: Any
+) -> None:
+    source = "[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n"
+    doc = parse(source)
+    replacement = [{"x": 3}, invalid] if isinstance(index, slice) else invalid
+    with pytest.raises(ValueError, match="Unsupported assignment value type"):
+        doc["a"][index] = replacement
+    assert doc.as_string() == source
+    assert doc["a"] == [{"x": 1}, {"x": 2}, {"x": 3}]
+    assert doc.unwrap() == {"a": [{"x": 1}, {"x": 2}, {"x": 3}]}
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+
+
 def test_aot_delete_after_slice_insertion() -> None:
     doc = parse("[[a]]\nx = 1\n")
     doc["a"][1:1] = [{"x": 2}]
