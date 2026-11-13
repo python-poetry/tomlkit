@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add `multiline=True` to `dumps()` and `dump()` to render arrays one item per line without changing the input document.
+
 ### Changed
 
 - Speed up repeated array appends by keeping existing indexes instead of rebuilding them.

@@ -1565,9 +1565,16 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         return self
 
     def as_string(self) -> str:
-        if not self._multiline or not self._value:
+        return self._as_string(multiline=False)
+
+    def _as_string(self, multiline: bool) -> str:
+        if not (self._multiline or multiline) or not self._value:
             rendered = list(self._iter_items())
-            inner = "".join(v.as_string() for v in rendered)
+            inner = (
+                "".join(_render_item(v, multiline=True) for v in rendered)
+                if multiline
+                else "".join(v.as_string() for v in rendered)
+            )
             if rendered and isinstance(rendered[-1], Comment):
                 # A trailing comment (e.g. from add_line(comment=...)) carries
                 # no newline, so keep the closing bracket off the comment line
@@ -1579,7 +1586,11 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         s += "".join(
             self.trivia.indent
             + " " * 4
-            + v.value.as_string()
+            + (
+                _render_item(v.value, multiline=True)
+                if multiline
+                else v.value.as_string()
+            )
             + ("," if not isinstance(v.value, Null) else "")
             + (v.comment.as_string() if v.comment is not None else "")
             + "\n"
@@ -2176,6 +2187,9 @@ class InlineTable(AbstractTable):
             raise ValueError("Inline tables cannot contain a table")
 
     def as_string(self) -> str:
+        return self._as_string(multiline=False)
+
+    def _as_string(self, multiline: bool) -> str:
         buf = "{"
         emitted_key = False
         needs_separator = False
@@ -2256,12 +2270,12 @@ class InlineTable(AbstractTable):
                 # A table materialized from a dotted key renders one
                 # `prefix.child = value` pair per child, so that keys added
                 # after parsing stay attached to the dotted prefix.
-                rendered = ", ".join(self._render_dotted(k, v))
+                rendered = ", ".join(self._render_dotted(k, v, multiline=multiline))
             else:
                 rendered = (
                     f"{k.as_string() + ('.' if k.is_dotted() else '')}"
                     f"{k.sep}"
-                    f"{v.as_string()}"
+                    f"{_render_item(v, multiline=True) if multiline else v.as_string()}"
                 )
             buf += f"{v.trivia.indent}{rendered}"
             last_value_end = len(buf)
@@ -2284,7 +2298,9 @@ class InlineTable(AbstractTable):
 
         return buf
 
-    def _render_dotted(self, key: Key, table: Table) -> list[str]:
+    def _render_dotted(
+        self, key: Key, table: Table, *, multiline: bool = False
+    ) -> list[str]:
         """Render a table materialized from a dotted key as a list of
         ``prefix.child = value`` strings, recursing into nested dotted
         children."""
@@ -2294,11 +2310,15 @@ class InlineTable(AbstractTable):
             if k is None:
                 continue
             if isinstance(v, Table):
-                parts.extend(f"{prefix}{sub}" for sub in self._render_dotted(k, v))
+                parts.extend(
+                    f"{prefix}{sub}"
+                    for sub in self._render_dotted(k, v, multiline=multiline)
+                )
             else:
                 trail = v.trivia.trail.replace("\n", "")
                 parts.append(
-                    f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
+                    f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}"
+                    f"{_render_item(v, multiline=True) if multiline else v.as_string()}"
                     f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
                 )
         if not parts:
@@ -2536,3 +2556,27 @@ class Null(Item):
 
     def _getstate(self, protocol: int = 3) -> tuple[()]:
         return ()
+
+
+def _render_item(value: Item | container.Container, multiline: bool) -> str:
+    """Render built-in items with dump options, preserving custom renderers."""
+    renderer = value.as_string
+    if multiline:
+        method = getattr(renderer, "__func__", None)
+        if isinstance(value, (Array, InlineTable)):
+            if method in (Array.as_string, InlineTable.as_string):
+                return value._as_string(multiline=True)
+        elif isinstance(value, Table):
+            if method is Table.as_string:
+                return _render_item(value.value, multiline=True)
+        elif isinstance(value, AoT):
+            if method is AoT.as_string:
+                return "".join(
+                    _render_item(table, multiline=True) for table in value.body
+                )
+        else:
+            from tomlkit.container import Container
+
+            if isinstance(value, Container) and method is Container.as_string:
+                return value._as_string(multiline=True)
+    return renderer()

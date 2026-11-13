@@ -29,6 +29,7 @@ from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
+from tomlkit.items import _render_item
 from tomlkit.items import item as _item
 
 
@@ -661,6 +662,9 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def as_string(self) -> str:
         """Render as TOML string."""
+        return self._as_string(multiline=False)
+
+    def _as_string(self, multiline: bool) -> str:
         s = ""
         for path, aot in _header_less_aots(self._body):
             s += _render_empty_aot(path, aot)
@@ -675,7 +679,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_table(k, v)
+                    s += self._render_table(k, v, multiline=multiline)
                 elif isinstance(v, AoT):
                     if (
                         s.strip(" ")
@@ -683,15 +687,22 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         and "\n" not in v.trivia.indent
                     ):
                         s += "\n"
-                    s += self._render_aot(k, v)
+                    s += self._render_aot(k, v, multiline=multiline)
                 else:
-                    s += self._render_simple_item(k, v)
+                    s += self._render_simple_item(k, v, multiline=multiline)
             else:
-                s += self._render_simple_item(k, v)
+                s += self._render_simple_item(k, v, multiline=multiline)
 
         return s
 
-    def _render_table(self, key: Key, table: Table, prefix: str | None = None) -> str:
+    def _render_table(
+        self,
+        key: Key,
+        table: Table,
+        prefix: str | None = None,
+        *,
+        multiline: bool = False,
+    ) -> str:
         cur = ""
 
         if table.display_name is not None:
@@ -743,11 +754,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted() and not key.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, multiline=multiline)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k, v, prefix=_key, multiline=multiline
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, multiline=multiline)
             elif isinstance(v, AoT):
                 if (
                     cur.strip(" ")
@@ -756,15 +769,17 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 ):
                     cur += "\n"
                 assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
+                cur += self._render_aot(k, v, prefix=_key, multiline=multiline)
             else:
                 cur += self._render_simple_item(
-                    k, v, prefix=_key if key.is_dotted() else None
+                    k, v, prefix=_key if key.is_dotted() else None, multiline=multiline
                 )
 
         return cur
 
-    def _render_aot(self, key: Key, aot: AoT, prefix: str | None = None) -> str:
+    def _render_aot(
+        self, key: Key, aot: AoT, prefix: str | None = None, *, multiline: bool = False
+    ) -> str:
         _key = key.as_string()
         if prefix is not None:
             _key = prefix + "." + _key
@@ -772,11 +787,13 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         cur = ""
         _key = decode(_key)
         for table in aot.body:
-            cur += self._render_aot_table(table, prefix=_key)
+            cur += self._render_aot_table(table, prefix=_key, multiline=multiline)
 
         return cur
 
-    def _render_aot_table(self, table: Table, prefix: str | None = None) -> str:
+    def _render_aot_table(
+        self, table: Table, prefix: str | None = None, *, multiline: bool = False
+    ) -> str:
         cur = ""
         _key = prefix or ""
         open_, close = "[[", "]]"
@@ -801,24 +818,31 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                 if v.is_super_table():
                     if k.is_dotted():
                         # Dotted key inside table
-                        cur += self._render_table(k, v)
+                        cur += self._render_table(k, v, multiline=multiline)
                     else:
-                        cur += self._render_table(k, v, prefix=_key)
+                        cur += self._render_table(
+                            k, v, prefix=_key, multiline=multiline
+                        )
                 else:
-                    cur += self._render_table(k, v, prefix=_key)
+                    cur += self._render_table(k, v, prefix=_key, multiline=multiline)
             elif isinstance(v, AoT):
                 assert k is not None
-                cur += self._render_aot(k, v, prefix=_key)
+                cur += self._render_aot(k, v, prefix=_key, multiline=multiline)
             else:
-                cur += self._render_simple_item(k, v)
+                cur += self._render_simple_item(k, v, multiline=multiline)
 
         return cur
 
     def _render_simple_item(
-        self, key: Key | None, item: Item, prefix: str | None = None
+        self,
+        key: Key | None,
+        item: Item,
+        prefix: str | None = None,
+        *,
+        multiline: bool = False,
     ) -> str:
         if key is None:
-            return item.as_string()
+            return _render_item(item, multiline=True) if multiline else item.as_string()
 
         _key = key.as_string()
         if prefix is not None:
@@ -828,7 +852,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             f"{item.trivia.indent}"
             f"{decode(_key)}"
             f"{key.sep}"
-            f"{decode(item.as_string())}"
+            f"{decode(_render_item(item, multiline=True) if multiline else item.as_string())}"
             f"{item.trivia.comment_ws}"
             f"{decode(item.trivia.comment)}"
             f"{item.trivia.trail}"
