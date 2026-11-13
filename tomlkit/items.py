@@ -1656,13 +1656,16 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             new_values.append(
                 Comment(Trivia(indent=indent, comment=f"# {comment}", trail=""))
             )
+        length = len(self)
         list.extend(self, data_values)
+        groups = self._group_values(new_values)
+        pos = len(self._value)
         if len(self._value) > 0:
             last_item = self._value[-1]
             last_value_item = next(
                 (
                     v
-                    for v in self._value[::-1]
+                    for v in reversed(self._value)
                     if v.value is not None and not isinstance(v.value, Null)
                 ),
                 None,
@@ -1670,12 +1673,17 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             if last_value_item is not None:
                 last_value_item.comma = Whitespace(",")
             if last_item.is_whitespace():
-                self._value[-1:-1] = self._group_values(new_values)
-            else:
-                self._value.extend(self._group_values(new_values))
+                pos -= 1
+        self._value[pos:pos] = groups
+        if len(self._index_map) == length:
+            # The new groups come after every existing value, so only the
+            # new values need an index.
+            for i, group in enumerate(groups, pos):
+                if group.value is not None and not isinstance(group.value, Null):
+                    self._index_map[length] = i
+                    length += 1
         else:
-            self._value.extend(self._group_values(new_values))
-        self._reindex()
+            self._reindex()
 
     def clear(self) -> None:
         """Clear the array."""
@@ -1844,7 +1852,16 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
                 # remove the comma of the last item
                 v.comma = None
 
-        self._reindex()
+        index_map = self._index_map
+        if isinstance(key, slice) or len(index_map) != length:
+            self._reindex()
+        else:
+            # A single value group was removed: the positions after it now
+            # point one group earlier. Shifting only those keeps pop() and
+            # deletes near the end of a long array from rebuilding the map.
+            for i in range(indices_to_remove[0], length - 1):
+                index_map[i] = index_map[i + 1] - 1
+            del index_map[length - 1]
 
     def _getstate(self, protocol: int = 3) -> tuple[list[Item], Trivia, bool]:
         return list(self._iter_items()), self._trivia, self._multiline
