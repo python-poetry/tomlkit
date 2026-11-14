@@ -1212,6 +1212,8 @@ class DateTime(Item, datetime):
 
         return self._new(result)
 
+    __radd__ = __add__
+
     @overload  # type: ignore[override]
     def __sub__(self, other: timedelta) -> DateTime: ...
 
@@ -1331,6 +1333,8 @@ class Date(Item, date):
             result = super().__add__(other)
 
         return self._new(result)
+
+    __radd__ = __add__
 
     @overload  # type: ignore[override]
     def __sub__(self, other: timedelta) -> Date: ...
