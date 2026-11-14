@@ -1923,3 +1923,35 @@ def test_out_of_order_table_proxy_membership() -> None:
         _ = 123 in table
     # membership must not resolve values or mutate the document
     assert doc.as_string() == content
+
+
+@pytest.mark.parametrize("inline", [False, True])
+@pytest.mark.parametrize("literal, expected", [("0", 0), ("false", False), ('""', "")])
+def test_table_setdefault_existing_key_without_default(
+    inline: bool, literal: str, expected: int | bool | str
+) -> None:
+    if inline:
+        source = f"settings = {{ value = {literal} }} # preserve formatting\n"
+    else:
+        source = f"[settings] # preserve formatting\nvalue = {literal}\n"
+    document = parse(source)
+    settings = document["settings"]
+    assert isinstance(settings, (Table, InlineTable))
+
+    assert settings.setdefault("value") == expected
+    assert api.dumps(document) == source
+
+
+@pytest.mark.parametrize("inline", [False, True])
+def test_table_setdefault_missing_key_without_default_preserves_document(
+    inline: bool,
+) -> None:
+    from tomlkit.exceptions import ConvertError
+
+    source = "settings = { value = 1 }\n" if inline else "[settings]\nvalue = 1\n"
+    document = parse(source)
+    settings = document["settings"]
+    assert isinstance(settings, (Table, InlineTable))
+    with pytest.raises(ConvertError):
+        settings.setdefault("missing")
+    assert api.dumps(document) == source
