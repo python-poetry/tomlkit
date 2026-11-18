@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import json
 import os
 
+from datetime import date
+from datetime import datetime
+from datetime import time
 from typing import Any
 from typing import Callable
 
@@ -9,7 +14,6 @@ import pytest
 from tomlkit import load
 from tomlkit import parse
 from tomlkit._compat import decode
-from tomlkit._utils import parse_rfc3339
 from tomlkit.exceptions import TOMLKitError
 
 
@@ -23,15 +27,32 @@ def to_bool(s: str) -> bool:
     return s == "true"
 
 
+def expected_temporal(s: str) -> datetime | date | time:
+    """Parse toml-test JSON temporal values without using tomlkit's parser.
+
+    The corpus values are RFC 3339 / ISO 8601. Using stdlib constructors here
+    keeps the compliance tests an independent oracle for ``parse_rfc3339``.
+    """
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        return date.fromisoformat(s)
+    if len(s) >= 3 and s[0].isdigit() and s[2] == ":":
+        return time.fromisoformat(s)
+
+    normalized = s.replace(" ", "T", 1)
+    if normalized.endswith(("Z", "z")):
+        normalized = normalized[:-1] + "+00:00"
+    return datetime.fromisoformat(normalized)
+
+
 stypes: dict[str, Callable[[str], Any]] = {
     "string": str,
     "bool": to_bool,
     "integer": int,
     "float": float,
-    "datetime": parse_rfc3339,
-    "datetime-local": parse_rfc3339,
-    "date-local": parse_rfc3339,
-    "time-local": parse_rfc3339,
+    "datetime": expected_temporal,
+    "datetime-local": expected_temporal,
+    "date-local": expected_temporal,
+    "time-local": expected_temporal,
 }
 
 
