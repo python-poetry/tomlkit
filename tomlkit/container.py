@@ -1075,6 +1075,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return c
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        c = self.__class__(self._parsed)
+        memo[id(self)] = c
+        c._body = [
+            (copy.deepcopy(k, memo), copy.deepcopy(v, memo)) for k, v in self._body
+        ]
+        c._map = copy.deepcopy(self._map, memo)
+        c._table_keys = copy.deepcopy(self._table_keys, memo)
+        c._out_of_order_keys = copy.deepcopy(self._out_of_order_keys, memo)
+        for k, v in dict.items(self):
+            dict.__setitem__(c, k, copy.deepcopy(v, memo))
+
+        return c
+
     def _previous_item_with_index(
         self, idx: int | None = None, ignore: tuple[type, ...] = (Null,)
     ) -> tuple[int, Item] | None:
