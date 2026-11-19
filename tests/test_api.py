@@ -821,4 +821,3 @@ def test_parse_dotted_key_with_subsequent_key_at_nesting_limit() -> None:
     # Inside table
     doc_table = tomlkit.parse(f"[t]\n{key} = 1\na.b = 2\n")
     assert doc_table["t"]["a"]["b"] == 2
-
