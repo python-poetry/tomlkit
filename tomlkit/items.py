@@ -2453,8 +2453,15 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
     def __setitem__(self, key: slice | int, value: Any) -> None:  # type: ignore[override]
         if isinstance(key, slice):
             value = [item(v, _parent=self) for v in value]
+            for table in value:
+                if not isinstance(table, Table):
+                    raise ValueError(
+                        f"Unsupported assignment value type: {type(table)}"
+                    )
         else:
             value = item(value, _parent=self)
+            if not isinstance(value, Table):
+                raise ValueError(f"Unsupported assignment value type: {type(value)}")
         self._body[key] = value
         list.__setitem__(self, key, value)
 
