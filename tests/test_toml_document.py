@@ -743,6 +743,28 @@ def test_valid_out_of_order_super_table_extended_by_dotted_key() -> None:
     assert doc.as_string() == "[a.b.c]\n[a]\nb.z = 1\n"
 
 
+def test_valid_out_of_order_table_header_after_dotted_keys() -> None:
+    # An out-of-order table header extending a super table formed by multiple
+    # dotted keys must not be falsely rejected as duplicate (#632).
+    content = """\
+[a]
+b.c = 1
+b.d = 2
+
+[x]
+y = 1
+
+[a.b.e]
+f = 3
+"""
+    doc = parse(content)
+    assert doc.unwrap() == {
+        "a": {"b": {"c": 1, "d": 2, "e": {"f": 3}}},
+        "x": {"y": 1},
+    }
+    assert doc.as_string() == content
+
+
 @pytest.mark.parametrize(
     ("content", "expected"),
     [
