@@ -638,11 +638,15 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         """Get an item for the given key."""
-        if not isinstance(key, Key):
+        # SingleKey hashes and compares like its string, so a plain str can
+        # probe _map directly.
+        if type(key) is not str and not isinstance(key, Key):
             key = SingleKey(key)
 
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
+            if isinstance(key, str):
+                key = SingleKey(key)
             raise NonExistentKey(key)
 
         if isinstance(idx, tuple):
@@ -849,16 +853,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return item
 
     def __contains__(self, key: object) -> bool:
-        # Native membership test. The inherited ``MutableMapping.__contains__``
-        # resolves the value via ``__getitem__``/``item()`` (and builds a
-        # ``NonExistentKey`` on every absent key) only to discard it. Resolve the
-        # key the same way ``item()`` does -- ``str`` becomes a ``SingleKey``
-        # (a non-str/non-``Key`` argument still raises ``TypeError``) -- then
-        # probe ``_map`` directly. For an out-of-order table the proxy is still
-        # built so its validation runs exactly as before.
-        if not isinstance(key, Key):
+        # Exact strings can probe _map directly. Other queries keep
+        # normalization, including its TypeError for invalid key types.
+        # Out-of-order tables must still validate their fragments.
+        if type(key) is not str and not isinstance(key, Key):
             key = SingleKey(key)  # type: ignore[arg-type]
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
             return False
         if isinstance(idx, tuple):
@@ -866,7 +866,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             # if the validation cache covers exactly these fragments they
             # are already known to merge cleanly, so skip rebuilding the
             # proxy (which is linear in the number of fragments)
-            validated, _ = self._validation_cache.get(key, (0, None))
+            validated, _ = self._validation_cache.get(key, (0, None))  # type: ignore[arg-type]
             if not (self._parsed and validated == len(idx)):
                 OutOfOrderTableProxy(self, idx)
         return True
@@ -888,7 +888,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
-            old_key = next(filter(lambda k: k == key, self._map))
+            # The body slot that _map points to holds the stored key.
+            idx = self._map[key]  # type: ignore[index]
+            if isinstance(idx, tuple):
+                idx = idx[0]
+            old_key = self._body[idx][0]
+            assert old_key is not None
             value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
