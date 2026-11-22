@@ -807,3 +807,17 @@ def test_integer_rejects_invalid_strings(raw: str) -> None:
 def test_integer_from_int_unchanged() -> None:
     assert tomlkit.integer(1000).as_string() == "1000"
     assert int(tomlkit.integer(1000)) == 1000
+
+
+def test_parse_dotted_key_with_subsequent_key_at_nesting_limit() -> None:
+    """Issue #714: dotted key at nesting limit with subsequent key parses without RecursionError."""
+    depth = Parser.MAX_NESTING_DEPTH
+    key = ".".join(["a"] * depth)
+
+    # Document root
+    doc_root = tomlkit.parse(f"{key} = 1\na.b = 2\n")
+    assert doc_root["a"]["b"] == 2
+
+    # Inside table
+    doc_table = tomlkit.parse(f"[t]\n{key} = 1\na.b = 2\n")
+    assert doc_table["t"]["a"]["b"] == 2

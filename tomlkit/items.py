@@ -2012,6 +2012,18 @@ class Table(AbstractTable):
             self.display_name,
         )
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Table:
+        res = type(self)(
+            copy.deepcopy(self._value, memo),
+            copy.deepcopy(self._trivia, memo),
+            self._is_aot_element,
+            self._is_super_table,
+            self.name,
+            self.display_name,
+        )
+        memo[id(self)] = res
+        return res
+
     def append(self, key: Key | str | None, _item: Any) -> Table:
         """
         Appends a (key, item) to the table.
@@ -2316,6 +2328,15 @@ class InlineTable(AbstractTable):
 
     def __copy__(self) -> InlineTable:
         return type(self)(self._value.copy(), self._trivia.copy(), self._new)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> InlineTable:
+        res = type(self)(
+            copy.deepcopy(self._value, memo),
+            copy.deepcopy(self._trivia, memo),
+            self._new,
+        )
+        memo[id(self)] = res
+        return res
 
     def _getstate(self, protocol: int = 3) -> tuple[container.Container, Trivia]:
         return (self._value, self._trivia)

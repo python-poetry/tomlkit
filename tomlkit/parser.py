@@ -1130,7 +1130,10 @@ class Parser:
             if parsed:
                 _key, _val = parsed
                 if not self._merge_ws(_val, values):
-                    table.raw_append(_key, _val)
+                    try:
+                        table.raw_append(_key, _val)
+                    except Exception as e:
+                        raise self.parse_error(ParseError, str(e)) from e
             else:
                 if self._current == "[":
                     _, key_next = self._peek_table()
@@ -1138,7 +1141,10 @@ class Parser:
                     if self._is_child(full_key, key_next):
                         key_next, table_next = self._parse_table(full_key, table)
 
-                        table.raw_append(key_next, table_next)
+                        try:
+                            table.raw_append(key_next, table_next)
+                        except Exception as e:
+                            raise self.parse_error(ParseError, str(e)) from e
 
                         # Picking up any sibling
                         while not self.end():
@@ -1149,7 +1155,10 @@ class Parser:
 
                             key_next, table_next = self._parse_table(full_key, table)
 
-                            table.raw_append(key_next, table_next)
+                            try:
+                                table.raw_append(key_next, table_next)
+                            except Exception as e:
+                                raise self.parse_error(ParseError, str(e)) from e
 
                     break
                 else:
@@ -1157,7 +1166,10 @@ class Parser:
                         InternalParserError,
                         "_parse_item() returned None on a non-bracket character.",
                     )
-        table.value._validate_out_of_order_table()
+        try:
+            table.value._validate_out_of_order_table()
+        except Exception as e:
+            raise self.parse_error(ParseError, str(e)) from e
         if isinstance(result, Null):
             result = table
 
