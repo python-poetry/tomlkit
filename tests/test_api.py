@@ -239,11 +239,17 @@ mix = [1, {m = 2, n = 1}, "s"]
     )
     # A tight inline table keeps its compact spacing after sorting -- the
     # reordered first key must not gain a leading separator space.
-    assert dumps(loads("""\
+    assert (
+        dumps(
+            loads("""\
 t = {z=2, a=1}
-"""), sort_keys=True) == """\
+"""),
+            sort_keys=True,
+        )
+        == """\
 t = {a=1, z=2}
 """
+    )
 
     # Sorting must not mutate the document.
     assert dumps(doc) == original
