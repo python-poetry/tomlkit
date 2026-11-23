@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from tomlkit._compat import decode
 from tomlkit._types import _CustomDict
 from tomlkit._utils import merge_dicts
+from tomlkit.exceptions import InvalidStringError
 from tomlkit.exceptions import KeyAlreadyPresent
 from tomlkit.exceptions import NonExistentKey
 from tomlkit.exceptions import TOMLKitError
@@ -23,13 +24,12 @@ from tomlkit.items import Item
 from tomlkit.items import Key
 from tomlkit.items import Null
 from tomlkit.items import SingleKey
+from tomlkit.items import String
+from tomlkit.items import StringType
 from tomlkit.items import Table
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
 from tomlkit.items import item as _item
-
-
-_NOT_SET = object()
 
 
 def _is_empty_aot(item: Item) -> bool:
@@ -543,7 +543,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._map[key] = len(self._body)
 
         self._body.append((key, item))
-        if item.is_table() and key is not None:
+        if isinstance(item, (Table, AoT)) and key is not None:
             self._table_keys.append(key)
 
         if key is not None:
@@ -586,53 +586,6 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._body[idx] = (None, Null())
 
         dict.__delitem__(self, key.key)
-
-        return self
-
-    def _insert_after(
-        self, key: Key | str, other_key: Key | str, item: Any
-    ) -> Container:
-        if key is None:
-            raise ValueError("Key cannot be null in insert_after()")
-
-        if key not in self:
-            raise NonExistentKey(key)
-
-        if not isinstance(key, Key):
-            key = SingleKey(key)
-
-        if not isinstance(other_key, Key):
-            other_key = SingleKey(other_key)
-
-        item = _item(item)
-
-        idx = self._map[key]
-        # Insert after the max index if there are many.
-        if isinstance(idx, tuple):
-            idx = max(idx)
-        current_item = self._body[idx][1]
-        if "\n" not in current_item.trivia.trail:
-            current_item.trivia.trail += "\n"
-
-        # Increment indices after the current index
-        for k, v in self._map.items():
-            if isinstance(v, tuple):
-                new_indices = []
-                for v_ in v:
-                    if v_ > idx:
-                        v_ = v_ + 1
-
-                    new_indices.append(v_)
-
-                self._map[k] = tuple(new_indices)
-            elif v > idx:
-                self._map[k] = v + 1
-
-        self._map[other_key] = idx + 1
-        self._body.insert(idx + 1, (other_key, item))
-
-        if key is not None:
-            dict.__setitem__(self, other_key.key, item.value)
 
         return self
 
@@ -685,11 +638,15 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
     def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         """Get an item for the given key."""
-        if not isinstance(key, Key):
+        # SingleKey hashes and compares like its string, so a plain str can
+        # probe _map directly.
+        if type(key) is not str and not isinstance(key, Key):
             key = SingleKey(key)
 
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
+            if isinstance(key, str):
+                key = SingleKey(key)
             raise NonExistentKey(key)
 
         if isinstance(idx, tuple):
@@ -896,16 +853,12 @@ class Container(_CustomDict):  # type: ignore[type-arg]
         return item
 
     def __contains__(self, key: object) -> bool:
-        # Native membership test. The inherited ``MutableMapping.__contains__``
-        # resolves the value via ``__getitem__``/``item()`` (and builds a
-        # ``NonExistentKey`` on every absent key) only to discard it. Resolve the
-        # key the same way ``item()`` does -- ``str`` becomes a ``SingleKey``
-        # (a non-str/non-``Key`` argument still raises ``TypeError``) -- then
-        # probe ``_map`` directly. For an out-of-order table the proxy is still
-        # built so its validation runs exactly as before.
-        if not isinstance(key, Key):
+        # Exact strings can probe _map directly. Other queries keep
+        # normalization, including its TypeError for invalid key types.
+        # Out-of-order tables must still validate their fragments.
+        if type(key) is not str and not isinstance(key, Key):
             key = SingleKey(key)  # type: ignore[arg-type]
-        idx = self._map.get(key)
+        idx = self._map.get(key)  # type: ignore[arg-type]
         if idx is None:
             return False
         if isinstance(idx, tuple):
@@ -913,14 +866,35 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             # if the validation cache covers exactly these fragments they
             # are already known to merge cleanly, so skip rebuilding the
             # proxy (which is linear in the number of fragments)
-            validated, _ = self._validation_cache.get(key, (0, None))
+            validated, _ = self._validation_cache.get(key, (0, None))  # type: ignore[arg-type]
             if not (self._parsed and validated == len(idx)):
                 OutOfOrderTableProxy(self, idx)
         return True
 
+    def _item_for_key(
+        self, key: Key | str, value: object, parent: Item | None = None
+    ) -> Item:
+        # Inspect plain strings before conversion, so an explicit String keeps
+        # the caller's chosen quoting style.
+        if isinstance(value, str) and not isinstance(value, String):
+            previous = self.get(key)
+            if isinstance(previous, String) and previous._t is StringType.SLL:
+                try:
+                    return String.from_raw(value, StringType.SLL)
+                except InvalidStringError:
+                    # Some values need the escaping provided by a basic string.
+                    pass
+        return _item(value, _parent=parent)
+
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if key in self:
-            old_key = next(filter(lambda k: k == key, self._map))
+            # The body slot that _map points to holds the stored key.
+            idx = self._map[key]  # type: ignore[index]
+            if isinstance(idx, tuple):
+                idx = idx[0]
+            old_key = self._body[idx][0]
+            assert old_key is not None
+            value = self._item_for_key(key, value)
             self._replace(old_key, key, value)
         else:
             self.append(key, value)
@@ -1106,6 +1080,20 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
         return c
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        c = self.__class__(self._parsed)
+        memo[id(self)] = c
+        c._body = [
+            (copy.deepcopy(k, memo), copy.deepcopy(v, memo)) for k, v in self._body
+        ]
+        c._map = copy.deepcopy(self._map, memo)
+        c._table_keys = copy.deepcopy(self._table_keys, memo)
+        c._out_of_order_keys = copy.deepcopy(self._out_of_order_keys, memo)
+        for k, v in dict.items(self):
+            dict.__setitem__(c, k, copy.deepcopy(v, memo))
+
+        return c
+
     def _previous_item_with_index(
         self, idx: int | None = None, ignore: tuple[type, ...] = (Null,)
     ) -> tuple[int, Item] | None:
@@ -1254,11 +1242,13 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
         _key: Key = key if isinstance(key, Key) else SingleKey(key)
 
         if _key in self._tables_map:
-            # Overwrite the first table and remove others
+            # Overwrite the first occurrence and remove this key from later parts.
             map_indices = self._tables_map[_key]
             while len(map_indices) > 1:
                 table = self._tables[map_indices.pop()]
-                self._remove_table(table)
+                del table[key]
+                if not table:
+                    self._remove_table(table)
             old_value = self._tables[map_indices[0]][key]
             if _is_table_or_aot(old_value) and not _is_table_or_aot(value):
                 # Remove the entry from the map and set value again.
@@ -1268,11 +1258,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                 return
             self._tables[map_indices[0]][key] = value
         elif self._tables:
+            table_index = 0
             if not _is_table_or_aot(value):  # if the value is a plain value
-                for table in self._tables:
+                for i, table in enumerate(self._tables):
                     # find the first table that allows plain values
                     if any(not _is_table_or_aot(v) for _, v in table.items()):
-                        table[key] = value
+                        table_index = i
                         break
                 else:
                     # No part holds a plain value yet, so the chosen part must
@@ -1281,14 +1272,12 @@ class OutOfOrderTableProxy(_CustomDict):  # type: ignore[type-arg]
                     # turning a header-less super part concrete here would emit a
                     # second, duplicate header next to an existing concrete part
                     # and produce TOML that no longer parses.
-                    for table in self._tables:
+                    for i, table in enumerate(self._tables):
                         if not table.is_super_table():
-                            table[key] = value
+                            table_index = i
                             break
-                    else:
-                        self._tables[0][key] = value
-            else:
-                self._tables[0][key] = value
+            self._tables[table_index][key] = value
+            self._tables_map[_key] = [table_index]
         else:
             self._container[key] = value
 

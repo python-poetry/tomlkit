@@ -53,6 +53,18 @@ def test_escape_special_characters_in_key() -> None:
     assert result == "baz"
 
 
+def test_write_escapes_every_sequence_in_a_string() -> None:
+    value = 'say "hi" \\ \x00\t\x7f """"" end'
+    d = {"a": value, "m": string(value + "\n", multiline=True)}
+    expected = (
+        'a = "say \\"hi\\" \\\\ \\u0000\\t\\u007f \\"\\"\\"\\"\\" end"\n'
+        'm = """say "hi" \\\\ \\u0000\\t\\u007f ""\\""" end\n"""\n'
+    )
+
+    assert expected == dumps(d)
+    assert loads(dumps(d)) == d
+
+
 def test_write_inline_table_in_nested_arrays() -> None:
     d = {"foo": [[{"a": 1}]]}
     expected = "foo = [[{a = 1}]]\n"

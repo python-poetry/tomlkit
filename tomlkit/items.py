@@ -7,6 +7,7 @@ import inspect
 import re
 import string
 
+from collections.abc import Callable
 from collections.abc import Collection
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -19,6 +20,7 @@ from datetime import tzinfo
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import SupportsIndex
 from typing import TypeVar
 from typing import overload
 
@@ -30,6 +32,7 @@ from tomlkit._types import _CustomInt
 from tomlkit._types import _CustomList
 from tomlkit._utils import CONTROL_CHARS
 from tomlkit._utils import escape_string
+from tomlkit._utils import validate_comment
 from tomlkit.exceptions import ConvertError
 from tomlkit.exceptions import InvalidStringError
 
@@ -300,7 +303,7 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             value.microsecond,
             value.tzinfo,
             Trivia(),
-            value.isoformat().replace("+00:00", "Z"),
+            _format_datetime(value).replace("+00:00", "Z"),
             fold=value.fold,
         )
     elif isinstance(value, date):
@@ -321,14 +324,34 @@ def item(value: Any, _parent: Item | None = None, _sort_keys: bool = False) -> I
             try:
                 # Check if encoder accepts keyword arguments for backward compatibility
                 sig = inspect.signature(encoder)
-                if "_parent" in sig.parameters or any(
+                has_kwargs = any(
                     p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
-                ):
-                    # New style encoder that can accept additional parameters
-                    rv = encoder(value, _parent=_parent, _sort_keys=_sort_keys)  # type: ignore[call-arg]
-                else:
-                    # Old style encoder that only accepts value
-                    rv = encoder(value)
+                )
+                first_parameter = next(iter(sig.parameters.values()), None)
+                bound_name = (
+                    first_parameter.name
+                    if first_parameter is not None
+                    and first_parameter.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+                    else None
+                )
+                context = {"_parent": _parent, "_sort_keys": _sort_keys}
+                kwargs = {
+                    name: argument
+                    for name, argument in context.items()
+                    if name != bound_name
+                    and (
+                        has_kwargs
+                        or (
+                            name in sig.parameters
+                            and sig.parameters[name].kind
+                            in (
+                                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                                inspect.Parameter.KEYWORD_ONLY,
+                            )
+                        )
+                    )
+                }
+                rv = encoder(value, **kwargs)
             except ConvertError:
                 pass
             else:
@@ -353,10 +376,36 @@ def _format_time(value: time) -> str:
     return s
 
 
+def _format_datetime(value: datetime) -> str:
+    # TOML offsets are ``HH:MM``, but ``isoformat`` adds seconds for an
+    # offset that is not a whole number of minutes (e.g. the LMT offsets
+    # ``zoneinfo`` gives for historical dates), which no TOML parser accepts.
+    # Such a value is written as the same instant in UTC. The conversion
+    # uses a plain ``datetime`` so it does not go back through ``_new``.
+    offset = value.utcoffset()
+    if offset is None or not offset % timedelta(minutes=1):
+        return value.isoformat()
+    utc = (
+        datetime(
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            value.microsecond,
+        )
+        - offset
+    )
+    return utc.isoformat() + "+00:00"
+
+
 # A carriage return that is not the CR of a CRLF line ending. Inside a multiline
 # string only a raw line feed or a CRLF pair is a valid line ending; a lone CR is
 # a control character that a basic string must escape.
 _BARE_CR = re.compile(r"\r(?!\n)")
+
+_BARE_KEY_CHARS = frozenset(string.ascii_letters + string.digits + "-_")
 
 
 class StringType(Enum):
@@ -381,27 +430,14 @@ class StringType(Enum):
     @property
     def escaped_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
-        escaped_in_basic = CONTROL_CHARS | {"\\"}
-        allowed_in_multiline = {"\n", "\r"}
-        return {
-            StringType.SLB: escaped_in_basic | {'"'},
-            StringType.MLB: (escaped_in_basic | {'"""'}) - allowed_in_multiline,
-            StringType.SLL: (),
-            StringType.MLL: (),
-        }[self]
+        return _ESCAPED_SEQUENCES[self]
 
     @property
     def invalid_sequences(self) -> Collection[str]:
         # https://toml.io/en/v1.0.0#string
-        forbidden_in_literal = CONTROL_CHARS - {"\t"}
         # CR stays forbidden in multiline: the value is checked with CRLF
         # pairs collapsed, so any remaining CR is a lone control character
-        return {
-            StringType.SLB: (),
-            StringType.MLB: (),
-            StringType.SLL: forbidden_in_literal | {"'"},
-            StringType.MLL: (forbidden_in_literal | {"'''"}) - {"\n"},
-        }[self]
+        return _INVALID_SEQUENCES[self]
 
     @property
     def unit(self) -> str:
@@ -426,6 +462,23 @@ class StringType(Enum):
             StringType.SLL: StringType.MLL,
             StringType.MLL: StringType.SLL,
         }[self]
+
+
+_ESCAPED_IN_BASIC = CONTROL_CHARS | {"\\"}
+_FORBIDDEN_IN_LITERAL = CONTROL_CHARS - {"\t"}
+_ESCAPED_SEQUENCES: dict[StringType, Collection[str]] = {
+    StringType.SLB: _ESCAPED_IN_BASIC | {'"'},
+    # raw line breaks are allowed in multiline strings
+    StringType.MLB: (_ESCAPED_IN_BASIC | {'"""'}) - {"\n", "\r"},
+    StringType.SLL: (),
+    StringType.MLL: (),
+}
+_INVALID_SEQUENCES: dict[StringType, Collection[str]] = {
+    StringType.SLB: (),
+    StringType.MLB: (),
+    StringType.SLL: _FORBIDDEN_IN_LITERAL | {"'"},
+    StringType.MLL: (_FORBIDDEN_IN_LITERAL | {"'''"}) - {"\n"},
+}
 
 
 class BoolType(Enum):
@@ -532,9 +585,7 @@ class SingleKey(Key):
             raise TypeError("Keys must be strings")
 
         if t is None:
-            if not k or any(
-                c not in string.ascii_letters + string.digits + "-" + "_" for c in k
-            ):
+            if not k or not _BARE_KEY_CHARS.issuperset(k):
                 t = KeyType.Basic
             else:
                 t = KeyType.Bare
@@ -628,8 +679,7 @@ class Item:
 
     def comment(self, comment: str) -> Item:
         """Attach a comment to this item"""
-        if "\n" in comment or "\r" in comment:
-            raise ValueError("Comment cannot contain line breaks")
+        validate_comment(comment)
         if not comment.strip().startswith("#"):
             comment = "# " + comment
 
@@ -769,7 +819,7 @@ class Integer(Item, _CustomInt):
         if self._sign and result >= 0:
             raw = f"+{raw}"
 
-        return Integer(result, self._trivia, raw)
+        return Integer(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, Trivia, str]:
         return int(self), self._trivia, self._raw
@@ -994,7 +1044,7 @@ class Float(Item, _CustomFloat):
         if self._sign and result >= 0 and not raw.startswith("-"):
             raw = f"+{raw}"
 
-        return Float(result, self._trivia, raw)
+        return Float(result, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[float, Trivia, str]:
         return float(self), self._trivia, self._raw
@@ -1068,7 +1118,15 @@ class Float(Item, _CustomFloat):
             return result  # type: ignore[return-value]
         return self._new(result)
 
-    def __round__(self, ndigits: int = 0) -> Float:  # type: ignore[override]
+    @overload
+    def __round__(self, ndigits: None = None) -> Integer: ...
+
+    @overload
+    def __round__(self, ndigits: SupportsIndex) -> Float: ...
+
+    def __round__(self, ndigits: SupportsIndex | None = None) -> Integer | Float:
+        if ndigits is None:
+            return Integer._new(self, float.__round__(self))  # type: ignore[arg-type]
         return self._new(float.__round__(self, ndigits))
 
     def __rpow__(self, other: object, mod: None = None) -> Float:
@@ -1205,7 +1263,7 @@ class DateTime(Item, datetime):
     ) -> None:
         super().__init__(trivia or Trivia())
 
-        self._raw = raw or self.isoformat()
+        self._raw = raw or _format_datetime(self)
 
     def unwrap(self) -> datetime:
         (
@@ -1282,14 +1340,14 @@ class DateTime(Item, datetime):
     def replace(self, *args: object, **kwargs: object) -> DateTime:
         return self._new(super().replace(*args, **kwargs))  # type: ignore[arg-type]
 
-    def astimezone(self, tz: tzinfo) -> DateTime:  # type: ignore[override]
+    def astimezone(self, tz: tzinfo | None = None) -> DateTime:
         result = super().astimezone(tz)
         if PY38:
             return result
         return self._new(result)
 
     def _new(self, result: datetime) -> DateTime:
-        raw = result.isoformat()
+        raw = _format_datetime(result)
 
         return DateTime(
             result.year,
@@ -1300,7 +1358,7 @@ class DateTime(Item, datetime):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -1395,7 +1453,7 @@ class Date(Item, date):
     def _new(self, result: date) -> Date:
         raw = result.isoformat()
 
-        return Date(result.year, result.month, result.day, self._trivia, raw)
+        return Date(result.year, result.month, result.day, self._trivia.copy(), raw)
 
     def _getstate(self, protocol: int = 3) -> tuple[int, int, int, Trivia, str]:
         return (self.year, self.month, self.day, self._trivia, self._raw)
@@ -1461,7 +1519,7 @@ class Time(Item, time):
             result.second,
             result.microsecond,
             result.tzinfo,
-            self._trivia,
+            self._trivia.copy(),
             raw,
             fold=result.fold,
         )
@@ -1663,8 +1721,8 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             4, 5, 6,
         ]
         """
-        if comment and ("\n" in comment or "\r" in comment):
-            raise ValueError("Comment cannot contain line breaks")
+        if comment:
+            validate_comment(comment)
         new_values: list[Item] = []
         first_indent = f"\n{indent}" if newline else indent
         if first_indent:
@@ -1722,6 +1780,13 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
         list.clear(self)
         self._index_map.clear()
         self._value.clear()
+
+    def sort(
+        self, *, key: Callable[[Any], Any] | None = None, reverse: bool = False
+    ) -> None:
+        """Sort the array while preserving its formatting."""
+        for index, value in enumerate(sorted(self, key=key, reverse=reverse)):
+            self[index] = value
 
     def __len__(self) -> int:
         return list.__len__(self)
@@ -1799,7 +1864,14 @@ class Array(Item, _CustomList):  # type: ignore[type-arg]
             indent = Whitespace(default_indent)
         new_item = _ArrayItemGroup(value=it, indent=indent, comma=comma)
         self._value.insert(idx, new_item)
-        self._reindex()
+        if (
+            pos >= length
+            and len(self._index_map) == length
+            and not isinstance(it, (Comment, Whitespace, Null))
+        ):
+            self._index_map[length] = idx
+        else:
+            self._reindex()
 
     def __delitem__(self, key: int | slice) -> None:  # type: ignore[override]
         length = len(self)
@@ -1943,7 +2015,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
     def item(self, key: Key | str) -> Item | OutOfOrderTableProxy:
         return self._value.item(key)
 
-    def setdefault(self, key: Key | str, default: Any) -> Any:  # type: ignore[override]
+    def setdefault(self, key: Key | str, default: Any = None) -> Any:
         super().setdefault(key, default)
         return self[key]
 
@@ -1979,7 +2051,7 @@ class AbstractTable(Item, _CustomDict):  # type: ignore[type-arg]
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
 
         is_replace = key in self
         self._value[key] = value
@@ -2038,6 +2110,18 @@ class Table(AbstractTable):
             self.display_name,
         )
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Table:
+        res = type(self)(
+            copy.deepcopy(self._value, memo),
+            copy.deepcopy(self._trivia, memo),
+            self._is_aot_element,
+            self._is_super_table,
+            self.name,
+            self.display_name,
+        )
+        memo[id(self)] = res
+        return res
+
     def append(self, key: Key | str | None, _item: Any) -> Table:
         """
         Appends a (key, item) to the table.
@@ -2060,7 +2144,9 @@ class Table(AbstractTable):
 
         indent = m.group(1)
 
-        if not isinstance(_item, Whitespace):
+        # A table split out of order is looked up as an OutOfOrderTableProxy,
+        # which has no trivia; its parts keep their own indentation.
+        if isinstance(_item, Item) and not isinstance(_item, Whitespace):
             m = re.match("(?s)^([^ ]*)(.*)$", _item.trivia.indent)
             if not m:
                 _item.trivia.indent = indent
@@ -2325,18 +2411,30 @@ class InlineTable(AbstractTable):
                     f"{prefix}{v.trivia.indent}{k.as_string()}{k.sep}{v.as_string()}"
                     f"{v.trivia.comment_ws}{v.trivia.comment}{trail}"
                 )
+        if not parts:
+            # every key under the prefix was removed, keep it as an empty table
+            return [f"{key.as_string()} = {{}}"]
         return parts
 
     def __setitem__(self, key: Key | str, value: Any) -> None:
         if hasattr(value, "trivia") and value.trivia.comment:
             value.trivia.comment = ""
         if not isinstance(value, Item):
-            value = item(value, _parent=self)
+            value = self._value._item_for_key(key, value, parent=self)
         self._validate_child(value)
         super().__setitem__(key, value)
 
     def __copy__(self) -> InlineTable:
         return type(self)(self._value.copy(), self._trivia.copy(), self._new)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> InlineTable:
+        res = type(self)(
+            copy.deepcopy(self._value, memo),
+            copy.deepcopy(self._trivia, memo),
+            self._new,
+        )
+        memo[id(self)] = res
+        return res
 
     def _getstate(self, protocol: int = 3) -> tuple[container.Container, Trivia]:
         return (self._value, self._trivia)
@@ -2389,7 +2487,7 @@ class String(str, Item):
         return self._new(result, original)
 
     def _new(self, result: str, original: str) -> String:
-        return String(self._t, result, original, self._trivia)
+        return String(self._t, result, original, self._trivia.copy())
 
     def _getstate(self, protocol: int = 3) -> tuple[StringType, str, str, Trivia]:
         return self._t, str(self), self._original, self._trivia
@@ -2406,20 +2504,19 @@ class String(str, Item):
         if any(c in checked for c in invalid):
             raise InvalidStringError(value, invalid, type_.value)
 
-        escaped = type_.escaped_sequences
-        string_value = escape_string(value, escaped) if escape and escaped else value
+        string_value = value
+        if escape:
+            string_value = escape_string(string_value, type_.escaped_sequences)
+            if type_ is StringType.MLB and escape:
+                string_value = _BARE_CR.sub(r"\\r", string_value)
+            if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
+                # A newline immediately following the opening delimiter of a
+                # multiline string is trimmed by the parser, so a value that
+                # starts with a newline would otherwise lose it on round-trip.
+                # Emit an extra leading newline (the trimmed one) to preserve it.
+                string_value = "\n" + string_value
 
-        if type_ is StringType.MLB and escape:
-            string_value = _BARE_CR.sub(r"\\r", string_value)
-
-        if type_.is_multiline() and string_value[:1] in ("\n", "\r"):
-            # A newline immediately following the opening delimiter of a
-            # multiline string is trimmed by the parser, so a value that
-            # starts with a newline would otherwise lose it on round-trip.
-            # Emit an extra leading newline (the trimmed one) to preserve it.
-            string_value = "\n" + string_value
-
-        return cls(type_, decode(value), string_value, Trivia())
+        return cls(type_, value, string_value, Trivia())
 
 
 class AoT(Item, _CustomList):  # type: ignore[type-arg]
@@ -2473,7 +2570,19 @@ class AoT(Item, _CustomList):  # type: ignore[type-arg]
         return self._body[key]
 
     def __setitem__(self, key: slice | int, value: Any) -> None:  # type: ignore[override]
-        self._body[key] = item(value, _parent=self)
+        if isinstance(key, slice):
+            value = [item(v, _parent=self) for v in value]
+            for table in value:
+                if not isinstance(table, Table):
+                    raise ValueError(
+                        f"Unsupported assignment value type: {type(table)}"
+                    )
+        else:
+            value = item(value, _parent=self)
+            if not isinstance(value, Table):
+                raise ValueError(f"Unsupported assignment value type: {type(value)}")
+        self._body[key] = value
+        list.__setitem__(self, key, value)
 
     def __delitem__(self, key: slice | int) -> None:  # type: ignore[override]
         del self._body[key]

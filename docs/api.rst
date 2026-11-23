@@ -19,7 +19,14 @@ TOML Document
 
 .. autoclass:: TOMLDocument
    :show-inheritance:
-   :inherited-members:
+   :members: add, append, as_string, clear, copy, fromkeys, get, item, items, keys,
+             last_item, pop, popitem, remove, setdefault, unwrap, update, value,
+             values
+
+Container
+---------
+
+.. autoclass:: tomlkit.container.Container
 
 
 TOML File

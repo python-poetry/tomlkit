@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import ctypes
+import json
 import math
 import pickle
 import sys
@@ -40,6 +41,28 @@ from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import item
 from tomlkit.parser import Parser
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_array_sort_updates_serialized_values(reverse: bool) -> None:
+    document = parse("values = [3, 1, 2]\n")
+    values = document["values"]
+    values.sort(reverse=reverse)
+    expected = [3, 2, 1] if reverse else [1, 2, 3]
+    assert values == expected
+    assert parse(document.as_string())["values"] == expected
+    values[1] = 4
+    expected[1] = 4
+    assert parse(document.as_string())["values"] == expected
+
+
+def test_array_sort_with_key_preserves_formatting() -> None:
+    document = parse('values = [\n  "bb", # first\n  "a", # second\n  "ccc",\n]\n')
+    document["values"].sort(key=len)
+    assert document.as_string() == (
+        'values = [\n  "a", # first\n  "bb", # second\n  "ccc",\n]\n'
+    )
+    assert document["values"] == ["a", "bb", "ccc"]
 
 
 @pytest.fixture()
@@ -177,6 +200,93 @@ def test_aot_set_item() -> None:
     d[0] = ["c", "C"]
     assert isinstance(d[0], Array)
     assert d[0][1] == "C"
+
+
+@pytest.mark.parametrize(
+    ("index", "replacement", "expected"),
+    [
+        (slice(0, 1), [{"x": 4}, {"x": 5}], [4, 5, 2, 3]),
+        (slice(1, 1), [{"x": 4}], [1, 4, 2, 3]),
+        (slice(-1, None), [{"x": 4}], [1, 2, 4]),
+        (slice(None, None, 2), [{"x": 4}, {"x": 5}], [4, 2, 5]),
+        (slice(None, None, -2), [{"x": 4}, {"x": 5}], [5, 2, 4]),
+        (slice(1, 2), [], [1, 3]),
+        (slice(1, 1), [], [1, 2, 3]),
+    ],
+)
+def test_aot_slice_assignment_renders_tables(
+    index: slice, replacement: list[dict[str, int]], expected: list[int]
+) -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n")
+    a = doc["a"]
+    a[index] = replacement
+    expected_tables = [{"x": value} for value in expected]
+    assert a.unwrap() == expected_tables
+    assert a == expected_tables
+    assert json.loads(json.dumps(doc)) == {"a": expected_tables}
+    assert all(isinstance(table, Table) for table in a)
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+def test_aot_slice_assignment_accepts_tables() -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n")
+    replacement = item({"x": 3})
+    doc["a"][:1] = [replacement]
+    assert doc["a"][0] is replacement
+    assert parse(doc.as_string()).unwrap() == {"a": [{"x": 3}, {"x": 2}]}
+
+
+def test_aot_slice_assignment_invalid_length_does_not_mutate() -> None:
+    source = "[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n"
+    doc = parse(source)
+    with pytest.raises(ValueError, match="extended slice"):
+        doc["a"][::2] = [{"x": 4}]
+    assert doc.as_string() == source
+    assert doc.unwrap() == {"a": [{"x": 1}, {"x": 2}, {"x": 3}]}
+
+
+def test_aot_slice_assignment_empty() -> None:
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"][:] = []
+    assert len(doc["a"]) == 0
+    assert doc["a"].unwrap() == []
+    assert doc["a"] == []
+    assert json.loads(json.dumps(doc)) == {"a": []}
+
+
+def test_aot_integer_assignment_updates_list_storage() -> None:
+    doc = parse("[[a]]\nx = 1\n[[a]]\nx = 2\n")
+    doc["a"][0] = {"x": 3}
+    assert doc["a"] == [{"x": 3}, {"x": 2}]
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
+
+
+@pytest.mark.parametrize(
+    "index", [0, -1, slice(None), slice(None, None, 2), slice(None, None, -2)]
+)
+@pytest.mark.parametrize("invalid", [42, "text", [1, 2], api.inline_table()])
+def test_aot_assignment_rejects_non_tables_without_mutation(
+    index: int | slice, invalid: Any
+) -> None:
+    source = "[[a]]\nx = 1\n[[a]]\nx = 2\n[[a]]\nx = 3\n"
+    doc = parse(source)
+    replacement = [{"x": 3}, invalid] if isinstance(index, slice) else invalid
+    with pytest.raises(ValueError, match="Unsupported assignment value type"):
+        doc["a"][index] = replacement
+    assert doc.as_string() == source
+    assert doc["a"] == [{"x": 1}, {"x": 2}, {"x": 3}]
+    assert doc.unwrap() == {"a": [{"x": 1}, {"x": 2}, {"x": 3}]}
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+
+
+def test_aot_delete_after_slice_insertion() -> None:
+    doc = parse("[[a]]\nx = 1\n")
+    doc["a"][1:1] = [{"x": 2}]
+    del doc["a"][1]
+    assert doc["a"] == [{"x": 1}]
+    assert json.loads(json.dumps(doc)) == doc.unwrap()
+    assert parse(doc.as_string()).unwrap() == doc.unwrap()
 
 
 def test_time_unwrap() -> None:
@@ -701,6 +811,31 @@ bar = "baz"
     )
 
 
+@pytest.mark.parametrize(
+    ("content", "op"),
+    [
+        ("my_int = 1  # keep\n", lambda item: item + 1),
+        ("my_float = 1.5  # keep\n", lambda item: item + 1),
+        ('my_str = "a"  # keep\n', lambda item: item + "b"),
+        (
+            "my_dt = 1979-05-27T07:32:00Z  # keep\n",
+            lambda item: item + timedelta(days=1),
+        ),
+        ("my_date = 1979-05-27  # keep\n", lambda item: item + timedelta(days=1)),
+        ("my_time = 07:32:00  # keep\n", lambda item: item.replace(second=1)),
+    ],
+)
+def test_arithmetic_result_does_not_share_trivia(content: str, op: Callable) -> None:
+    doc = parse(content)
+    original = doc[next(iter(doc))]
+
+    result = op(original)
+    assert result.trivia is not original.trivia
+
+    result.trivia.comment = "# MUTATED"
+    assert doc.as_string() == content
+
+
 def test_add_float_to_int() -> None:
     content = "[table]\nmy_int = 2043"
     doc = parse(content)
@@ -775,6 +910,52 @@ def test_floats_behave_like_floats() -> None:
     assert doc.as_string() == "float = +35.12"
 
 
+@pytest.mark.parametrize("value", [-3.5, -2.5, 2.5, 3.5])
+@pytest.mark.parametrize("mode", ["omitted", "none", "direct"])
+def test_float_round_without_digits_returns_integer(value: float, mode: str) -> None:
+    wrapped = item(value)
+    if mode == "omitted":
+        result = round(wrapped)
+    elif mode == "none":
+        result = round(wrapped, None)
+    else:
+        result = wrapped.__round__(None)
+
+    assert isinstance(result, Integer)
+    assert result == round(value)
+    assert list(range(abs(result))) == list(range(abs(round(value))))
+    assert result.as_string() == str(round(value))
+
+
+@pytest.mark.parametrize("ndigits", [-1, 0, 1, 2])
+def test_float_round_with_digits_remains_float(ndigits: int) -> None:
+    value = 12.345
+    result = round(item(value), ndigits)
+    assert isinstance(result, float)
+    assert result == round(value, ndigits)
+    assert result.as_string() == str(round(value, ndigits))
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [(math.inf, OverflowError), (-math.inf, OverflowError), (math.nan, ValueError)],
+)
+def test_float_round_nonfinite_raises(value: float, error: type[Exception]) -> None:
+    with pytest.raises(error):
+        round(item(value))
+
+
+def test_float_round_to_integer_preserves_trivia() -> None:
+    content = "count = +2.5  # keep\n"
+    doc = parse(content)
+    original = doc["count"]
+    result = round(original)
+    assert result.trivia is not original.trivia
+    doc["count"] = result
+    assert doc.as_string() == "count = +2  # keep\n"
+    assert parse(doc.as_string())["count"] == 2
+
+
 def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None:
     i = item(datetime(2018, 7, 22, 12, 34, 56))
 
@@ -801,6 +982,18 @@ def test_datetimes_behave_like_datetimes(tz_utc: tzinfo, tz_pst: tzinfo) -> None
     doc["dt"] += timedelta(days=1)
 
     assert doc.as_string() == "dt = 2018-07-23T12:34:56-05:00"
+
+
+def test_datetime_astimezone_defaults_to_local_timezone() -> None:
+    value = parse("time = 1979-05-27T07:32:00Z # birthday\n")["time"]
+    expected = datetime(1979, 5, 27, 7, 32, tzinfo=timezone.utc).astimezone()
+
+    result = value.astimezone()
+
+    assert isinstance(result, DateTime)
+    assert result.unwrap() == expected
+    assert result.as_string() == expected.isoformat()
+    assert result == value.astimezone(None)
 
 
 @pytest.mark.parametrize("fold", [0, 1])
@@ -940,6 +1133,44 @@ def test_time_with_tzinfo_renders_as_local_time() -> None:
     j = i.replace(hour=13)
     assert j.as_string() == "13:32:00"
     assert parse(f"t = {j.as_string()}")["t"] == time(13, 32)
+
+
+@pytest.mark.parametrize(
+    "offset",
+    [
+        timedelta(seconds=30),
+        timedelta(hours=1, seconds=1),
+        -timedelta(minutes=44, seconds=30),
+        timedelta(microseconds=1),
+    ],
+)
+def test_datetime_with_sub_minute_offset_renders_valid_toml(
+    offset: timedelta,
+) -> None:
+    # TOML offsets are whole minutes (``HH:MM``), but ``isoformat`` adds
+    # seconds for other offsets, such as the LMT offsets zoneinfo gives for
+    # historical dates. Such a value is written as the same instant in UTC.
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(offset))
+
+    i = item(value)
+    assert parse(f"dt = {i.as_string()}")["dt"] == value
+    assert parse(api.dumps({"dt": value}))["dt"] == value
+
+    j = item(datetime(2020, 1, 1, tzinfo=timezone.utc)).astimezone(timezone(offset))
+    assert parse(f"dt = {j.as_string()}")["dt"] == j
+
+    k = item(datetime(2020, 1, 1)).replace(tzinfo=timezone(offset))
+    assert parse(f"dt = {k.as_string()}")["dt"] == k
+
+
+def test_datetime_with_sub_minute_offset_keeps_value_fields() -> None:
+    value = datetime(1900, 1, 1, 12, 0, tzinfo=timezone(timedelta(seconds=30)))
+    i = item(value)
+
+    assert i.as_string() == "1900-01-01T11:59:30Z"
+    assert i == value
+    assert i.hour == 12
+    assert i.tzinfo == timezone(timedelta(seconds=30))
 
 
 def test_strings_behave_like_strs() -> None:
@@ -1256,6 +1487,33 @@ def test_adding_to_nested_dotted_key_inside_inline_table() -> None:
     assert rendered == "a = {b.c.e = 1, b.c.g = 2}\n"
     assert parse(rendered) == {"a": {"b": {"c": {"e": 1, "g": 2}}}}
     assert parse(rendered).as_string() == rendered
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("a = {x = 1, b.c = 1, y = 2}\n", "a = {x = 1, b = {}, y = 2}\n"),
+        ("a = {x = 1, b.c = 1}\n", "a = {x = 1, b = {}}\n"),
+        ("a = {b.c = 1, y = 2}\n", "a = {b = {}, y = 2}\n"),
+        ("a = {b.c = 1}\n", "a = {b = {}}\n"),
+    ],
+)
+def test_emptying_dotted_key_inside_inline_table(content: str, expected: str) -> None:
+    doc = parse(content)
+    del doc["a"]["b"]["c"]
+
+    # With nothing left under the ``b.`` prefix, the table must still render
+    # as a key, not as an empty slot between two commas.
+    assert doc.as_string() == expected
+    assert parse(expected) == doc
+
+
+def test_emptying_nested_dotted_key_inside_inline_table() -> None:
+    doc = parse("a = {x = 1, b.c.d = 1, y = 2}\n")
+    del doc["a"]["b"]["c"]["d"]
+
+    assert doc.as_string() == "a = {x = 1, b.c = {}, y = 2}\n"
+    assert parse(doc.as_string()) == doc
 
 
 def test_appending_to_comma_first_array_does_not_double_separator() -> None:
@@ -1683,3 +1941,35 @@ def test_out_of_order_table_proxy_membership() -> None:
         _ = 123 in table
     # membership must not resolve values or mutate the document
     assert doc.as_string() == content
+
+
+@pytest.mark.parametrize("inline", [False, True])
+@pytest.mark.parametrize("literal, expected", [("0", 0), ("false", False), ('""', "")])
+def test_table_setdefault_existing_key_without_default(
+    inline: bool, literal: str, expected: int | bool | str
+) -> None:
+    if inline:
+        source = f"settings = {{ value = {literal} }} # preserve formatting\n"
+    else:
+        source = f"[settings] # preserve formatting\nvalue = {literal}\n"
+    document = parse(source)
+    settings = document["settings"]
+    assert isinstance(settings, (Table, InlineTable))
+
+    assert settings.setdefault("value") == expected
+    assert api.dumps(document) == source
+
+
+@pytest.mark.parametrize("inline", [False, True])
+def test_table_setdefault_missing_key_without_default_preserves_document(
+    inline: bool,
+) -> None:
+    from tomlkit.exceptions import ConvertError
+
+    source = "settings = { value = 1 }\n" if inline else "[settings]\nvalue = 1\n"
+    document = parse(source)
+    settings = document["settings"]
+    assert isinstance(settings, (Table, InlineTable))
+    with pytest.raises(ConvertError):
+        settings.setdefault("missing")
+    assert api.dumps(document) == source

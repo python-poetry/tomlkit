@@ -302,6 +302,19 @@ def test_date() -> None:
         tomlkit.date("12:34:56")
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "1979-05-13T12:34:56",
+        "1979-05-13T12:34:56Z",
+        "1979-05-13T12:34:56+02:00",
+    ],
+)
+def test_date_rejects_datetime_strings(raw: str) -> None:
+    with pytest.raises(ValueError, match=r"date\(\) only accepts date strings"):
+        tomlkit.date(raw)
+
+
 def test_time() -> None:
     dt = tomlkit.time("12:34:56")
 
@@ -334,6 +347,54 @@ def test_comment_multiline_is_valid_toml() -> None:
     assert rendered == "# line one\n# line two\n#\n# line four\n"
     # The rendered document must round-trip.
     assert parse(rendered).as_string() == rendered
+
+
+@pytest.mark.parametrize(
+    "character", [chr(code) for code in range(32) if code not in (9, 10, 13)] + ["\x7f"]
+)
+@pytest.mark.parametrize("kind", ["standalone", "item", "array"])
+def test_comments_reject_control_characters(character: str, kind: str) -> None:
+    doc = parse("value = 1 # original\nvalues = [1]\n")
+    original = doc.as_string()
+    text = f"before{character}after"
+
+    with pytest.raises(ValueError, match="Comment cannot contain"):
+        if kind == "standalone":
+            doc.add(tomlkit.comment(text))
+        elif kind == "item":
+            doc["value"].comment(text)
+        else:
+            doc["values"].add_line(2, comment=text)
+
+    assert doc.as_string() == original
+    assert doc.unwrap() == {"value": 1, "values": [1]}
+
+
+@pytest.mark.parametrize("text", ["before\rafter", "before\r", "before\r\r\nafter"])
+def test_comment_rejects_bare_carriage_return(text: str) -> None:
+    with pytest.raises(ValueError, match="Comment cannot contain"):
+        tomlkit.comment(text)
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_comment_preserves_valid_line_endings(newline: str) -> None:
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment(f"one{newline}two{newline}"))
+    rendered = f"# one{newline}# two{newline}#\n"
+    assert doc.as_string() == rendered
+    assert parse(rendered).as_string() == rendered
+
+
+def test_comment_apis_preserve_tabs_and_unicode() -> None:
+    text = "tab\tunicode \u00e9 \u0085 \u2028"
+    doc = parse("value = 1\nvalues = []\n")
+    doc.add(tomlkit.comment(text))
+    doc["value"].comment(text)
+    doc["values"].add_line(2, comment=text)
+    rendered = doc.as_string()
+    assert rendered.count(text) == 3
+    assert parse(rendered).as_string() == rendered
+    assert parse(rendered).unwrap() == {"value": 1, "values": [2]}
 
 
 def test_array() -> None:
@@ -803,3 +864,17 @@ def test_integer_rejects_invalid_strings(raw: str) -> None:
 def test_integer_from_int_unchanged() -> None:
     assert tomlkit.integer(1000).as_string() == "1000"
     assert int(tomlkit.integer(1000)) == 1000
+
+
+def test_parse_dotted_key_with_subsequent_key_at_nesting_limit() -> None:
+    """Issue #714: dotted key at nesting limit with subsequent key parses without RecursionError."""
+    depth = Parser.MAX_NESTING_DEPTH
+    key = ".".join(["a"] * depth)
+
+    # Document root
+    doc_root = tomlkit.parse(f"{key} = 1\na.b = 2\n")
+    assert doc_root["a"]["b"] == 2
+
+    # Inside table
+    doc_table = tomlkit.parse(f"[t]\n{key} = 1\na.b = 2\n")
+    assert doc_table["t"]["a"]["b"] == 2
