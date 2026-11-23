@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from datetime import date
 from datetime import datetime
@@ -33,6 +34,8 @@ def expected_temporal(s: str) -> datetime | date | time:
     The corpus values are RFC 3339 / ISO 8601. Using stdlib constructors here
     keeps the compliance tests an independent oracle for ``parse_rfc3339``.
     """
+    # Python 3.9/3.10 only accept three or six fractional digits.
+    s = re.sub(r"\.(\d+)", lambda m: "." + m[1][:6].ljust(6, "0"), s)
     if len(s) == 10 and s[4] == "-" and s[7] == "-":
         return date.fromisoformat(s)
     if len(s) >= 3 and s[0].isdigit() and s[2] == ":":
