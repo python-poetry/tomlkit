@@ -2,21 +2,38 @@
 
 ## [Unreleased]
 
+## [0.15.3] - 2026-11-24
+
 ### Changed
 
-- Speed up looking up and replacing keys in tables: string lookups no longer build a temporary key, and replacing an existing value no longer scans every key in the table, which made updating many keys of a large table quadratic.
-- Speed up repeated array appends by keeping existing indexes instead of rebuilding them.
-- Speed up creating string values and keys, e.g. when building a document from Python data and dumping it: strings are escaped in one pass instead of per character, and the escape and bare-key character sets are built once.
+- Speed up looking up and replacing keys in tables: string lookups no longer build a temporary key, and replacing an existing value no longer scans every key in the table, which made updating many keys of a large table quadratic. ([#704](https://github.com/python-poetry/tomlkit/pull/704))
+- Speed up repeated array appends by keeping existing indexes instead of rebuilding them. ([#666](https://github.com/python-poetry/tomlkit/pull/666))
+- Speed up creating string values and keys, e.g. when building a document from Python data and dumping it: strings are escaped in one pass instead of per character, and the escape and bare-key character sets are built once. ([#709](https://github.com/python-poetry/tomlkit/pull/709))
+- `comment()`, `Item.comment()` and `Array.add_line(..., comment=...)` now raise `ValueError` for control characters that TOML forbids in comments (anything but tab, plus `DEL`), including a bare carriage return; `comment()` still accepts LF and CRLF line breaks. Previously such comments were written out and produced a document that could not be parsed back. ([#705](https://github.com/python-poetry/tomlkit/pull/705))
+- `date()` now raises `ValueError` when given a datetime string such as `"1979-05-13T12:34:56"` instead of returning a datetime. ([#673](https://github.com/python-poetry/tomlkit/pull/673))
+- `Array.sort()` now reorders the serialized values too, keeping the array's formatting and comments in place; previously `list.sort()` only reordered the Python list, so `dumps()` still wrote the old order. ([#644](https://github.com/python-poetry/tomlkit/pull/644))
 
 ### Fixed
 
 - `dumps(..., sort_keys=True)` now sorts the keys of a parsed document recursively, matching the behavior on a plain `dict`; previously only the top-level keys were sorted while nested tables, inline tables, arrays of tables and inline tables inside an array kept their original order. ([#614](https://github.com/python-poetry/tomlkit/issues/614))
-- Allow `Table.setdefault()` and `InlineTable.setdefault()` to retrieve existing values without supplying a default, matching document and mapping behavior.
-
-- Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`.
-- Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`.
-- Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document.
+- Allow `Table.setdefault()` and `InlineTable.setdefault()` to retrieve existing values without supplying a default, matching document and mapping behavior. ([#710](https://github.com/python-poetry/tomlkit/pull/710))
+- Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`. ([#701](https://github.com/python-poetry/tomlkit/pull/701))
+- Allow `DateTime.astimezone()` to use the local timezone when no timezone argument is supplied, matching `datetime.datetime`. ([#651](https://github.com/python-poetry/tomlkit/pull/651))
+- Arithmetic and `replace()` results for `Integer`, `Float`, `String`, `DateTime`, `Date` and `Time` no longer share the original item's `Trivia`, so changing the result's comment or indentation no longer rewrites the item still stored in the document. ([#683](https://github.com/python-poetry/tomlkit/pull/683))
+- Fix `round()` on a `Float` without `ndigits` returning a `Float` (e.g. `2.0`) instead of an `Integer`, matching `round()` on a plain `float`. ([#695](https://github.com/python-poetry/tomlkit/pull/695))
+- Fix a regression in 0.15.1 where `string(..., multiline=True, escape=False)` added an extra newline to a value starting with a newline, making it impossible to write such a raw string verbatim; with `escape=False` the value is now used as given again. ([#655](https://github.com/python-poetry/tomlkit/issues/655))
+- Preserve single-line literal quotes when replacing a table field with a plain string, falling back to basic quoting when the value requires escaping. ([#325](https://github.com/python-poetry/tomlkit/issues/325))
+- Fix invalid output after deleting the last key under a dotted key inside an inline table; the emptied table now renders as `b = {}`. ([#664](https://github.com/python-poetry/tomlkit/pull/664))
+- Fix valid TOML being rejected as a duplicate when an out-of-order table header extends a table built from several dotted keys, e.g. `[a]` with `b.c = 1` and `b.d = 2`, then `[a.b.e]` after another table. ([#632](https://github.com/python-poetry/tomlkit/issues/632))
 - Fix an `AttributeError` when a table is defined out of order under an indented header nested four or more levels deep, e.g. ` [a.b.c.d]` then `[a.b.c]`. ([#663](https://github.com/python-poetry/tomlkit/pull/663))
+- Fix an out-of-order table being moved when it is separated from its sibling by an array of tables (e.g. `[tool.poetry]`, `[[plugins]]`, `[tool.other]`), so the document no longer round-trips unchanged. ([#702](https://github.com/python-poetry/tomlkit/pull/702))
+- Fix `update()` on an out-of-order table dropping sibling keys stored in its other fragments when one of the updated keys appears in a later fragment. ([#675](https://github.com/python-poetry/tomlkit/issues/675))
+- Fix deleting, popping or replacing a key that was newly added to an out-of-order table. ([#699](https://github.com/python-poetry/tomlkit/pull/699))
+- Fix `TOMLDocument.value` and comparisons keeping only the last fragment of an array of tables split by other tables; all entries are now included, matching `unwrap()`. ([#697](https://github.com/python-poetry/tomlkit/pull/697))
+- Fix assigning plain dicts to a slice of an array of tables (e.g. `doc["a"][:1] = [{"x": 4}]`) producing invalid output and leaving `unwrap()` and `json.dumps()` out of sync; an extended slice of the wrong length now raises before changing the document. ([#631](https://github.com/python-poetry/tomlkit/pull/631))
+- Assigning a value that is not a table to an item or slice of an array of tables now raises `ValueError` before changing the document. ([#712](https://github.com/python-poetry/tomlkit/pull/712))
+- Fix a `RecursionError` when parsing a dotted key at the maximum nesting depth followed by another key under the same prefix; `Container`, `Table` and `InlineTable` now implement `__deepcopy__`, and errors while assembling tables are reported as `ParseError`. ([#714](https://github.com/python-poetry/tomlkit/issues/714))
+- Custom encoders registered with `register_encoder()` now receive only the `_parent` and `_sort_keys` keyword arguments they declare (or both when they accept `**kwargs`); previously an encoder declaring `_parent` but not `_sort_keys` failed with `TypeError`, and one declaring only `_sort_keys` never received it. ([#698](https://github.com/python-poetry/tomlkit/pull/698))
 
 ## [0.15.2] - 2026-10-16
 
@@ -30,7 +47,6 @@
 
 ### Fixed
 
-- Fix invalid output after deleting the last key under a dotted key inside an inline table; the emptied table now renders as `b = {}`. ([#664](https://github.com/python-poetry/tomlkit/pull/664))
 - Fix valid TOML being rejected when an out-of-order table reopens an implicit super-table with a dotted key: `[a.b.c]` then `[a]` with `b.z = 1` extends the implicit `a.b` super-table rather than redefining it (stdlib `tomllib` accepts it), so it now parses and round-trips instead of raising `Redefinition of an existing table`. The concrete-table case (`[a.b]` then `[a]` `b.z = 1`) stays rejected. ([#565](https://github.com/python-poetry/tomlkit/pull/565))
 - Fix uppercase `E` exponent after a leading-zero mantissa (e.g. `0E2`) being rejected as an invalid number while `0e2` parsed fine. ([#586](https://github.com/python-poetry/tomlkit/pull/586))
 - Fix non-lowercase special floats (e.g. `Inf`, `NaN`, `-INF`) being accepted; TOML only allows lowercase `inf` and `nan`, so they now raise `ParseError`. ([#628](https://github.com/python-poetry/tomlkit/pull/628))
@@ -69,7 +85,6 @@
 
 ### Fixed
 
-- Preserve single-line literal quotes when replacing a table field with a plain string, falling back to basic quoting when the value requires escaping. ([#325](https://github.com/python-poetry/tomlkit/issues/325))
 - Fix `string()` dropping a leading newline of a multiline string on round-trip: a value beginning with a newline is now rendered with an extra leading newline (the one the parser trims after the opening delimiter) so it survives re-parsing.
 - Fix invalid serialization with a duplicated comma when removing a non-edge element from a parsed inline table. ([#486](https://github.com/python-poetry/tomlkit/pull/486))
 - Fix invalid serialization with a duplicated comma when appending or inserting into a comma-first formatted array. ([#499](https://github.com/python-poetry/tomlkit/pull/499))
@@ -551,7 +566,8 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.2...master
+[unreleased]: https://github.com/python-poetry/tomlkit/compare/0.15.3...master
+[0.15.3]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.3
 [0.15.2]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.2
 [0.15.1]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.1
 [0.15.0]: https://github.com/python-poetry/tomlkit/releases/tag/0.15.0
