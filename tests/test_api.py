@@ -192,6 +192,69 @@ def test_parsed_document_can_be_dumped_with_sorted_keys() -> None:
     assert dumps(doc, sort_keys=True) == 'aaa = "foo"\nzzz = 1\n'
 
 
+def test_dumps_with_sorted_keys_recurses_into_a_parsed_document() -> None:
+    # sort_keys used to sort only the top level of a parsed document, leaving
+    # nested tables, inline tables and arrays of tables in their original
+    # order (#614); the same option on a plain dict already sorted recursively.
+    doc = loads(
+        "[zeta]\nb = 2\na = 1\n\n"
+        "[alpha]\ninl = { z = 1, a = 2 }\n\n"
+        "[[items]]\nz = 1\na = 2\n"
+    )
+    original = dumps(doc)
+
+    assert dumps(doc, sort_keys=True) == (
+        "[[items]]\na = 2\nz = 1\n\n"
+        "[alpha]\ninl = { a = 2, z = 1 }\n\n"
+        "[zeta]\na = 1\nb = 2\n\n"
+    )
+    # A scalar keeps its place before a sub-table section it precedes, so the
+    # sorted output stays valid TOML rather than folding the key into the table.
+    nested = loads("[t]\nz = 1\n[t.sub]\nx = 1\n")
+    assert dumps(nested, sort_keys=True) == "[t]\nz = 1\n[t.sub]\nx = 1\n"
+
+    # Dumping with sorted keys must not mutate the document.
+    assert dumps(doc) == original
+
+
+def test_dumps_with_sorted_keys_sorts_inline_tables_inside_arrays() -> None:
+    # sort_keys must reach inline tables nested inside an ordinary array, not
+    # just tables, inline tables and arrays of tables, while keeping the
+    # array's element ORDER (a list is ordered data, not a key set). And
+    # reordering a tight inline table's keys must not leave a stray separator
+    # space on the new first key (#617 review).
+    doc = loads(
+        """\
+arr = [{z = 2, a = 1}, {y = 3, b = 4}]
+mix = [1, {n = 1, m = 2}, "s"]
+"""
+    )
+    original = dumps(doc)
+
+    assert dumps(doc, sort_keys=True) == (
+        """\
+arr = [{a = 1, z = 2}, {b = 4, y = 3}]
+mix = [1, {m = 2, n = 1}, "s"]
+"""
+    )
+    # A tight inline table keeps its compact spacing after sorting -- the
+    # reordered first key must not gain a leading separator space.
+    assert (
+        dumps(
+            loads("""\
+t = {z=2, a=1}
+"""),
+            sort_keys=True,
+        )
+        == """\
+t = {a=1, z=2}
+"""
+    )
+
+    # Sorting must not mutate the document.
+    assert dumps(doc) == original
+
+
 def test_dumps_weird_object() -> None:
     with pytest.raises(TypeError):
         dumps(object())  # type: ignore[arg-type]

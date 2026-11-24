@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- `dumps(..., sort_keys=True)` now sorts the keys of a parsed document recursively, matching the behavior on a plain `dict`; previously only the top-level keys were sorted while nested tables, inline tables, arrays of tables and inline tables inside an array kept their original order. ([#614](https://github.com/python-poetry/tomlkit/issues/614))
 - Allow `Table.setdefault()` and `InlineTable.setdefault()` to retrieve existing values without supplying a default, matching document and mapping behavior.
 
 - Fix `item()` and `dumps()` writing a `datetime` whose UTC offset is not a whole number of minutes (e.g. the historical LMT offsets `zoneinfo` gives, such as `-00:44:30`) as invalid TOML like `1900-01-01T12:00:00Z:30`, which no parser accepts. Such a value is now written as the same instant in UTC; this also covers `DateTime.replace()` and `astimezone()`.
