@@ -7,7 +7,6 @@ import string
 from typing import Any
 from typing import Callable
 
-from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE
 from tomlkit._utils import _escaped
 from tomlkit._utils import parse_rfc3339
@@ -102,7 +101,10 @@ class Parser:
 
     def __init__(self, string: str | bytes) -> None:
         # Input to parse
-        self._src = Source(decode(string))
+        if isinstance(string, bytes):
+            string = string.decode("utf-8")
+
+        self._src = Source(string)
 
         self._aot_stack: list[Key] = []
         self._nesting_depth = 0
