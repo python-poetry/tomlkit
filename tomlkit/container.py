@@ -375,6 +375,7 @@ class Container(_CustomDict):  # type: ignore[type-arg]
 
                     return self
                 elif current.is_super_table():
+                    self._validate_earlier_fragments(current_idx, item)
                     if item.is_super_table():
                         # We need to merge both super tables
                         if (
@@ -408,6 +409,24 @@ class Container(_CustomDict):  # type: ignore[type-arg]
                         # Mutating in place is O(1) per merge. The defensive copy
                         # that protected the out-of-order validation pass has been
                         # moved into OutOfOrderTableProxy (its only consumer).
+                        cached = self._validation_cache.get(key)
+                        if (
+                            cached is not None
+                            and isinstance(current_idx, tuple)
+                            and cached[0] == len(current_idx)
+                        ):
+                            # `current` is already merged into the cached
+                            # validation container of this out-of-order key;
+                            # merge the new part there too, or later fragments
+                            # would be validated against a stale copy.
+                            temp = cached[1]
+                            try:
+                                for k, v in item.value.body:
+                                    temp.append(k, copy.deepcopy(v), validate=True)
+                                temp._validate_out_of_order_table()
+                            except Exception:
+                                self._validation_cache.pop(key, None)
+                                raise
                         for k, v in item.value.body:
                             current.append(k, v)
 
@@ -491,27 +510,57 @@ class Container(_CustomDict):  # type: ignore[type-arg]
             self._validate_out_of_order_table(key)
         return self
 
+    def _validate_earlier_fragments(
+        self, idx: int | tuple[int, ...], candidate: Table
+    ) -> None:
+        # `append` compares a concrete `[table]` with the last fragment of an
+        # out-of-order table only; it must not redefine an earlier concrete or
+        # dotted-key fragment either, e.g. [a] [q] [a.b.c] [a] declares [a]
+        # twice. Nested collisions are caught by the incremental validation.
+        if candidate.is_super_table() or not isinstance(idx, tuple):
+            return
+        for i in idx[:-1]:
+            k, fragment = self._body[i]
+            if isinstance(fragment, Table) and (
+                not fragment.is_super_table() or (k is not None and k.is_dotted())
+            ):
+                raise KeyAlreadyPresent(k)
+
     def _validate_table_candidate(self, current: Table, candidate: Table) -> None:
         for k, v in candidate.value.body:
             if k is None:
                 continue
 
             if k in current.value._map:
-                existing = current.value.item(k)
-                if isinstance(existing, (Table, AoT)) != isinstance(v, (Table, AoT)):
-                    raise KeyAlreadyPresent(k)
-                if k.is_dotted() and not (
-                    isinstance(existing, Table) and existing.is_super_table()
-                ):
-                    raise TOMLKitError("Redefinition of an existing table")
-                if isinstance(existing, Table) and isinstance(v, Table):
-                    if not existing.is_super_table() and not v.is_super_table():
-                        # Both sides are concrete `[table]` definitions of the
-                        # same name; the table is declared twice.
+                index = current.value._map[k]
+                indices = index if isinstance(index, tuple) else (index,)
+                for i in indices:
+                    existing_key, existing = current.value._body[i]
+                    if isinstance(existing, (Table, AoT)) != isinstance(
+                        v, (Table, AoT)
+                    ):
                         raise KeyAlreadyPresent(k)
-                    # One side is still an implicit/super table, so a duplicate
-                    # (if any) is nested deeper - keep checking the subtree.
-                    self._validate_table_candidate(existing, v)
+                    if k.is_dotted() and not (
+                        isinstance(existing, Table) and existing.is_super_table()
+                    ):
+                        raise TOMLKitError("Redefinition of an existing table")
+                    if (
+                        existing_key is not None
+                        and existing_key.is_dotted()
+                        and isinstance(v, Table)
+                        and not v.is_super_table()
+                    ):
+                        # A table created by dotted keys (stored as a super
+                        # table) cannot be redefined by a `[table]` header.
+                        raise TOMLKitError("Redefinition of an existing table")
+                    if isinstance(existing, Table) and isinstance(v, Table):
+                        if not existing.is_super_table() and not v.is_super_table():
+                            # Both sides are concrete `[table]` definitions of the
+                            # same name; the table is declared twice.
+                            raise KeyAlreadyPresent(k)
+                        # One side is still an implicit/super table, so a duplicate
+                        # (if any) is nested deeper - keep checking the subtree.
+                        self._validate_table_candidate(existing, v)
                 continue
 
             if not k.is_dotted():
