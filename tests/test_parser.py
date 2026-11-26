@@ -7,6 +7,7 @@ from tomlkit import dumps
 from tomlkit import parse
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
+from tomlkit.exceptions import InvalidControlChar
 from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import ParseError
@@ -168,6 +169,28 @@ def test_multiline_string_still_rejects_control_chars() -> None:
         content = f'a = """ok{bad}bad"""'
         with pytest.raises(ParseError):
             Parser(content).parse()
+
+
+def test_comment_body_round_trips() -> None:
+    # The comment body is consumed by a bulk scan that stops at the line
+    # break or at an invalid control char. Comments with tabs, quotes and
+    # non-ASCII text must round-trip byte-for-byte, with LF and CRLF endings.
+    for comment in ("# plain", "#\ttab\tand # hash", "# é 中 😀 '\"", "#"):
+        for newline in ("\n", "\r\n", ""):
+            content = f"a = 1 {comment}{newline}{comment}{newline}"
+            assert Parser(content).parse().as_string() == content
+
+
+def test_comment_still_rejects_control_chars() -> None:
+    # The bulk scan must stop at the control chars that are invalid in a
+    # comment, so they are still rejected at their own position.
+    for bad in ("\x00", "\x0c", "\x1f", "\x7f"):
+        content = f"a = 1\n# ok{bad}bad\n"
+        with pytest.raises(InvalidControlChar) as e:
+            Parser(content).parse()
+
+        assert e.value.line == 2
+        assert e.value.col == 4
 
 
 @pytest.mark.parametrize(

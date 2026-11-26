@@ -73,6 +73,8 @@ _DATE_TAIL_STOP = frozenset("\t\n\r#,]}")
 # string loop. The single-line string-body fast-path stops its bulk scan at the
 # first delimiter / backslash / control char, then the main loop handles that
 # char with its existing branch (raising InvalidControlChar where needed).
+# The comment-body scan uses the same set: it stops at the line break (LF or
+# CR) or at the first control char that is invalid in a comment.
 _CTRL_SINGLE = frozenset(chr(c) for c in range(0x20) if c != CTRL_I) | {chr(CHR_DEL)}
 _SINGLE_LITERAL_STOP = _CTRL_SINGLE | {"'"}  # literal: only the closing quote
 _SINGLE_BASIC_STOP = _CTRL_SINGLE | {'"', "\\"}  # basic: quote or escape
@@ -314,13 +316,10 @@ class Parser:
                 self.inc()  # Skip #
 
                 # The comment itself
-                while not self.end() and self._current not in _NL:
-                    code = ord(self._current)
-                    if code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I):
-                        raise self.parse_error(InvalidControlChar, code, "comments")
-
-                    if not self.inc():
-                        break
+                src = self._src
+                if src.advance_until(_CTRL_SINGLE) and src._current not in _NL:
+                    code = ord(src._current)
+                    raise self.parse_error(InvalidControlChar, code, "comments")
 
                 comment = self.extract()
                 self.mark()

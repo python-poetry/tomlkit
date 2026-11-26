@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Speed up parsing of comments: the comment text is scanned in one pass up to the line break or the first invalid control character, instead of one character at a time. ([#723](https://github.com/python-poetry/tomlkit/pull/723))
+
 ## [0.15.3] - 2026-11-24
 
 ### Changed
