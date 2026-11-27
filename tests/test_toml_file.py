@@ -3,6 +3,8 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
 from tomlkit.toml_document import TOMLDocument
 from tomlkit.toml_file import TOMLFile
 
@@ -118,3 +120,16 @@ def test_readwrite_eol_windows(tmp_path: Path) -> None:
     toml_f.write(doc)
     readback = toml_f.read()
     assert doc.as_string() == readback.as_string()
+
+
+def test_write_encoding_error_preserves_existing_file(tmp_path: Path) -> None:
+    path = tmp_path / "pyproject.toml"
+    original = b'name = "original"\n'
+    path.write_bytes(original)
+    document = TOMLDocument()
+    document.add("name", "\ud800")
+
+    with pytest.raises(UnicodeEncodeError):
+        TOMLFile(path).write(document)
+
+    assert path.read_bytes() == original
