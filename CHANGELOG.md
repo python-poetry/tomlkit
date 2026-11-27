@@ -6,6 +6,10 @@
 
 - Speed up parsing of comments: the comment text is scanned in one pass up to the line break or the first invalid control character, instead of one character at a time. ([#723](https://github.com/python-poetry/tomlkit/pull/723))
 
+### Fixed
+
+- Report a document that ends where a character was expected as `UnexpectedEofError` ("Unexpected end of file") instead of as an unexpected `"\x00"` character, so a truncated key, value, boolean, array or inline table no longer leaks the end-of-input sentinel into the error message.
+
 ## [0.15.3] - 2026-11-24
 
 ### Changed
