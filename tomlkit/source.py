@@ -4,6 +4,7 @@ from typing import Any
 
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.exceptions import UnexpectedEofError
 
 
 class _State:
@@ -202,6 +203,11 @@ class Source(str):
 
         # failed to consume minimum number of characters
         if min > 0:
+            if self.end():
+                # The end-of-input sentinel held in `current` is not a character
+                # of the document, so report a finished input rather than an
+                # unexpected "\x00".
+                raise self.parse_error(UnexpectedEofError)
             raise self.parse_error(UnexpectedCharError, self.current)
 
     def end(self) -> bool:

@@ -4,7 +4,9 @@ import sys
 import pytest
 
 from tomlkit import dumps
+from tomlkit import key_value
 from tomlkit import parse
+from tomlkit import value
 from tomlkit.exceptions import EmptyTableNameError
 from tomlkit.exceptions import InternalParserError
 from tomlkit.exceptions import InvalidControlChar
@@ -12,6 +14,7 @@ from tomlkit.exceptions import InvalidNumberError
 from tomlkit.exceptions import InvalidUnicodeValueError
 from tomlkit.exceptions import ParseError
 from tomlkit.exceptions import UnexpectedCharError
+from tomlkit.exceptions import UnexpectedEofError
 from tomlkit.items import Float
 from tomlkit.items import Integer
 from tomlkit.items import StringType
@@ -351,3 +354,42 @@ def test_parser_preserves_valid_numeric_literals(raw: str, expected: float) -> N
     else:
         assert value == expected
     assert dumps(document) == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "key",  # key without its "="
+        "key = ",  # key with no value
+        "key = tru",  # truncated boolean
+        "key = [1",  # unclosed array
+        "key = {a = 1",  # unclosed inline table
+        "key = {a = 1 # c",  # comment swallowing the closing brace
+    ],
+)
+def test_parser_reports_a_truncated_document_as_unexpected_eof(content: str) -> None:
+    with pytest.raises(UnexpectedEofError) as e:
+        parse(content)
+
+    # The end-of-input sentinel is not a character of the document, so it must
+    # not be reported as an unexpected character.
+    assert str(e.value) == "Unexpected end of file at line 1 col 0"
+
+
+def test_parser_reports_a_null_byte_as_an_unexpected_character() -> None:
+    # A NUL byte really present in the document is still an unexpected
+    # character: only the past-the-end position means the input ended.
+    with pytest.raises(UnexpectedCharError) as e:
+        parse("key = \x00")
+
+    assert e.value.line == 1
+    assert e.value.col == 6
+    assert str(e.value) == "Unexpected character: '\\x00' at line 1 col 6"
+
+
+def test_value_and_key_value_report_truncated_input_as_unexpected_eof() -> None:
+    with pytest.raises(UnexpectedEofError):
+        value("[1")
+
+    with pytest.raises(UnexpectedEofError):
+        key_value("foo")

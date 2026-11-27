@@ -378,6 +378,8 @@ class Parser:
                 else:
                     found_equals = True
         if not found_equals:
+            if self.end():
+                raise self.parse_error(UnexpectedEofError)
             raise self.parse_error(UnexpectedCharError, self._current)
 
         if not key.sep:
@@ -595,6 +597,8 @@ class Parser:
 
             raise self.parse_error(InvalidNumberError)
         else:
+            if self.end():
+                raise self.parse_error(UnexpectedEofError)
             raise self.parse_error(UnexpectedCharError, c)
 
     def _parse_true(self) -> Bool:
@@ -685,6 +689,8 @@ class Parser:
                 self.inc()
                 break
 
+            if self.end():
+                raise self.parse_error(UnexpectedEofError)
             raise self.parse_error(UnexpectedCharError, self._current)
 
         try:
@@ -731,6 +737,8 @@ class Parser:
                 continue
 
             if self._current != ",":
+                if self.end():
+                    raise self.parse_error(UnexpectedEofError)
                 raise self.parse_error(UnexpectedCharError, self._current)
 
             elems.add(Whitespace(","))
