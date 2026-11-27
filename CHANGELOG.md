@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add `multiline=True` to `dumps()` and `dump()` to render arrays one item per line without changing the input document.
+
 ### Changed
 
 - Speed up parsing of comments: the comment text is scanned in one pass up to the line break or the first invalid control character, instead of one character at a time. ([#723](https://github.com/python-poetry/tomlkit/pull/723))

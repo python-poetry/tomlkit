@@ -146,3 +146,29 @@ It can be created with the following code::
     >>> database["enabled"] = True
 
     >>> doc["database"] = database
+
+
+Multiline arrays
+~~~~~~~~~~~~~~~~
+
+Pass ``multiline=True`` to ``dumps()`` or ``dump()`` to put each array item on
+its own line. This also applies to arrays nested in tables, inline tables,
+arrays of tables, and other arrays::
+
+    >>> data = {"ports": [8001, 8002]}
+    >>> print(dumps(data, multiline=True), end="")
+    ports = [
+        8001,
+        8002,
+    ]
+    >>> print(dumps(data), end="")
+    ports = [8001, 8002]
+
+The option uses the same formatting as ``Array.multiline(True)`` without
+changing the input document or its arrays. Empty arrays remain ``[]``. The
+default ``multiline=False`` preserves existing formatting, including arrays
+already marked multiline. The option is a boolean; it does not select arrays
+by item count or line width.
+
+Custom ``as_string()`` methods keep their existing no-argument interface and
+control their own output. The option is not forwarded to those methods.

@@ -35,6 +35,7 @@ from tomlkit.items import Table
 from tomlkit.items import Time
 from tomlkit.items import Trivia
 from tomlkit.items import Whitespace
+from tomlkit.items import _render_item
 from tomlkit.items import item as item
 from tomlkit.parser import Parser
 from tomlkit.toml_document import TOMLDocument as TOMLDocument
@@ -55,18 +56,24 @@ def loads(string: str | bytes) -> TOMLDocument:
     return parse(string)
 
 
-def dumps(data: Mapping[str, Any], sort_keys: bool = False) -> str:
+def dumps(
+    data: Mapping[str, Any], sort_keys: bool = False, *, multiline: bool = False
+) -> str:
     """
     Dumps a TOMLDocument into a string.
+
+    :param multiline: render arrays one item per line without modifying the input.
+        False preserves the existing array formatting. Empty arrays stay empty.
+        Custom as_string() implementations retain control of their formatting.
     """
     if isinstance(data, (Table, InlineTable, Container)):
         if not sort_keys:
-            return data.as_string()
+            return _render_item(data, multiline)
 
-        return item(data, _sort_keys=True).as_string()
+        return _render_item(item(data, _sort_keys=True), multiline)
 
     if isinstance(data, Mapping):
-        return item(dict(data), _sort_keys=sort_keys).as_string()
+        return _render_item(item(dict(data), _sort_keys=sort_keys), multiline)
 
     try:
         # mapping-like wrappers (e.g. dotty_dict's Dotty) delegate
@@ -86,19 +93,26 @@ def load(fp: IO[str] | IO[bytes]) -> TOMLDocument:
     return parse(fp.read())
 
 
-def dump(data: Mapping[str, Any], fp: IO[str], *, sort_keys: bool = False) -> None:
+def dump(
+    data: Mapping[str, Any],
+    fp: IO[str],
+    *,
+    sort_keys: bool = False,
+    multiline: bool = False,
+) -> None:
     """
     Dump a TOMLDocument into a writable file stream.
 
     :param data: a dict-like object to dump
     :param sort_keys: if true, sort the keys in alphabetic order
+    :param multiline: render arrays one item per line, as in dumps()
 
     :Example:
 
     >>> with open("output.toml", "w") as fp:
     ...     tomlkit.dump(data, fp)
     """
-    fp.write(dumps(data, sort_keys=sort_keys))
+    fp.write(dumps(data, sort_keys=sort_keys, multiline=multiline))
 
 
 def parse(string: str | bytes) -> TOMLDocument:
