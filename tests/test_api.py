@@ -884,3 +884,23 @@ def test_parse_dotted_key_with_subsequent_key_at_nesting_limit() -> None:
     # Inside table
     doc_table = tomlkit.parse(f"[t]\n{key} = 1\na.b = 2\n")
     assert doc_table["t"]["a"]["b"] == 2
+
+
+def test_parse_bytes_invalid_utf8_raises() -> None:
+    data = b'a = "\xff"\n'
+    with pytest.raises(UnicodeDecodeError):
+        parse(data)
+
+    with pytest.raises(UnicodeDecodeError):
+        loads(data)
+
+    with pytest.raises(UnicodeDecodeError):
+        load(io.BytesIO(data))
+
+
+def test_parse_bytes_valid_utf8() -> None:
+    data = b'a = "\xc3\xa9"\n'
+    doc = parse(data)
+    assert doc["a"] == "\xe9"
+    assert loads(data)["a"] == "\xe9"
+    assert load(io.BytesIO(data))["a"] == "\xe9"

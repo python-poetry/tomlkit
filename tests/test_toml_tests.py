@@ -166,3 +166,12 @@ def test_invalid_encode(toml11_invalid_encode_case: str) -> None:
     with open(toml11_invalid_encode_case, encoding="utf-8") as f:
         with pytest.raises((TOMLKitError, UnicodeDecodeError)):
             load(f)
+
+
+@pytest.mark.parametrize(
+    "toml11_invalid_encode_case", INVALID_ENCODE_CASES, ids=INVALID_ENCODE_IDS
+)
+def test_invalid_encode_bytes(toml11_invalid_encode_case: str) -> None:
+    with open(toml11_invalid_encode_case, "rb") as f:
+        with pytest.raises((TOMLKitError, UnicodeDecodeError)):
+            load(f)
