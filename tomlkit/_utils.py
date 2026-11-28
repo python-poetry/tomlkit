@@ -147,7 +147,12 @@ def escape_string(s: str, escape_sequences: Collection[str] = _basic_escapes) ->
     found_sequences = [seq for seq in escape_sequences if seq in s]
     if not found_sequences:
         # always return a plain str, also for str subclasses such as String
-        return str(s)
+        # NOTE: calling `str(s)` here would dispatch to an overridden
+        # `__str__` on a str subclass (e.g. `enum.StrEnum` or a custom
+        # wrapper) and serialize that representation instead of the
+        # underlying characters. `str.__str__` unboxes to a plain `str`
+        # without invoking the subclass implementation.
+        return str.__str__(s)
 
     # Replace every sequence in a single left-to-right pass. Longer sequences
     # come first so that '"""' is matched as a whole.
