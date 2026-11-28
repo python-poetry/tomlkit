@@ -6,6 +6,10 @@
 
 - Speed up parsing of comments: the comment text is scanned in one pass up to the line break or the first invalid control character, instead of one character at a time. ([#723](https://github.com/python-poetry/tomlkit/pull/723))
 
+### Fixed
+
+- `item()` and `dumps()` now write the underlying characters of a `str` subclass instead of calling its `__str__` method, so `str`-based `Enum` members and custom string wrappers round-trip again instead of being serialized as e.g. `"Color.RED"` or producing invalid TOML. This was a regression from the single-pass escaping added in 0.15.3. ([#725](https://github.com/python-poetry/tomlkit/issues/725))
+
 ## [0.15.3] - 2026-11-24
 
 ### Changed
